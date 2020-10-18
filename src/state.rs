@@ -1,15 +1,11 @@
 use cgmath::prelude::*;
 use wgpu::util::DeviceExt;
-use winit::{
-    dpi::PhysicalPosition,
-    event::*,
-    window::Window,
-};
+use winit::{dpi::PhysicalPosition, event::*, window::Window};
 
 use crate::camera;
-use crate::texture;
 use crate::sprite;
-use crate::sprite::{Vertex, DrawSprite};
+use crate::sprite::{DrawSprite, Vertex};
+use crate::texture;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -96,7 +92,6 @@ impl Uniforms {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -113,7 +108,7 @@ pub struct State {
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
-    uniforms:Uniforms,
+    uniforms: Uniforms,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
 
@@ -151,7 +146,7 @@ impl State {
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Mailbox,
         };
 
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
@@ -180,24 +175,6 @@ impl State {
                         ty: wgpu::BindingType::Sampler { comparison: false },
                         count: None,
                     },
-                    // normal texture
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 2,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::SampledTexture {
-                            multisampled: false,
-                            dimension: wgpu::TextureViewDimension::D2,
-                            component_type: wgpu::TextureComponentType::Float,
-                        },
-                        count: None,
-                    },
-                    // normal texture sampler
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 3,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler { comparison: false },
-                        count: None,
-                    },
                 ],
                 label: Some("texture_bind_group_layout"),
             });
@@ -218,37 +195,30 @@ impl State {
 
         let uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::UniformBuffer {
-                            dynamic: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
                     },
-                ],
+                    count: None,
+                }],
                 label: Some("uniform_bind_group_layout"),
             });
 
         let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &uniform_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
-                },
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+            }],
             label: Some("uniform_bind_group"),
         });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[
-                    &texture_bind_group_layout,
-                    &uniform_bind_group_layout,
-                ],
+                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
                 label: Some("Render Pipeline Layout"),
                 push_constant_ranges: &[],
             });
@@ -263,7 +233,29 @@ impl State {
             wgpu::include_spirv!("shaders/sprite.fs.spv"),
         );
 
-        let sprites = sprite::SpriteCollection::default();
+        let sprites = {
+            let mat = {
+                let diffuse_bytes = include_bytes!("../res/cobble-diffuse.png");
+                let diffuse_texture = texture::Texture::from_bytes(
+                    &device,
+                    &queue,
+                    diffuse_bytes,
+                    "res/cobble-diffuse",
+                    false,
+                )
+                .unwrap();
+                sprite::SpriteMaterial::new(
+                    &device,
+                    "Sprite Material",
+                    diffuse_texture,
+                    [1.0, 1.0, 1.0].into(),
+                    &texture_bind_group_layout,
+                )
+            };
+            let sb = sprite::SpriteBounds::new(0.0, 0.0, 10.0, 10.0, 0.0);
+            let sm = sprite::SpriteMesh::new(&vec![sb], 0, &device, "Sprite Mesh");
+            sprite::SpriteCollection::new(vec![sm], vec![mat])
+        };
 
         Self {
             surface,
@@ -294,10 +286,9 @@ impl State {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
-
+        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
         self.projection.resize(new_size.width, new_size.height);
     }
 
@@ -386,10 +377,7 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw_sprite_collection(
-                &self.sprites,
-                &self.uniform_bind_group,
-            );
+            render_pass.draw_sprite_collection(&self.sprites, &self.uniform_bind_group);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

@@ -1,4 +1,5 @@
 use crate::texture;
+use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -10,10 +11,19 @@ pub trait Vertex {
 #[derive(Copy, Clone, Debug)]
 pub struct SpriteVertex {
     pub position: cgmath::Vector3<f32>,
-    pub tex_coords: cgmath::Vector2<f32>,
+    pub tex_coord: cgmath::Vector2<f32>,
 }
 unsafe impl bytemuck::Zeroable for SpriteVertex {}
 unsafe impl bytemuck::Pod for SpriteVertex {}
+
+impl SpriteVertex {
+    pub fn new(position: cgmath::Vector3<f32>, tex_coord: cgmath::Vector2<f32>) -> Self {
+        Self {
+            position,
+            tex_coord,
+        }
+    }
+}
 
 impl Vertex for SpriteVertex {
     fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
@@ -30,13 +40,33 @@ impl Vertex for SpriteVertex {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float2,
-                }
+                },
             ],
         }
     }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
+
+pub struct SpriteBounds {
+    pub left: f32,
+    pub top: f32,
+    pub right: f32,
+    pub bottom: f32,
+    pub z: f32,
+}
+
+impl SpriteBounds {
+    pub fn new(left: f32, top: f32, right: f32, bottom: f32, z: f32) -> Self {
+        Self {
+            left,
+            top,
+            right,
+            bottom,
+            z
+        }
+    }
+}
 
 
 pub struct SpriteCollection {
@@ -51,14 +81,17 @@ pub struct SpriteMaterial {
     pub bind_group: wgpu::BindGroup,
 }
 
+#[allow(dead_code)]
 pub struct SpriteMesh {
-    pub name: String,
+    vertices: Vec<SpriteVertex>,
+    indices: Vec<u32>,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
     pub material: usize,
 }
 
+#[allow(dead_code)]
 impl SpriteMaterial {
     pub fn new(
         device: &wgpu::Device,
@@ -91,6 +124,7 @@ impl SpriteMaterial {
     }
 }
 
+#[allow(dead_code)]
 impl SpriteCollection {
     pub fn default() -> Self {
         Self {
@@ -98,7 +132,71 @@ impl SpriteCollection {
             materials: vec![],
         }
     }
+
+    pub fn new(meshes:Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
+        Self {
+            meshes, materials,
+        }
+    }
 }
+
+impl SpriteMesh {
+    pub fn new(
+        rects: &Vec<SpriteBounds>,
+        material: usize,
+        device: &wgpu::Device,
+        name: &str,
+    ) -> Self {
+        let mut vertices = vec![];
+        let mut indices = vec![];
+        let tc_a = cgmath::vec2::<f32>(0.0,0.0);
+        let tc_b = cgmath::vec2::<f32>(1.0,0.0);
+        let tc_c = cgmath::vec2::<f32>(1.0,1.0);
+        let tc_d = cgmath::vec2::<f32>(0.0,1.0);
+    for rect in rects {
+            let p_a = cgmath::vec3(rect.left, rect.top, rect.z);
+            let p_b = cgmath::vec3(rect.right, rect.top, rect.z);
+            let p_c = cgmath::vec3(rect.right, rect.bottom, rect.z);
+            let p_d = cgmath::vec3(rect.left, rect.bottom, rect.z);
+            let idx = vertices.len();
+            vertices.push(SpriteVertex::new(p_a, tc_a));
+            vertices.push(SpriteVertex::new(p_b, tc_b));
+            vertices.push(SpriteVertex::new(p_c, tc_c));
+            vertices.push(SpriteVertex::new(p_d, tc_d));
+            indices.push((idx + 0) as u32);
+            indices.push((idx + 1) as u32);
+            indices.push((idx + 2) as u32);
+            indices.push((idx + 0) as u32);
+            indices.push((idx + 2) as u32);
+            indices.push((idx + 3) as u32);
+        }
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Vertex Buffer", name)),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsage::VERTEX,
+        });
+
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some(&format!("{:?} Index Buffer", name)),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsage::INDEX,
+        });
+
+        let num_elements = indices.len() as u32;
+
+        Self {
+            vertices,
+            indices,
+            vertex_buffer,
+            index_buffer,
+            num_elements,
+            material,
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 
 pub trait DrawSprite<'a, 'b>
 where
