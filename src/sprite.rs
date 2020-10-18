@@ -63,11 +63,10 @@ impl SpriteBounds {
             top,
             right,
             bottom,
-            z
+            z,
         }
     }
 }
-
 
 pub struct SpriteCollection {
     pub meshes: Vec<SpriteMesh>,
@@ -133,10 +132,8 @@ impl SpriteCollection {
         }
     }
 
-    pub fn new(meshes:Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
-        Self {
-            meshes, materials,
-        }
+    pub fn new(meshes: Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
+        Self { meshes, materials }
     }
 }
 
@@ -149,11 +146,11 @@ impl SpriteMesh {
     ) -> Self {
         let mut vertices = vec![];
         let mut indices = vec![];
-        let tc_a = cgmath::vec2::<f32>(0.0,0.0);
-        let tc_b = cgmath::vec2::<f32>(1.0,0.0);
-        let tc_c = cgmath::vec2::<f32>(1.0,1.0);
-        let tc_d = cgmath::vec2::<f32>(0.0,1.0);
-    for rect in rects {
+        let tc_a = cgmath::vec2::<f32>(0.0, 0.0);
+        let tc_b = cgmath::vec2::<f32>(1.0, 0.0);
+        let tc_c = cgmath::vec2::<f32>(1.0, 1.0);
+        let tc_d = cgmath::vec2::<f32>(0.0, 1.0);
+        for rect in rects {
             let p_a = cgmath::vec3(rect.left, rect.top, rect.z);
             let p_b = cgmath::vec3(rect.right, rect.top, rect.z);
             let p_c = cgmath::vec3(rect.right, rect.bottom, rect.z);
