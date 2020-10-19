@@ -12,15 +12,21 @@ pub trait Vertex {
 pub struct SpriteVertex {
     pub position: cgmath::Vector3<f32>,
     pub tex_coord: cgmath::Vector2<f32>,
+    pub color: cgmath::Vector4<f32>,
 }
 unsafe impl bytemuck::Zeroable for SpriteVertex {}
 unsafe impl bytemuck::Pod for SpriteVertex {}
 
 impl SpriteVertex {
-    pub fn new(position: cgmath::Vector3<f32>, tex_coord: cgmath::Vector2<f32>) -> Self {
+    pub fn new(
+        position: cgmath::Vector3<f32>,
+        tex_coord: cgmath::Vector2<f32>,
+        color: cgmath::Vector4<f32>,
+    ) -> Self {
         Self {
             position,
             tex_coord,
+            color,
         }
     }
 }
@@ -41,6 +47,11 @@ impl Vertex for SpriteVertex {
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float2,
                 },
+                wgpu::VertexAttributeDescriptor {
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float4,
+                },
             ],
         }
     }
@@ -48,22 +59,31 @@ impl Vertex for SpriteVertex {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub struct SpriteBounds {
+pub struct SpriteDesc {
     pub left: f32,
     pub top: f32,
     pub right: f32,
     pub bottom: f32,
     pub z: f32,
+    pub color: cgmath::Vector4<f32>,
 }
 
-impl SpriteBounds {
-    pub fn new(left: f32, top: f32, right: f32, bottom: f32, z: f32) -> Self {
+impl SpriteDesc {
+    pub fn new(
+        left: f32,
+        top: f32,
+        right: f32,
+        bottom: f32,
+        z: f32,
+        color: cgmath::Vector4<f32>,
+    ) -> Self {
         Self {
             left,
             top,
             right,
             bottom,
             z,
+            color,
         }
     }
 }
@@ -76,7 +96,6 @@ pub struct SpriteCollection {
 pub struct SpriteMaterial {
     pub name: String,
     pub texture: texture::Texture,
-    pub color: cgmath::Vector3<f32>,
     pub bind_group: wgpu::BindGroup,
 }
 
@@ -96,10 +115,8 @@ impl SpriteMaterial {
         device: &wgpu::Device,
         name: &str,
         texture: texture::Texture,
-        color: cgmath::Vector3<f32>,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
-        // TODO: Add color to bind_group and its layout
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
             entries: &[
@@ -117,9 +134,34 @@ impl SpriteMaterial {
         Self {
             name: String::from(name),
             texture,
-            color,
             bind_group,
         }
+    }
+
+    pub fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                // diffuse texture
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::SampledTexture {
+                        multisampled: false,
+                        dimension: wgpu::TextureViewDimension::D2,
+                        component_type: wgpu::TextureComponentType::Uint,
+                    },
+                    count: None,
+                },
+                // diffuse texture sampler
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    count: None,
+                },
+            ],
+            label: Some("texture_bind_group_layout"),
+        })
     }
 }
 
@@ -139,7 +181,7 @@ impl SpriteCollection {
 
 impl SpriteMesh {
     pub fn new(
-        rects: &Vec<SpriteBounds>,
+        rects: &Vec<SpriteDesc>,
         material: usize,
         device: &wgpu::Device,
         name: &str,
@@ -156,10 +198,10 @@ impl SpriteMesh {
             let p_c = cgmath::vec3(rect.right, rect.bottom, rect.z);
             let p_d = cgmath::vec3(rect.left, rect.bottom, rect.z);
             let idx = vertices.len();
-            vertices.push(SpriteVertex::new(p_a, tc_a));
-            vertices.push(SpriteVertex::new(p_b, tc_b));
-            vertices.push(SpriteVertex::new(p_c, tc_c));
-            vertices.push(SpriteVertex::new(p_d, tc_d));
+            vertices.push(SpriteVertex::new(p_a, tc_a, rect.color));
+            vertices.push(SpriteVertex::new(p_b, tc_b, rect.color));
+            vertices.push(SpriteVertex::new(p_c, tc_c, rect.color));
+            vertices.push(SpriteVertex::new(p_d, tc_d, rect.color));
             indices.push((idx + 0) as u32);
             indices.push((idx + 1) as u32);
             indices.push((idx + 2) as u32);

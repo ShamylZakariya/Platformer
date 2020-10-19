@@ -67,16 +67,16 @@ fn create_render_pipeline(
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-struct Uniforms {
+struct CameraUniforms {
     // use vec4 for 16-byte spacing requirement
     view_position: cgmath::Vector4<f32>,
     view_proj: cgmath::Matrix4<f32>,
 }
 
-unsafe impl bytemuck::Pod for Uniforms {}
-unsafe impl bytemuck::Zeroable for Uniforms {}
+unsafe impl bytemuck::Pod for CameraUniforms {}
+unsafe impl bytemuck::Zeroable for CameraUniforms {}
 
-impl Uniforms {
+impl CameraUniforms {
     fn new() -> Self {
         Self {
             view_position: Zero::zero(),
@@ -108,9 +108,9 @@ pub struct State {
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
-    uniforms: Uniforms,
-    uniform_buffer: wgpu::Buffer,
-    uniform_bind_group: wgpu::BindGroup,
+    camera_uniforms: CameraUniforms,
+    camera_uniform_buffer: wgpu::Buffer,
+    camera_uniform_bind_group: wgpu::BindGroup,
 
     sprites: sprite::SpriteCollection,
 }
@@ -154,46 +154,23 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        let texture_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    // diffuse texture
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::SampledTexture {
-                            multisampled: false,
-                            dimension: wgpu::TextureViewDimension::D2,
-                            component_type: wgpu::TextureComponentType::Uint,
-                        },
-                        count: None,
-                    },
-                    // diffuse texture sampler
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler { comparison: false },
-                        count: None,
-                    },
-                ],
-                label: Some("texture_bind_group_layout"),
-            });
+        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
 
         let camera = camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0));
         let projection =
             camera::Projection::new(sc_desc.width, sc_desc.height, cgmath::Deg(45.0), 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0, 0.4);
 
-        let mut uniforms = Uniforms::new();
-        uniforms.update_view_proj(&camera, &projection);
+        let mut camera_uniforms = CameraUniforms::new();
+        camera_uniforms.update_view_proj(&camera, &projection);
 
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let camera_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[uniforms]),
+            contents: bytemuck::cast_slice(&[camera_uniforms]),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
 
-        let uniform_bind_group_layout =
+        let camera_uniform_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -207,18 +184,21 @@ impl State {
                 label: Some("uniform_bind_group_layout"),
             });
 
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &uniform_bind_group_layout,
+        let camera_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &camera_uniform_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+                resource: wgpu::BindingResource::Buffer(camera_uniform_buffer.slice(..)),
             }],
             label: Some("uniform_bind_group"),
         });
 
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&texture_bind_group_layout, &uniform_bind_group_layout],
+                bind_group_layouts: &[
+                    &material_bind_group_layout,
+                    &camera_uniform_bind_group_layout,
+                ],
                 label: Some("Render Pipeline Layout"),
                 push_constant_ranges: &[],
             });
@@ -248,12 +228,14 @@ impl State {
                     &device,
                     "Sprite Material",
                     diffuse_texture,
-                    [1.0, 1.0, 1.0].into(),
-                    &texture_bind_group_layout,
+                    &material_bind_group_layout,
                 )
             };
-            let sb = sprite::SpriteBounds::new(0.0, 0.0, 10.0, 10.0, 0.0);
-            let sm = sprite::SpriteMesh::new(&vec![sb], 0, &device, "Sprite Mesh");
+            let sb1 =
+                sprite::SpriteDesc::new(0.0, 0.0, 10.0, 10.0, 0.0, [1.0, 0.5, 0.5, 1.0].into());
+            let sb2 =
+                sprite::SpriteDesc::new(10.0, 0.0, 15.0, 5.0, 0.0, [0.5, 0.5, 1.0, 1.0].into());
+            let sm = sprite::SpriteMesh::new(&vec![sb1, sb2], 0, &device, "Sprite Mesh");
             sprite::SpriteCollection::new(vec![sm], vec![mat])
         };
 
@@ -271,9 +253,9 @@ impl State {
             camera_controller,
             projection,
 
-            uniforms,
-            uniform_buffer,
-            uniform_bind_group,
+            camera_uniforms: camera_uniforms,
+            camera_uniform_buffer: camera_uniform_buffer,
+            camera_uniform_bind_group: camera_uniform_bind_group,
 
             sprites,
 
@@ -330,12 +312,12 @@ impl State {
 
     pub fn update(&mut self, dt: std::time::Duration) {
         self.camera_controller.update_camera(&mut self.camera, dt);
-        self.uniforms
+        self.camera_uniforms
             .update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(
-            &self.uniform_buffer,
+            &self.camera_uniform_buffer,
             0,
-            bytemuck::cast_slice(&[self.uniforms]),
+            bytemuck::cast_slice(&[self.camera_uniforms]),
         );
     }
 
@@ -377,7 +359,7 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw_sprite_collection(&self.sprites, &self.uniform_bind_group);
+            render_pass.draw_sprite_collection(&self.sprites, &self.camera_uniform_bind_group);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
