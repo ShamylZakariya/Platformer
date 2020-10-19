@@ -93,25 +93,27 @@ impl CameraUniforms {
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct State {
+    // Basic mechanism
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
-    render_pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
 
+    // Camera and input state
     camera: camera::Camera,
     projection: camera::Projection,
     camera_controller: camera::CameraController,
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
-
     camera_uniforms: CameraUniforms,
     camera_uniform_buffer: wgpu::Buffer,
     camera_uniform_bind_group: wgpu::BindGroup,
 
+    // Sprite rendering
+    sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
 }
 
@@ -154,7 +156,7 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
+        // Buyild camera, and camera uniform storage
 
         let camera = camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0));
         let projection =
@@ -193,7 +195,11 @@ impl State {
             label: Some("uniform_bind_group"),
         });
 
-        let render_pipeline_layout =
+        // Build the sprite render pipeline
+
+        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
+
+        let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: &[
                     &material_bind_group_layout,
@@ -203,9 +209,9 @@ impl State {
                 push_constant_ranges: &[],
             });
 
-        let render_pipeline = create_render_pipeline(
+        let sprite_render_pipeline = create_render_pipeline(
             &device,
-            &render_pipeline_layout,
+            &sprite_render_pipeline_layout,
             sc_desc.format,
             Some(texture::Texture::DEPTH_FORMAT),
             &[sprite::SpriteVertex::desc()],
@@ -245,22 +251,21 @@ impl State {
             queue,
             sc_desc,
             swap_chain,
-            render_pipeline,
             depth_texture,
             size,
 
             camera,
             camera_controller,
             projection,
-
-            camera_uniforms: camera_uniforms,
-            camera_uniform_buffer: camera_uniform_buffer,
-            camera_uniform_bind_group: camera_uniform_bind_group,
-
-            sprites,
-
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
+
+            camera_uniforms,
+            camera_uniform_buffer,
+            camera_uniform_bind_group,
+
+            sprite_render_pipeline,
+            sprites,
         }
     }
 
@@ -334,6 +339,8 @@ impl State {
             });
 
         {
+            // Render Sprites; this is first pass so we clear color/depth
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
@@ -341,8 +348,8 @@ impl State {
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
                             r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
+                            g: 0.1,
+                            b: 0.1,
                             a: 1.0,
                         }),
                         store: true,
@@ -358,7 +365,7 @@ impl State {
                 }),
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(&self.sprite_render_pipeline);
             render_pass.draw_sprite_collection(&self.sprites, &self.camera_uniform_bind_group);
         }
 
