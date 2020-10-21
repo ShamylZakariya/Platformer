@@ -33,8 +33,9 @@ fn create_render_pipeline(
             entry_point: "main",
         }),
         rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: wgpu::CullMode::Back,
+            // Since we're rendering sprites, we don't care about backface culling
+            front_face: wgpu::FrontFace::Cw,
+            cull_mode: wgpu::CullMode::None,
             depth_bias: 0,
             depth_bias_slope_scale: 0.0,
             depth_bias_clamp: 0.0,
@@ -158,9 +159,9 @@ impl State {
 
         // Buyild camera, and camera uniform storage
 
-        let camera = camera::Camera::new((0.0, 5.0, 10.0), cgmath::Deg(-90.0), cgmath::Deg(-20.0));
+        let camera = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0));
         let projection =
-            camera::Projection::new(sc_desc.width, sc_desc.height, cgmath::Deg(45.0), 0.1, 100.0);
+            camera::Projection::new(sc_desc.width, sc_desc.height, cgmath::Deg(45.), 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0, 0.4);
 
         let mut camera_uniforms = CameraUniforms::new();
@@ -238,9 +239,9 @@ impl State {
                 )
             };
             let sb1 =
-                sprite::SpriteDesc::new(0.0, 0.0, 10.0, 10.0, 0.0, [1.0, 0.5, 0.5, 1.0].into());
+                sprite::SpriteDesc::new(0.0, 0.0, 10.0, 10.0, 10.0, [1.0, 0.5, 0.5, 1.0].into());
             let sb2 =
-                sprite::SpriteDesc::new(10.0, 0.0, 15.0, 5.0, 0.0, [0.5, 0.5, 1.0, 1.0].into());
+                sprite::SpriteDesc::new(-10.0, -10.0, 10.0, 10.0, 10.0, [0.5, 0.5, 1.0, 1.0].into());
             let sm = sprite::SpriteMesh::new(&vec![sb1, sb2], 0, &device, "Sprite Mesh");
             sprite::SpriteCollection::new(vec![sm], vec![mat])
         };

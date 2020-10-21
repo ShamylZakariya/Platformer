@@ -61,9 +61,9 @@ impl Vertex for SpriteVertex {
 
 pub struct SpriteDesc {
     pub left: f32,
-    pub top: f32,
-    pub right: f32,
     pub bottom: f32,
+    pub width: f32,
+    pub height: f32,
     pub z: f32,
     pub color: cgmath::Vector4<f32>,
 }
@@ -71,17 +71,17 @@ pub struct SpriteDesc {
 impl SpriteDesc {
     pub fn new(
         left: f32,
-        top: f32,
-        right: f32,
         bottom: f32,
+        width: f32,
+        height: f32,
         z: f32,
         color: cgmath::Vector4<f32>,
     ) -> Self {
         Self {
             left,
-            top,
-            right,
             bottom,
+            width,
+            height,
             z,
             color,
         }
@@ -193,10 +193,10 @@ impl SpriteMesh {
         let tc_c = cgmath::vec2::<f32>(1.0, 1.0);
         let tc_d = cgmath::vec2::<f32>(0.0, 1.0);
         for rect in rects {
-            let p_a = cgmath::vec3(rect.left, rect.top, rect.z);
-            let p_b = cgmath::vec3(rect.right, rect.top, rect.z);
-            let p_c = cgmath::vec3(rect.right, rect.bottom, rect.z);
-            let p_d = cgmath::vec3(rect.left, rect.bottom, rect.z);
+            let p_a = cgmath::vec3(rect.left, rect.bottom, rect.z);
+            let p_b = cgmath::vec3(rect.left + rect.width, rect.bottom, rect.z);
+            let p_c = cgmath::vec3(rect.left + rect.width, rect.bottom + rect.height, rect.z);
+            let p_d = cgmath::vec3(rect.left, rect.bottom + rect.height, rect.z);
             let idx = vertices.len();
             vertices.push(SpriteVertex::new(p_a, tc_a, rect.color));
             vertices.push(SpriteVertex::new(p_b, tc_b, rect.color));
@@ -205,6 +205,7 @@ impl SpriteMesh {
             indices.push((idx + 0) as u32);
             indices.push((idx + 1) as u32);
             indices.push((idx + 2) as u32);
+
             indices.push((idx + 0) as u32);
             indices.push((idx + 2) as u32);
             indices.push((idx + 3) as u32);
