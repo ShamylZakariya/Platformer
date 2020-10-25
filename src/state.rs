@@ -1,6 +1,12 @@
 use cgmath::prelude::*;
+use imgui::*;
+use imgui_winit_support::WinitPlatform;
 use wgpu::util::DeviceExt;
-use winit::{dpi::PhysicalPosition, event::*, window::Window};
+use winit::{
+    dpi::PhysicalPosition,
+    event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
+    window::Window,
+};
 
 use crate::camera;
 use crate::sprite;
@@ -116,6 +122,11 @@ pub struct State {
     // Sprite rendering
     sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
+
+    // Imgui
+    winit_platform: WinitPlatform,
+    imgui: imgui::Context,
+    imgui_renderer: imgui_wgpu::Renderer,
 }
 
 impl State {
@@ -240,11 +251,45 @@ impl State {
             };
             let sb1 =
                 sprite::SpriteDesc::new(0.0, 0.0, 10.0, 10.0, 10.0, [1.0, 0.5, 0.5, 1.0].into());
-            let sb2 =
-                sprite::SpriteDesc::new(-10.0, -10.0, 10.0, 10.0, 10.0, [0.5, 0.5, 1.0, 1.0].into());
+            let sb2 = sprite::SpriteDesc::new(
+                -10.0,
+                -10.0,
+                10.0,
+                10.0,
+                10.0,
+                [0.5, 0.5, 1.0, 1.0].into(),
+            );
             let sm = sprite::SpriteMesh::new(&vec![sb1, sb2], 0, &device, "Sprite Mesh");
             sprite::SpriteCollection::new(vec![sm], vec![mat])
         };
+
+        // set up imgui
+
+        let hidpi_factor = window.scale_factor();
+        let mut imgui = imgui::Context::create();
+        let mut winit_platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+        winit_platform.attach_window(
+            imgui.io_mut(),
+            &window,
+            imgui_winit_support::HiDpiMode::Default,
+        );
+        imgui.set_ini_filename(None);
+
+        let font_size = (13.0 * hidpi_factor) as f32;
+        imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+
+        imgui.fonts().add_font(&[FontSource::DefaultFontData {
+            config: Some(imgui::FontConfig {
+                oversample_h: 1,
+                pixel_snap_h: true,
+                size_pixels: font_size,
+                ..Default::default()
+            }),
+        }]);
+
+        let imgui_renderer = imgui_wgpu::RendererConfig::new()
+            .set_texture_format(sc_desc.format)
+            .build(&mut imgui, &device, &queue);
 
         Self {
             surface,
@@ -267,10 +312,14 @@ impl State {
 
             sprite_render_pipeline,
             sprites,
+
+            winit_platform,
+            imgui,
+            imgui_renderer
         }
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
@@ -316,7 +365,9 @@ impl State {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration) {
+    pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
+        self.imgui.io_mut().update_delta_time(dt);
+
         self.camera_controller.update_camera(&mut self.camera, dt);
         self.camera_uniforms
             .update_view_proj(&self.camera, &self.projection);
@@ -327,7 +378,7 @@ impl State {
         );
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, window: &Window) {
         let frame = self
             .swap_chain
             .get_current_frame()
@@ -338,6 +389,15 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        self.winit_platform
+            .prepare_frame(self.imgui.io_mut(), window)
+            .expect("Failed to prepare frame");
+        let ui = self.imgui.frame();
+
+        imgui::Window::new(im_str!("Hello"))
+            .size([128.0, 128.0], Condition::FirstUseEver)
+            .build(&ui, ||{});
 
         {
             // Render Sprites; this is first pass so we clear color/depth
@@ -368,6 +428,26 @@ impl State {
 
             render_pass.set_pipeline(&self.sprite_render_pipeline);
             render_pass.draw_sprite_collection(&self.sprites, &self.camera_uniform_bind_group);
+        }
+
+        {
+            // Render imgui content
+
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: &frame.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load, // Do not clear
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+
+            self.imgui_renderer
+                .render(ui.render(), &self.queue, &self.device, &mut render_pass)
+                .expect("Imgui render failed");
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

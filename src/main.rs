@@ -26,8 +26,8 @@ fn main() {
             let now = std::time::Instant::now();
             let dt = now - last_render_time;
             last_render_time = now;
-            state.update(dt);
-            state.render();
+            state.update(&window, dt);
+            state.render(&window);
         }
         Event::MainEventsCleared => {
             // we have to explicitly request a redraw
@@ -46,10 +46,10 @@ fn main() {
                         _ => {}
                     },
                     WindowEvent::Resized(physical_size) => {
-                        state.resize(physical_size);
+                        state.resize(&window, physical_size);
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(*new_inner_size);
+                        state.resize(&window, *new_inner_size);
                     }
                     _ => {}
                 }
