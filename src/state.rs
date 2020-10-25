@@ -315,8 +315,13 @@ impl State {
 
             winit_platform,
             imgui,
-            imgui_renderer
+            imgui_renderer,
         }
+    }
+
+    pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
+        self.winit_platform
+            .handle_event(self.imgui.io_mut(), &window, &event);
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -329,7 +334,7 @@ impl State {
         self.projection.resize(new_size.width, new_size.height);
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn input(&mut self, _window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
                 input:
@@ -382,8 +387,8 @@ impl State {
         let frame = self
             .swap_chain
             .get_current_frame()
-            .expect("Timeout getting texture")
-            .output;
+            .expect("Timeout getting texture");
+
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -397,14 +402,14 @@ impl State {
 
         imgui::Window::new(im_str!("Hello"))
             .size([128.0, 128.0], Condition::FirstUseEver)
-            .build(&ui, ||{});
+            .build(&ui, || {});
 
         {
             // Render Sprites; this is first pass so we clear color/depth
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
+                    attachment: &frame.output.view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -432,10 +437,11 @@ impl State {
 
         {
             // Render imgui content
+            self.winit_platform.prepare_render(&ui, &window);
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
+                    attachment: &frame.output.view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // Do not clear

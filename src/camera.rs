@@ -21,10 +21,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new<P: Into<Point3<f32>>,V: Into<Vector3<f32>>>(
-        position: P,
-        look_dir: V,
-    ) -> Self {
+    pub fn new<P: Into<Point3<f32>>, V: Into<Vector3<f32>>>(position: P, look_dir: V) -> Self {
         Self {
             position: position.into(),
             look_dir: look_dir.into(),
@@ -32,11 +29,7 @@ impl Camera {
     }
 
     pub fn calc_matrix(&self) -> Matrix4<f32> {
-        Matrix4::look_at_dir(
-            self.position,
-            self.look_dir.normalize(),
-            Vector3::unit_y(),
-        )
+        Matrix4::look_at_dir(self.position, self.look_dir.normalize(), Vector3::unit_y())
     }
 }
 
@@ -68,7 +61,7 @@ impl Projection {
 
 #[derive(Debug)]
 pub struct CameraController {
-    delta_position:Vector3<f32>,
+    delta_position: Vector3<f32>,
     delta_scale: f32,
     speed: f32,
     sensitivity: f32,
@@ -119,8 +112,7 @@ impl CameraController {
         }
     }
 
-    pub fn process_mouse(&mut self, _mouse_dx: f64, _mouse_dy: f64) {
-    }
+    pub fn process_mouse(&mut self, _mouse_dx: f64, _mouse_dy: f64) {}
 
     pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
         self.delta_scale = match delta {
@@ -132,6 +124,9 @@ impl CameraController {
     pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
         let dt = dt.as_secs_f32();
         camera.position += self.delta_position * self.speed * dt;
-        println!("camera.position: {:?} look_dir: {:?}", camera.position, camera.look_dir);
+        println!(
+            "camera.position: {:?} look_dir: {:?}",
+            camera.position, camera.look_dir
+        );
     }
 }
