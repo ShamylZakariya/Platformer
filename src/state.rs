@@ -1,6 +1,6 @@
 use cgmath::prelude::*;
-use imgui::*;
-use imgui_winit_support::WinitPlatform;
+// use imgui::*;
+// use imgui_winit_support::WinitPlatform;
 use wgpu::util::DeviceExt;
 use winit::{
     dpi::PhysicalPosition,
@@ -99,6 +99,13 @@ impl CameraUniforms {
 
 // --------------------------------------------------------------------------------------------------------------------
 
+#[derive(Copy, Clone, Debug)]
+pub struct UiDisplayState {
+    camera_position: cgmath::Point3<f32>,
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
 pub struct State {
     // Basic mechanism
     surface: wgpu::Surface,
@@ -124,7 +131,7 @@ pub struct State {
     sprites: sprite::SpriteCollection,
 
     // Imgui
-    winit_platform: WinitPlatform,
+    winit_platform: imgui_winit_support::WinitPlatform,
     imgui: imgui::Context,
     imgui_renderer: imgui_wgpu::Renderer,
 }
@@ -278,14 +285,16 @@ impl State {
         let font_size = (13.0 * hidpi_factor) as f32;
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
-        imgui.fonts().add_font(&[FontSource::DefaultFontData {
-            config: Some(imgui::FontConfig {
-                oversample_h: 1,
-                pixel_snap_h: true,
-                size_pixels: font_size,
-                ..Default::default()
-            }),
-        }]);
+        imgui
+            .fonts()
+            .add_font(&[imgui::FontSource::DefaultFontData {
+                config: Some(imgui::FontConfig {
+                    oversample_h: 1,
+                    pixel_snap_h: true,
+                    size_pixels: font_size,
+                    ..Default::default()
+                }),
+            }]);
 
         let imgui_renderer = imgui_wgpu::RendererConfig::new()
             .set_texture_format(sc_desc.format)
@@ -398,11 +407,22 @@ impl State {
         self.winit_platform
             .prepare_frame(self.imgui.io_mut(), window)
             .expect("Failed to prepare frame");
+
+        let ui_display_state = self.ui_state();
         let ui = self.imgui.frame();
 
-        imgui::Window::new(im_str!("Hello"))
-            .size([128.0, 128.0], Condition::FirstUseEver)
-            .build(&ui, || {});
+        {
+            imgui::Window::new(imgui::im_str!("Hello"))
+                .size([128.0, 128.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    ui.text(imgui::im_str!(
+                        "camera: ({:.2},{:.2},{:.2})",
+                        ui_display_state.camera_position.x,
+                        ui_display_state.camera_position.y,
+                        ui_display_state.camera_position.z
+                    ));
+                });
+        }
 
         {
             // Render Sprites; this is first pass so we clear color/depth
@@ -457,5 +477,11 @@ impl State {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
+    }
+
+    fn ui_state(&self) -> UiDisplayState {
+        UiDisplayState {
+            camera_position: self.camera.position,
+        }
     }
 }

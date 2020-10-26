@@ -124,9 +124,5 @@ impl CameraController {
     pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
         let dt = dt.as_secs_f32();
         camera.position += self.delta_position * self.speed * dt;
-        println!(
-            "camera.position: {:?} look_dir: {:?}",
-            camera.position, camera.look_dir
-        );
     }
 }
