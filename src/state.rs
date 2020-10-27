@@ -100,8 +100,30 @@ impl CameraUniforms {
 // --------------------------------------------------------------------------------------------------------------------
 
 #[derive(Copy, Clone, Debug)]
-pub struct UiDisplayState {
+struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
+    button_press_count: u32,
+}
+
+impl Default for UiDisplayState {
+    fn default() -> Self {
+        UiDisplayState {
+            camera_position: [0.0, 0.0, 0.0].into(),
+            button_press_count: 0,
+        }
+    }
+}
+
+struct UiActionState {
+    did_press_button: bool,
+}
+
+impl Default for UiActionState {
+    fn default() -> Self {
+        UiActionState {
+            did_press_button: false,
+        }
+    }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -134,6 +156,7 @@ pub struct State {
     winit_platform: imgui_winit_support::WinitPlatform,
     imgui: imgui::Context,
     imgui_renderer: imgui_wgpu::Renderer,
+    ui_display_state: UiDisplayState,
 }
 
 impl State {
@@ -325,6 +348,7 @@ impl State {
             winit_platform,
             imgui,
             imgui_renderer,
+            ui_display_state: UiDisplayState::default(),
         }
     }
 
@@ -379,7 +403,7 @@ impl State {
         }
     }
 
-    pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
+    pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
 
         self.camera_controller.update_camera(&mut self.camera, dt);
@@ -390,6 +414,12 @@ impl State {
             0,
             bytemuck::cast_slice(&[self.camera_uniforms]),
         );
+
+        self.update_ui_display_state(window, dt)
+    }
+
+    fn update_ui_display_state(&mut self, _window: &Window, _dt: std::time::Duration) {
+        self.ui_display_state.camera_position = self.camera.position;
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -408,20 +438,35 @@ impl State {
             .prepare_frame(self.imgui.io_mut(), window)
             .expect("Failed to prepare frame");
 
+        let mut ui_action_state = UiActionState::default();
         let ui_display_state = self.ui_state();
         let ui = self.imgui.frame();
 
         {
             imgui::Window::new(imgui::im_str!("Hello"))
-                .size([128.0, 128.0], imgui::Condition::FirstUseEver)
+                .size([280.0, 128.0], imgui::Condition::FirstUseEver)
                 .build(&ui, || {
+                    // TODO: FIgure out a sane refactoring of this that will allow imgui to mutate state.
                     ui.text(imgui::im_str!(
                         "camera: ({:.2},{:.2},{:.2})",
                         ui_display_state.camera_position.x,
                         ui_display_state.camera_position.y,
                         ui_display_state.camera_position.z
                     ));
+
+                    if ui.button(imgui::im_str!("Button"), [200.0, 24.0]) {
+                        ui_action_state.did_press_button = true;
+                    }
+
+                    ui.text(imgui::im_str!(
+                        "Button presses: {}",
+                        ui_display_state.button_press_count
+                    ));
                 });
+
+            if ui_action_state.did_press_button {
+                self.ui_display_state.button_press_count += 1;
+            }
         }
 
         {
@@ -479,9 +524,8 @@ impl State {
         self.queue.submit(std::iter::once(encoder.finish()));
     }
 
+    // vends a UiDisplayState, which will be rendered via imgui
     fn ui_state(&self) -> UiDisplayState {
-        UiDisplayState {
-            camera_position: self.camera.position,
-        }
+        self.ui_display_state
     }
 }
