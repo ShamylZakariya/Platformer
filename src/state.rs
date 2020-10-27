@@ -434,44 +434,11 @@ impl State {
                 label: Some("Render Encoder"),
             });
 
-        self.winit_platform
-            .prepare_frame(self.imgui.io_mut(), window)
-            .expect("Failed to prepare frame");
-
-        let mut ui_action_state = UiActionState::default();
-        let ui_display_state = self.ui_state();
-        let ui = self.imgui.frame();
+        //
+        // Render Sprites; this is first pass so we clear color/depth
+        //
 
         {
-            imgui::Window::new(imgui::im_str!("Hello"))
-                .size([280.0, 128.0], imgui::Condition::FirstUseEver)
-                .build(&ui, || {
-                    // TODO: FIgure out a sane refactoring of this that will allow imgui to mutate state.
-                    ui.text(imgui::im_str!(
-                        "camera: ({:.2},{:.2},{:.2})",
-                        ui_display_state.camera_position.x,
-                        ui_display_state.camera_position.y,
-                        ui_display_state.camera_position.z
-                    ));
-
-                    if ui.button(imgui::im_str!("Button"), [200.0, 24.0]) {
-                        ui_action_state.did_press_button = true;
-                    }
-
-                    ui.text(imgui::im_str!(
-                        "Button presses: {}",
-                        ui_display_state.button_press_count
-                    ));
-                });
-
-            if ui_action_state.did_press_button {
-                self.ui_display_state.button_press_count += 1;
-            }
-        }
-
-        {
-            // Render Sprites; this is first pass so we clear color/depth
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
@@ -500,8 +467,51 @@ impl State {
             render_pass.draw_sprite_collection(&self.sprites, &self.camera_uniform_bind_group);
         }
 
+        //
+        //  ImGUI
+        //
+
         {
+            self.winit_platform
+                .prepare_frame(self.imgui.io_mut(), window)
+                .expect("Failed to prepare frame");
+
+            let ui = self.imgui.frame();
+
+            //
+            // Update imgui content
+            //
+
+            let mut ui_action_state = UiActionState::default();
+            let ui_display_state = self.ui_display_state;
+            imgui::Window::new(imgui::im_str!("Hello"))
+                .size([280.0, 128.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    ui.text(imgui::im_str!(
+                        "camera: ({:.2},{:.2},{:.2})",
+                        ui_display_state.camera_position.x,
+                        ui_display_state.camera_position.y,
+                        ui_display_state.camera_position.z
+                    ));
+
+                    if ui.button(imgui::im_str!("Button"), [200.0, 24.0]) {
+                        ui_action_state.did_press_button = true;
+                    }
+
+                    ui.text(imgui::im_str!(
+                        "Button presses: {}",
+                        ui_display_state.button_press_count
+                    ));
+                });
+
+            if ui_action_state.did_press_button {
+                self.ui_display_state.button_press_count += 1;
+            }
+
+            //
             // Render imgui content
+            //
+
             self.winit_platform.prepare_render(&ui, &window);
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -522,10 +532,5 @@ impl State {
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-    }
-
-    // vends a UiDisplayState, which will be rendered via imgui
-    fn ui_state(&self) -> UiDisplayState {
-        self.ui_display_state
     }
 }
