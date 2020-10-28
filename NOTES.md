@@ -1,5 +1,5 @@
 TODO:
-    keyboard is wonky - doesn't work well with, e.g., left and right keys simultaneously
+
 
 CAMERA:
     Switch to ortho projection.
