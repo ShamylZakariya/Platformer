@@ -102,12 +102,14 @@ impl CameraUniforms {
 #[derive(Copy, Clone, Debug)]
 struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
+    zoom: f32,
 }
 
 impl Default for UiDisplayState {
     fn default() -> Self {
         UiDisplayState {
             camera_position: [0.0, 0.0, 0.0].into(),
+            zoom: 1.0,
         }
     }
 }
@@ -197,8 +199,7 @@ impl State {
         // Buyild camera, and camera uniform storage
 
         let camera = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0));
-        let projection =
-            camera::Projection::new(sc_desc.width, sc_desc.height, 1.0, 0.1, 100.0);
+        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 1.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
 
         let mut camera_uniforms = CameraUniforms::new();
@@ -402,7 +403,8 @@ impl State {
     pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
 
-        self.camera_controller.update_camera(&mut self.camera, dt);
+        self.camera_controller
+            .update_camera(&mut self.camera, &mut self.projection, dt);
         self.camera_uniforms
             .update_view_proj(&self.camera, &self.projection);
         self.queue.write_buffer(
@@ -416,6 +418,7 @@ impl State {
 
     fn update_ui_display_state(&mut self, _window: &Window, _dt: std::time::Duration) {
         self.ui_display_state.camera_position = self.camera.position;
+        self.ui_display_state.zoom = self.projection.scale();
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -499,13 +502,13 @@ impl State {
             .size([280.0, 128.0], imgui::Condition::FirstUseEver)
             .build(&ui, || {
                 ui.text(imgui::im_str!(
-                    "camera: ({:.2},{:.2},{:.2})",
+                    "camera: ({:.2},{:.2}) zoom: {:.2}",
                     ui_display_state.camera_position.x,
                     ui_display_state.camera_position.y,
-                    ui_display_state.camera_position.z
+                    ui_display_state.zoom,
                 ));
 
-                let mut zoom = -ui_display_state.camera_position.z;
+                let mut zoom = ui_display_state.zoom;
                 if imgui::Slider::new(imgui::im_str!("Zoom"))
                     .range(0 as f32..=999.0 as f32)
                     .build(&ui, &mut zoom)
@@ -541,7 +544,7 @@ impl State {
 
     fn process_ui_input(&mut self, ui_input_state: UiInputState) {
         if let Some(z) = ui_input_state.zoom {
-            self.camera.position.z = -z;
+            self.projection.set_scale(z);
         }
     }
 }

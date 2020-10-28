@@ -38,19 +38,19 @@ pub struct Projection {
     height: f32,
     aspect: f32,
     scale: f32,
-    znear: f32,
-    zfar: f32,
+    near: f32,
+    far: f32,
 }
 
 impl Projection {
-    pub fn new(width: u32, height: u32, scale: f32, znear: f32, zfar: f32) -> Self {
+    pub fn new(width: u32, height: u32, scale: f32, near: f32, far: f32) -> Self {
         Self {
             width: width as f32,
             height: height as f32,
             aspect: width as f32 / height as f32,
             scale,
-            znear,
-            zfar,
+            near,
+            far,
         }
     }
 
@@ -61,15 +61,28 @@ impl Projection {
     }
 
     pub fn calc_matrix(&self) -> Matrix4<f32> {
+        let width = self.scale;
+        let height = self.scale / self.aspect;
         OPENGL_TO_WGPU_MATRIX
             * ortho(
-                0.0 as f32,
-                self.scale * self.aspect,
-                0.0 as f32,
-                self.scale / self.aspect,
-                self.znear,
-                self.zfar,
+                -width / 2.0,
+                width / 2.0,
+                -height / 2.0,
+                height / 2.0,
+                self.near,
+                self.far,
             )
+    }
+
+    pub fn scale(&self) -> f32 {
+        self.scale
+    }
+
+    pub fn set_scale(&mut self, scale: f32) {
+        self.scale = scale;
+        if self.scale < 0.00001 {
+            self.scale = 0.00001;
+        }
     }
 }
 
@@ -156,7 +169,13 @@ impl CameraController {
         };
     }
 
-    pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
+    pub fn update_camera(
+        &mut self,
+        camera: &mut Camera,
+        projection: &mut Projection,
+        dt: Duration,
+    ) {
+        let dt = dt.as_secs_f32();
         let delta_position = cgmath::Vector3::new(
             input_accumulator(
                 self.input_state.move_left_pressed,
@@ -166,13 +185,14 @@ impl CameraController {
                 self.input_state.move_down_pressed,
                 self.input_state.move_up_pressed,
             ),
-            input_accumulator(
-                self.input_state.zoom_out_pressed,
-                self.input_state.zoom_in_pressed,
-            ),
+            0.0,
+        );
+        let delta_zoom = input_accumulator(
+            self.input_state.zoom_out_pressed,
+            self.input_state.zoom_in_pressed,
         );
 
-        let dt = dt.as_secs_f32();
         camera.position += delta_position * self.speed * dt;
+        projection.set_scale(projection.scale + delta_zoom * self.speed * dt);
     }
 }
