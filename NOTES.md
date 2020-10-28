@@ -1,10 +1,9 @@
 TODO:
-
-IMGUI:
-    start with displaying camera pos, etc
+    keyboard is wonky - doesn't work well with, e.g., left and right keys simultaneously
 
 CAMERA:
-    Switch to ortho projection. First pass didn't go well. I think the camera controller needs to be cleaned up first - it should:
+    Switch to ortho projection.
+    - can improve "zoom" functionality by scaling viewport instead of pulling back on z.
 
 SPRITES:
     - Needs triangular sprites to make slopes. Can make SpriteDesc::triangle

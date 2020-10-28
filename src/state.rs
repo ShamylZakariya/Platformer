@@ -102,27 +102,23 @@ impl CameraUniforms {
 #[derive(Copy, Clone, Debug)]
 struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
-    button_press_count: u32,
 }
 
 impl Default for UiDisplayState {
     fn default() -> Self {
         UiDisplayState {
             camera_position: [0.0, 0.0, 0.0].into(),
-            button_press_count: 0,
         }
     }
 }
 
 struct UiInputState {
-    did_press_button: bool,
+    zoom: Option<f32>,
 }
 
 impl Default for UiInputState {
     fn default() -> Self {
-        UiInputState {
-            did_press_button: false,
-        }
+        UiInputState { zoom: None }
     }
 }
 
@@ -476,7 +472,7 @@ impl State {
                 .prepare_frame(self.imgui.io_mut(), window)
                 .expect("Failed to prepare frame");
 
-            let ui_input = self.render_ui(&frame, &mut encoder, &window);
+            let ui_input = self.render_ui(self.ui_display_state, &frame, &mut encoder, &window);
             self.process_ui_input(ui_input);
         }
 
@@ -487,13 +483,13 @@ impl State {
     // The user input is consumed in process_ui_input.
     fn render_ui(
         &mut self,
+        ui_display_state: UiDisplayState,
         frame: &wgpu::SwapChainFrame,
         encoder: &mut wgpu::CommandEncoder,
         window: &Window,
     ) -> UiInputState {
         let ui = self.imgui.frame();
         let mut ui_input_state = UiInputState::default();
-        let ui_display_state = self.ui_display_state;
 
         //
         // Build the UI, mutating ui_input_state to indicate user interaction.
@@ -509,14 +505,13 @@ impl State {
                     ui_display_state.camera_position.z
                 ));
 
-                if ui.button(imgui::im_str!("Button"), [200.0, 24.0]) {
-                    ui_input_state.did_press_button = true;
+                let mut zoom = -ui_display_state.camera_position.z;
+                if imgui::Slider::new(imgui::im_str!("Zoom"))
+                    .range(0 as f32..=999.0 as f32)
+                    .build(&ui, &mut zoom)
+                {
+                    ui_input_state.zoom = Some(zoom);
                 }
-
-                ui.text(imgui::im_str!(
-                    "Button presses: {}",
-                    ui_display_state.button_press_count
-                ));
             });
 
         //
@@ -545,8 +540,8 @@ impl State {
     }
 
     fn process_ui_input(&mut self, ui_input_state: UiInputState) {
-        if ui_input_state.did_press_button {
-            self.ui_display_state.button_press_count += 1;
+        if let Some(z) = ui_input_state.zoom {
+            self.camera.position.z = -z;
         }
     }
 }
