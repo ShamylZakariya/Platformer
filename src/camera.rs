@@ -60,52 +60,73 @@ impl Projection {
 }
 
 #[derive(Debug)]
+struct CameraControllerInputState {
+    move_left_pressed: bool,
+    move_right_pressed: bool,
+    move_up_pressed: bool,
+    move_down_pressed: bool,
+    zoom_in_pressed: bool,
+    zoom_out_pressed: bool,
+}
+
+impl Default for CameraControllerInputState {
+    fn default() -> Self {
+        Self {
+            move_left_pressed: false,
+            move_right_pressed: false,
+            move_up_pressed: false,
+            move_down_pressed: false,
+            zoom_in_pressed: false,
+            zoom_out_pressed: false,
+        }
+    }
+}
+
+fn input_accumulator(negative: bool, positive: bool) -> f32 {
+    return if negative { -1.0 } else { 0.0 } + if positive { 1.0 } else { 0.0 };
+}
+
+#[derive(Debug)]
 pub struct CameraController {
-    delta_position: Vector3<f32>,
     delta_scale: f32,
     speed: f32,
-    sensitivity: f32,
+    input_state: CameraControllerInputState,
 }
 
 impl CameraController {
-    pub fn new(speed: f32, sensitivity: f32) -> Self {
+    pub fn new(speed: f32) -> Self {
         Self {
-            delta_position: Zero::zero(),
             delta_scale: 1.0,
             speed,
-            sensitivity,
+            input_state: Default::default(),
         }
     }
 
     pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let amount = if state == ElementState::Pressed {
-            1.0
-        } else {
-            0.0
-        };
+        let pressed = state == ElementState::Pressed;
         match key {
             VirtualKeyCode::W | VirtualKeyCode::Up => {
-                self.delta_position.y = amount;
+                self.input_state.move_up_pressed = pressed;
                 true
             }
             VirtualKeyCode::S | VirtualKeyCode::Down => {
-                self.delta_position.y = -amount;
+                self.input_state.move_down_pressed = pressed;
                 true
             }
             VirtualKeyCode::A | VirtualKeyCode::Left => {
-                self.delta_position.x = -amount;
+                self.input_state.move_left_pressed = pressed;
                 true
             }
             VirtualKeyCode::D | VirtualKeyCode::Right => {
-                self.delta_position.x = amount;
+                self.input_state.move_right_pressed = pressed;
                 true
             }
             VirtualKeyCode::E => {
-                self.delta_position.z = amount;
+                self.input_state.zoom_in_pressed = pressed;
                 true
             }
             VirtualKeyCode::Q => {
-                self.delta_position.z = -amount;
+                self.input_state.zoom_out_pressed = pressed;
                 true
             }
             _ => false,
@@ -122,7 +143,22 @@ impl CameraController {
     }
 
     pub fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
+        let delta_position = cgmath::Vector3::new(
+            input_accumulator(
+                self.input_state.move_left_pressed,
+                self.input_state.move_right_pressed,
+            ),
+            input_accumulator(
+                self.input_state.move_down_pressed,
+                self.input_state.move_up_pressed,
+            ),
+            input_accumulator(
+                self.input_state.zoom_out_pressed,
+                self.input_state.zoom_in_pressed,
+            ),
+        );
+
         let dt = dt.as_secs_f32();
-        camera.position += self.delta_position * self.speed * dt;
+        camera.position += delta_position * self.speed * dt;
     }
 }
