@@ -199,7 +199,7 @@ impl State {
         // Buyild camera, and camera uniform storage
 
         let camera = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0));
-        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 1.0, 0.1, 100.0);
+        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 24.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
 
         let mut camera_uniforms = CameraUniforms::new();
@@ -276,17 +276,56 @@ impl State {
                     &material_bind_group_layout,
                 )
             };
-            let sb1 =
-                sprite::SpriteDesc::new(0.0, 0.0, 10.0, 10.0, 10.0, [1.0, 0.5, 0.5, 1.0].into());
-            let sb2 = sprite::SpriteDesc::new(
-                -10.0,
-                -10.0,
+            let sb1 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::Square,
+                0,
+                0,
                 10.0,
-                10.0,
-                10.0,
-                [0.5, 0.5, 1.0, 1.0].into(),
+                [1.0, 1.0, 1.0, 1.0].into(),
             );
-            let sm = sprite::SpriteMesh::new(&vec![sb1, sb2], 0, &device, "Sprite Mesh");
+            let sb2 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::Square,
+                -1,
+                -1,
+                10.0,
+                [0.0, 0.0, 0.5, 1.0].into(),
+            );
+
+            let tr0 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::NorthEast,
+                0,
+                4,
+                10.0,
+                [0.0, 1.0, 1.0, 1.0].into(),
+            );
+            let tr1 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::NorthWest,
+                -1,
+                4,
+                10.0,
+                [1.0, 0.0, 1.0, 1.0].into(),
+            );
+            let tr2 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::SouthWest,
+                -1,
+                3,
+                10.0,
+                [0.0, 1.0, 0.0, 1.0].into(),
+            );
+            let tr3 = sprite::SpriteDesc::tile(
+                sprite::SpriteShape::SouthEast,
+                0,
+                3,
+                10.0,
+                [1.0, 1.0, 0.0, 1.0].into(),
+            );
+
+            let sm = sprite::SpriteMesh::new(
+                &vec![sb1, sb2, tr0, tr1, tr2, tr3],
+                0,
+                &device,
+                "Sprite Mesh",
+            );
             sprite::SpriteCollection::new(vec![sm], vec![mat])
         };
 

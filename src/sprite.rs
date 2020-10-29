@@ -59,7 +59,21 @@ impl Vertex for SpriteVertex {
 
 // --------------------------------------------------------------------------------------------------------------------
 
+/// Represents the shape of a sprite, where Square represents a standard, square, sprite and the remainder
+/// are triangles, with the surface normal facing in the specified direction. E.g., NorthEast would be a triangle
+/// with the edge normal facing up and to the right.
+#[derive(Debug)]
+pub enum SpriteShape {
+    Square,
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest,
+}
+
+#[derive(Debug)]
 pub struct SpriteDesc {
+    pub shape: SpriteShape,
     pub left: f32,
     pub bottom: f32,
     pub width: f32,
@@ -70,6 +84,7 @@ pub struct SpriteDesc {
 
 impl SpriteDesc {
     pub fn new(
+        shape: SpriteShape,
         left: f32,
         bottom: f32,
         width: f32,
@@ -78,10 +93,29 @@ impl SpriteDesc {
         color: cgmath::Vector4<f32>,
     ) -> Self {
         Self {
+            shape,
             left,
             bottom,
             width,
             height,
+            z,
+            color,
+        }
+    }
+
+    pub fn tile(
+        shape: SpriteShape,
+        left: i32,
+        bottom: i32,
+        z: f32,
+        color: cgmath::Vector4<f32>,
+    ) -> Self {
+        Self {
+            shape,
+            left: left as f32,
+            bottom: bottom as f32,
+            width: 1.0,
+            height: 1.0,
             z,
             color,
         }
@@ -99,10 +133,9 @@ pub struct SpriteMaterial {
     pub bind_group: wgpu::BindGroup,
 }
 
-#[allow(dead_code)]
 pub struct SpriteMesh {
-    vertices: Vec<SpriteVertex>,
-    indices: Vec<u32>,
+    _vertices: Vec<SpriteVertex>,
+    _indices: Vec<u32>,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
@@ -181,7 +214,7 @@ impl SpriteCollection {
 
 impl SpriteMesh {
     pub fn new(
-        rects: &Vec<SpriteDesc>,
+        sprites: &Vec<SpriteDesc>,
         material: usize,
         device: &wgpu::Device,
         name: &str,
@@ -192,23 +225,69 @@ impl SpriteMesh {
         let tc_b = cgmath::vec2::<f32>(1.0, 0.0);
         let tc_c = cgmath::vec2::<f32>(1.0, 1.0);
         let tc_d = cgmath::vec2::<f32>(0.0, 1.0);
-        for rect in rects {
-            let p_a = cgmath::vec3(rect.left, rect.bottom, rect.z);
-            let p_b = cgmath::vec3(rect.left + rect.width, rect.bottom, rect.z);
-            let p_c = cgmath::vec3(rect.left + rect.width, rect.bottom + rect.height, rect.z);
-            let p_d = cgmath::vec3(rect.left, rect.bottom + rect.height, rect.z);
+        for sprite in sprites {
+            let p_a = cgmath::vec3(sprite.left, sprite.bottom, sprite.z);
+            let p_b = cgmath::vec3(sprite.left + sprite.width, sprite.bottom, sprite.z);
+            let p_c = cgmath::vec3(
+                sprite.left + sprite.width,
+                sprite.bottom + sprite.height,
+                sprite.z,
+            );
+            let p_d = cgmath::vec3(sprite.left, sprite.bottom + sprite.height, sprite.z);
+            let sv_a = SpriteVertex::new(p_a, tc_a, sprite.color);
+            let sv_b = SpriteVertex::new(p_b, tc_b, sprite.color);
+            let sv_c = SpriteVertex::new(p_c, tc_c, sprite.color);
+            let sv_d = SpriteVertex::new(p_d, tc_d, sprite.color);
             let idx = vertices.len();
-            vertices.push(SpriteVertex::new(p_a, tc_a, rect.color));
-            vertices.push(SpriteVertex::new(p_b, tc_b, rect.color));
-            vertices.push(SpriteVertex::new(p_c, tc_c, rect.color));
-            vertices.push(SpriteVertex::new(p_d, tc_d, rect.color));
-            indices.push((idx + 0) as u32);
-            indices.push((idx + 1) as u32);
-            indices.push((idx + 2) as u32);
 
-            indices.push((idx + 0) as u32);
-            indices.push((idx + 2) as u32);
-            indices.push((idx + 3) as u32);
+            match sprite.shape {
+                SpriteShape::Square => {
+                    vertices.push(sv_a);
+                    vertices.push(sv_b);
+                    vertices.push(sv_c);
+                    vertices.push(sv_d);
+
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 1) as u32);
+                    indices.push((idx + 2) as u32);
+
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 2) as u32);
+                    indices.push((idx + 3) as u32);
+                }
+                SpriteShape::NorthEast => {
+                    vertices.push(sv_a);
+                    vertices.push(sv_b);
+                    vertices.push(sv_d);
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 1) as u32);
+                    indices.push((idx + 2) as u32);
+                }
+                SpriteShape::SouthEast => {
+                    vertices.push(sv_a);
+                    vertices.push(sv_c);
+                    vertices.push(sv_d);
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 1) as u32);
+                    indices.push((idx + 2) as u32);
+                }
+                SpriteShape::SouthWest => {
+                    vertices.push(sv_b);
+                    vertices.push(sv_c);
+                    vertices.push(sv_d);
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 1) as u32);
+                    indices.push((idx + 2) as u32);
+                }
+                SpriteShape::NorthWest => {
+                    vertices.push(sv_a);
+                    vertices.push(sv_b);
+                    vertices.push(sv_c);
+                    indices.push((idx + 0) as u32);
+                    indices.push((idx + 1) as u32);
+                    indices.push((idx + 2) as u32);
+                }
+            }
         }
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -226,8 +305,8 @@ impl SpriteMesh {
         let num_elements = indices.len() as u32;
 
         Self {
-            vertices,
-            indices,
+            _vertices: vertices,
+            _indices: indices,
             vertex_buffer,
             index_buffer,
             num_elements,
