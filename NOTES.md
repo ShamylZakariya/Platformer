@@ -3,5 +3,6 @@ TODO:
     and ensure depth clip handles elements at 0 and 1 depths
 
 SPRITES:
-    - sprites should be 1x1
-    - Needs triangular sprites to make slopes. Can make SpriteDesc::triangle
+    - needs world space collision detection
+    - if point testing is in SpriteMesh, we can't use rust's tests to verify because of dep on wgpu
+    - make a SpriteHitTest struct?

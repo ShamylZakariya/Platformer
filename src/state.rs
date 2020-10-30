@@ -276,48 +276,55 @@ impl State {
                     &material_bind_group_layout,
                 )
             };
-            let sb1 = sprite::SpriteDesc::tile(
+            let flags = 0 as u32;
+            let sb1 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::Square,
                 0,
                 0,
                 10.0,
                 [1.0, 1.0, 1.0, 1.0].into(),
+                flags,
             );
-            let sb2 = sprite::SpriteDesc::tile(
+            let sb2 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::Square,
                 -1,
                 -1,
                 10.0,
                 [0.0, 0.0, 0.5, 1.0].into(),
+                flags,
             );
 
-            let tr0 = sprite::SpriteDesc::tile(
+            let tr0 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::NorthEast,
                 0,
                 4,
                 10.0,
                 [0.0, 1.0, 1.0, 1.0].into(),
+                flags,
             );
-            let tr1 = sprite::SpriteDesc::tile(
+            let tr1 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::NorthWest,
                 -1,
                 4,
                 10.0,
                 [1.0, 0.0, 1.0, 1.0].into(),
+                flags,
             );
-            let tr2 = sprite::SpriteDesc::tile(
+            let tr2 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::SouthWest,
                 -1,
                 3,
                 10.0,
                 [0.0, 1.0, 0.0, 1.0].into(),
+                flags,
             );
-            let tr3 = sprite::SpriteDesc::tile(
+            let tr3 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::SouthEast,
                 0,
                 3,
                 10.0,
                 [1.0, 1.0, 0.0, 1.0].into(),
+                flags,
             );
 
             let sm = sprite::SpriteMesh::new(

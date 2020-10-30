@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::texture;
 use wgpu::util::DeviceExt;
 
@@ -62,7 +64,7 @@ impl Vertex for SpriteVertex {
 /// Represents the shape of a sprite, where Square represents a standard, square, sprite and the remainder
 /// are triangles, with the surface normal facing in the specified direction. E.g., NorthEast would be a triangle
 /// with the edge normal facing up and to the right.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SpriteShape {
     Square,
     NorthEast,
@@ -71,7 +73,7 @@ pub enum SpriteShape {
     NorthWest,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SpriteDesc {
     pub shape: SpriteShape,
     pub left: f32,
@@ -80,9 +82,19 @@ pub struct SpriteDesc {
     pub height: f32,
     pub z: f32,
     pub color: cgmath::Vector4<f32>,
+    pub flags: u32,
+}
+
+impl Eq for SpriteDesc {}
+
+/// Simple corss product for 2D vectors; cgmath doesn't define this because cross product
+/// doesn't make sense generally for 2D.
+fn cross(a: &cgmath::Vector2<f32>, b: &cgmath::Vector2<f32>) -> f32 {
+    a.x * b.y - a.y * b.x
 }
 
 impl SpriteDesc {
+    /// Creates a new SpriteDesc of arbitrary position and size
     pub fn new(
         shape: SpriteShape,
         left: f32,
@@ -91,6 +103,7 @@ impl SpriteDesc {
         height: f32,
         z: f32,
         color: cgmath::Vector4<f32>,
+        flags: u32,
     ) -> Self {
         Self {
             shape,
@@ -100,15 +113,18 @@ impl SpriteDesc {
             height,
             z,
             color,
+            flags,
         }
     }
 
-    pub fn tile(
+    /// Creates a 1x1 sprite with lower-left origin at left/bottom
+    pub fn unit(
         shape: SpriteShape,
         left: i32,
         bottom: i32,
         z: f32,
         color: cgmath::Vector4<f32>,
+        flags: u32,
     ) -> Self {
         Self {
             shape,
@@ -118,28 +134,399 @@ impl SpriteDesc {
             height: 1.0,
             z,
             color,
+            flags,
         }
+    }
+
+    pub fn right(&self) -> f32 {
+        self.left + self.width
+    }
+
+    pub fn top(&self) -> f32 {
+        self.bottom + self.height
+    }
+
+    pub fn contains(&self, point: &cgmath::Point2<f32>) -> bool {
+        if point.x >= self.left
+            && point.x <= self.left + self.width
+            && point.y >= self.bottom
+            && point.y <= self.bottom + self.height
+        {
+            let p = cgmath::Vector2::new(point.x, point.y);
+            return match self.shape {
+                SpriteShape::Square => true,
+
+                SpriteShape::NorthEast => {
+                    let a = cgmath::Vector2::new(self.left, self.bottom + self.height);
+                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom);
+                    let ba = b - a;
+                    let pa = p - a;
+                    cross(&ba, &pa) <= 0.0
+                }
+
+                SpriteShape::SouthEast => {
+                    let a = cgmath::Vector2::new(self.left, self.bottom);
+                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom + self.height);
+                    let ba = b - a;
+                    let pa = p - a;
+                    cross(&ba, &pa) >= 0.0
+                }
+
+                SpriteShape::SouthWest => {
+                    let a = cgmath::Vector2::new(self.left, self.bottom + self.height);
+                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom);
+                    let ba = b - a;
+                    let pa = p - a;
+                    // opposite winding of northeast
+                    cross(&ba, &pa) >= 0.0
+                }
+
+                SpriteShape::NorthWest => {
+                    let a = cgmath::Vector2::new(self.left, self.bottom);
+                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom + self.height);
+                    let ba = b - a;
+                    let pa = p - a;
+                    // opposite winding of southeast
+                    cross(&ba, &pa) <= 0.0
+                }
+            };
+        }
+
+        false
     }
 }
 
-pub struct SpriteCollection {
-    pub meshes: Vec<SpriteMesh>,
-    pub materials: Vec<SpriteMaterial>,
+#[cfg(test)]
+mod sprite_desc_tests {
+    use super::*;
+
+    fn test_points(
+        sprite: &SpriteDesc,
+    ) -> (
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+        cgmath::Point2<f32>,
+    ) {
+        (
+            // inside
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.25,
+                sprite.bottom + sprite.height * 0.5,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.5,
+                sprite.bottom + sprite.height * 0.25,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.75,
+                sprite.bottom + sprite.height * 0.5,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.5,
+                sprite.bottom + sprite.height * 0.75,
+            ),
+            // outside
+            cgmath::Point2::new(
+                sprite.left - sprite.width * 0.25,
+                sprite.bottom + sprite.height * 0.5,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.5,
+                sprite.bottom - sprite.height * 0.25,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 1.25,
+                sprite.bottom + sprite.height * 0.5,
+            ),
+            cgmath::Point2::new(
+                sprite.left + sprite.width * 0.5,
+                sprite.bottom + sprite.height * 1.25,
+            ),
+        )
+    }
+
+    fn test_containment(mut sprite: SpriteDesc) {
+        let (p0, p1, p2, p3, p4, p5, p6, p7) = test_points(&sprite);
+
+        sprite.shape = SpriteShape::Square;
+        assert!(sprite.contains(&p0));
+        assert!(sprite.contains(&p1));
+        assert!(sprite.contains(&p2));
+        assert!(sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+
+        sprite.shape = SpriteShape::NorthEast;
+        assert!(sprite.contains(&p0));
+        assert!(sprite.contains(&p1));
+        assert!(!sprite.contains(&p2));
+        assert!(!sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+
+        sprite.shape = SpriteShape::SouthEast;
+        assert!(sprite.contains(&p0));
+        assert!(!sprite.contains(&p1));
+        assert!(!sprite.contains(&p2));
+        assert!(sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+
+        sprite.shape = SpriteShape::SouthWest;
+        assert!(!sprite.contains(&p0));
+        assert!(!sprite.contains(&p1));
+        assert!(sprite.contains(&p2));
+        assert!(sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+
+        sprite.shape = SpriteShape::NorthWest;
+        assert!(!sprite.contains(&p0));
+        assert!(sprite.contains(&p1));
+        assert!(sprite.contains(&p2));
+        assert!(!sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+    }
+
+    #[test]
+    fn contains_works() {
+        let mut sprite = SpriteDesc::new(
+            SpriteShape::Square,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
+            0.0,
+            [0.0, 0.0, 0.0, 1.0].into(),
+            0,
+        );
+        test_containment(sprite);
+
+        // tall, NE quadrant
+        sprite.left = 10.0;
+        sprite.bottom = 5.0;
+        sprite.height = 50.0;
+        sprite.width = 1.0;
+        test_containment(sprite);
+
+        // wide, NE quad
+        sprite.left = 10.0;
+        sprite.bottom = 5.0;
+        sprite.height = 1.0;
+        sprite.width = 50.0;
+        test_containment(sprite);
+
+        // tall, SE quadrant
+        sprite.left = 10.0;
+        sprite.bottom = -70.0;
+        sprite.height = 50.0;
+        sprite.width = 1.0;
+        test_containment(sprite);
+
+        // wide, SE quad
+        sprite.left = 10.0;
+        sprite.bottom = -10.0;
+        sprite.height = 1.0;
+        sprite.width = 50.0;
+        test_containment(sprite);
+
+        // tall, SW quadrant
+        sprite.left = -100.0;
+        sprite.bottom = -500.0;
+        sprite.height = 50.0;
+        sprite.width = 1.0;
+        test_containment(sprite);
+
+        // wide, SW quad
+        sprite.left = -100.0;
+        sprite.bottom = -500.0;
+        sprite.height = 1.0;
+        sprite.width = 50.0;
+        test_containment(sprite);
+
+        // tall, NW quadrant
+        sprite.left = -100.0;
+        sprite.bottom = 500.0;
+        sprite.height = 50.0;
+        sprite.width = 1.0;
+        test_containment(sprite);
+
+        // wide, NW quad
+        sprite.left = -100.0;
+        sprite.bottom = 500.0;
+        sprite.height = 1.0;
+        sprite.width = 50.0;
+        test_containment(sprite);
+    }
 }
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub struct SpriteHitTester {
+    unit_sprites: HashMap<cgmath::Point2<i32>, SpriteDesc>,
+    non_unit_sprites: Vec<SpriteDesc>,
+}
+
+impl SpriteHitTester {
+    fn new(sprite_descs: &[SpriteDesc]) -> Self {
+        let mut unit_sprites = HashMap::new();
+        let mut non_unit_sprites = vec![];
+
+        for sprite in sprite_descs {
+            // copy sprites into appropriate storage
+            if sprite.width == 1.0 && sprite.height == 1.0 {
+                unit_sprites.insert(
+                    cgmath::Point2::new(sprite.left as i32, sprite.bottom as i32),
+                    *sprite,
+                );
+            } else {
+                non_unit_sprites.push(*sprite);
+            }
+        }
+
+        // sort non-unit sprites along x and (secondarily) y
+        non_unit_sprites.sort_by(|a, b| {
+            let ord_0 = a.left.partial_cmp(&b.left).unwrap();
+            if ord_0 == std::cmp::Ordering::Equal {
+                a.bottom.partial_cmp(&b.bottom).unwrap()
+            } else {
+                ord_0
+            }
+        });
+
+        Self {
+            unit_sprites,
+            non_unit_sprites,
+        }
+    }
+
+    /// tests if a point in the sprites' coordinate system intersects with a sprite.
+    /// Filters by flags, such that only sprites with matching flags will be matched.
+    /// In the case of overlapping sprites, there is no guarantee which will be returned,
+    /// except that unit sprites will be tested before non-unit sprites.
+    pub fn test(&self, point: &cgmath::Point2<f32>, flags: u32) -> Option<SpriteDesc> {
+        // first test the unit sprites
+        if let Some(sprite) = self
+            .unit_sprites
+            .get(&cgmath::Point2::new(point.x as i32, point.y as i32))
+        {
+            if sprite.flags & flags != 0 {
+                return Some(*sprite);
+            }
+        }
+
+        // non_unit sprites are stored sorted along x, so we can early exit
+        // TODO: Some kind of partitioning/binary search?
+
+        for sprite in &self.non_unit_sprites {
+            if sprite.left > point.x {
+                break;
+            }
+            if sprite.contains(point) && sprite.flags & flags != 0 {
+                return Some(*sprite);
+            }
+        }
+
+        None
+    }
+}
+
+#[cfg(test)]
+mod sprite_hit_tester {
+    use super::*;
+
+    #[test]
+    fn new_produces_expected_unit_and_non_unit_sprite_storage() {
+        let unit_0 = SpriteDesc::unit(
+            SpriteShape::Square,
+            0,
+            0,
+            1.0,
+            [1.0, 1.0, 1.0, 1.0].into(),
+            0,
+        );
+        let unit_1 = SpriteDesc::unit(
+            SpriteShape::Square,
+            11,
+            -33,
+            0.0,
+            [0.0, 0.0, 0.0, 1.0].into(),
+            0,
+        );
+        let non_unit_0 = SpriteDesc::new(
+            SpriteShape::NorthEast,
+            1.0,
+            10.0,
+            5.0,
+            5.0,
+            1.0,
+            [1.0, 0.0, 0.0, 1.0].into(),
+            0,
+        );
+        let non_unit_1 = SpriteDesc::new(
+            SpriteShape::NorthEast,
+            -1.0,
+            -10.0,
+            50.0,
+            5.0,
+            1.0,
+            [1.0, 0.0, 0.0, 1.0].into(),
+            0,
+        );
+
+        let hit_tester = SpriteHitTester::new(&[unit_0, unit_1, non_unit_0, non_unit_1]);
+        assert_eq!(
+            hit_tester
+                .unit_sprites
+                .get(&cgmath::Point2::new(
+                    unit_0.left as i32,
+                    unit_0.bottom as i32
+                ))
+                .unwrap(),
+            &unit_0
+        );
+        assert_eq!(
+            hit_tester
+                .unit_sprites
+                .get(&cgmath::Point2::new(
+                    unit_1.left as i32,
+                    unit_1.bottom as i32
+                ))
+                .unwrap(),
+            &unit_1
+        );
+
+        // non-unit sprites are sorted along X
+        assert_eq!(hit_tester.non_unit_sprites[0], non_unit_1);
+        assert_eq!(hit_tester.non_unit_sprites[1], non_unit_0);
+    }
+
+    #[test]
+    fn point_test_works() {}
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 
 pub struct SpriteMaterial {
     pub name: String,
     pub texture: texture::Texture,
     pub bind_group: wgpu::BindGroup,
-}
-
-pub struct SpriteMesh {
-    _vertices: Vec<SpriteVertex>,
-    _indices: Vec<u32>,
-    pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
-    pub num_elements: u32,
-    pub material: usize,
 }
 
 #[allow(dead_code)]
@@ -198,18 +585,13 @@ impl SpriteMaterial {
     }
 }
 
-#[allow(dead_code)]
-impl SpriteCollection {
-    pub fn default() -> Self {
-        Self {
-            meshes: vec![],
-            materials: vec![],
-        }
-    }
+// --------------------------------------------------------------------------------------------------------------------
 
-    pub fn new(meshes: Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
-        Self { meshes, materials }
-    }
+pub struct SpriteMesh {
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+    pub num_elements: u32,
+    pub material: usize,
 }
 
 impl SpriteMesh {
@@ -305,12 +687,32 @@ impl SpriteMesh {
         let num_elements = indices.len() as u32;
 
         Self {
-            _vertices: vertices,
-            _indices: indices,
             vertex_buffer,
             index_buffer,
             num_elements,
             material,
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub struct SpriteCollection {
+    pub meshes: Vec<SpriteMesh>,
+    pub materials: Vec<SpriteMaterial>,
+}
+
+impl SpriteCollection {
+    pub fn new(meshes: Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
+        Self { meshes, materials }
+    }
+}
+
+impl Default for SpriteCollection {
+    fn default() -> Self {
+        Self {
+            meshes: vec![],
+            materials: vec![],
         }
     }
 }
