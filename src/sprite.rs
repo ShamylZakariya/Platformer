@@ -82,7 +82,7 @@ pub struct SpriteDesc {
     pub height: f32,
     pub z: f32,
     pub color: cgmath::Vector4<f32>,
-    pub flags: u32,
+    pub mask: u32,
 }
 
 impl Eq for SpriteDesc {}
@@ -103,7 +103,7 @@ impl SpriteDesc {
         height: f32,
         z: f32,
         color: cgmath::Vector4<f32>,
-        flags: u32,
+        mask: u32,
     ) -> Self {
         Self {
             shape,
@@ -113,7 +113,7 @@ impl SpriteDesc {
             height,
             z,
             color,
-            flags,
+            mask,
         }
     }
 
@@ -124,7 +124,7 @@ impl SpriteDesc {
         bottom: i32,
         z: f32,
         color: cgmath::Vector4<f32>,
-        flags: u32,
+        mask: u32,
     ) -> Self {
         Self {
             shape,
@@ -134,7 +134,7 @@ impl SpriteDesc {
             height: 1.0,
             z,
             color,
-            flags,
+            mask: mask,
         }
     }
 
@@ -417,16 +417,16 @@ impl SpriteHitTester {
     }
 
     /// tests if a point in the sprites' coordinate system intersects with a sprite.
-    /// Filters by flags, such that only sprites with matching flags will be matched.
+    /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, there is no guarantee which will be returned,
     /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test(&self, point: &cgmath::Point2<f32>, flags: u32) -> Option<SpriteDesc> {
+    pub fn test(&self, point: &cgmath::Point2<f32>, mask: u32) -> Option<SpriteDesc> {
         // first test the unit sprites
-        if let Some(sprite) = self
-            .unit_sprites
-            .get(&cgmath::Point2::new(point.x as i32, point.y as i32))
-        {
-            if sprite.flags & flags != 0 {
+        if let Some(sprite) = self.unit_sprites.get(&cgmath::Point2::new(
+            point.x.floor() as i32,
+            point.y.floor() as i32,
+        )) {
+            if sprite.mask & mask != 0 {
                 return Some(*sprite);
             }
         }
@@ -438,7 +438,7 @@ impl SpriteHitTester {
             if sprite.left > point.x {
                 break;
             }
-            if sprite.contains(point) && sprite.flags & flags != 0 {
+            if sprite.contains(point) && sprite.mask & mask != 0 {
                 return Some(*sprite);
             }
         }
@@ -518,7 +518,134 @@ mod sprite_hit_tester {
     }
 
     #[test]
-    fn point_test_works() {}
+    fn unit_sprite_hit_test_works() {
+        let square_mask = 1 << 0;
+        let triangle_mask = 1 << 1;
+        let all_mask = square_mask | triangle_mask;
+
+        let sb1 = SpriteDesc::unit(
+            SpriteShape::Square,
+            0,
+            0,
+            10.0,
+            [1.0, 1.0, 1.0, 1.0].into(),
+            square_mask,
+        );
+        let sb2 = SpriteDesc::unit(
+            SpriteShape::Square,
+            -1,
+            -1,
+            10.0,
+            [0.0, 0.0, 0.5, 1.0].into(),
+            square_mask,
+        );
+
+        let tr0 = SpriteDesc::unit(
+            SpriteShape::NorthEast,
+            0,
+            4,
+            10.0,
+            [0.0, 1.0, 1.0, 1.0].into(),
+            triangle_mask,
+        );
+        let tr1 = SpriteDesc::unit(
+            SpriteShape::NorthWest,
+            -1,
+            4,
+            10.0,
+            [1.0, 0.0, 1.0, 1.0].into(),
+            triangle_mask,
+        );
+        let tr2 = SpriteDesc::unit(
+            SpriteShape::SouthWest,
+            -1,
+            3,
+            10.0,
+            [0.0, 1.0, 0.0, 1.0].into(),
+            triangle_mask,
+        );
+        let tr3 = SpriteDesc::unit(
+            SpriteShape::SouthEast,
+            0,
+            3,
+            10.0,
+            [1.0, 1.0, 0.0, 1.0].into(),
+            triangle_mask,
+        );
+
+        let hit_tester = SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
+
+        // test triangle is hit only when using triangle_flags or all_mask
+        assert!(hit_tester.test(&cgmath::Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
+        assert!(hit_tester.test(&cgmath::Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
+        assert!(hit_tester.test(&cgmath::Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
+        assert!(hit_tester.test(&cgmath::Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
+        assert!(hit_tester
+            .test(&cgmath::Point2::new(0.1, 4.1), square_mask)
+            .is_none());
+        assert!(hit_tester
+            .test(&cgmath::Point2::new(0.1, 3.9), all_mask)
+            .is_some());
+
+        // test square is only hit when mask is square or all_mask
+        assert!(hit_tester.test(&cgmath::Point2::new(0.5, 0.5), square_mask) == Some(sb1));
+        assert!(hit_tester
+            .test(&cgmath::Point2::new(0.5, 0.5), triangle_mask)
+            .is_none());
+        assert!(hit_tester
+            .test(&cgmath::Point2::new(0.5, 0.5), all_mask)
+            .is_some());
+    }
+
+    #[test]
+    fn non_unit_hit_test_works() {
+        let mask0 = 1 << 0;
+        let mask1 = 1 << 1;
+        let mask2 = 1 << 2;
+        let unused_mask = 1 << 16;
+        let all_mask = mask0 | mask1 | mask2 | unused_mask;
+
+        let b0 = SpriteDesc::new(
+            SpriteShape::Square,
+            -4.0,
+            -4.0,
+            8.0,
+            4.0,
+            0.0,
+            [0.0, 0.0, 0.0, 1.0].into(),
+            mask0,
+        );
+        let b1 = SpriteDesc::new(
+            SpriteShape::Square,
+            3.0,
+            -1.0,
+            3.0,
+            1.0,
+            0.0,
+            [0.0, 0.0, 0.0, 1.0].into(),
+            mask1,
+        );
+        let b2 = SpriteDesc::new(
+            SpriteShape::Square,
+            3.0,
+            -2.0,
+            2.0,
+            5.0,
+            0.0,
+            [0.0, 0.0, 0.0, 1.0].into(),
+            mask2,
+        );
+        let hit_tester = SpriteHitTester::new(&[b0, b1, b2]);
+
+        // this point is in all three boxes
+        let p = cgmath::Point2::new(3.5, -0.5);
+
+        assert_eq!(hit_tester.test(&p, mask0), Some(b0));
+        assert_eq!(hit_tester.test(&p, mask1), Some(b1));
+        assert_eq!(hit_tester.test(&p, mask2), Some(b2));
+        assert_eq!(hit_tester.test(&p, unused_mask), None);
+        assert!(hit_tester.test(&p, all_mask).is_some());
+    }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
