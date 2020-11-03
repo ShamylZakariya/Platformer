@@ -4,5 +4,3 @@ TODO:
 
 SPRITES:
     - needs world space collision detection
-    - if point testing is in SpriteMesh, we can't use rust's tests to verify because of dep on wgpu
-    - make a SpriteHitTest struct?

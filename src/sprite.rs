@@ -384,7 +384,7 @@ pub struct SpriteHitTester {
 }
 
 impl SpriteHitTester {
-    fn new(sprite_descs: &[SpriteDesc]) -> Self {
+    pub fn new(sprite_descs: &[SpriteDesc]) -> Self {
         let mut unit_sprites = HashMap::new();
         let mut non_unit_sprites = vec![];
 

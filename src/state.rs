@@ -149,6 +149,7 @@ pub struct State {
     // Sprite rendering
     sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
+    sprite_hit_tester: sprite::SpriteHitTester,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -258,7 +259,7 @@ impl State {
             wgpu::include_spirv!("shaders/sprite.fs.spv"),
         );
 
-        let sprites = {
+        let (sprites, sprite_hit_tester) = {
             let mat = {
                 let diffuse_bytes = include_bytes!("../res/cobble-diffuse.png");
                 let diffuse_texture = texture::Texture::from_bytes(
@@ -333,7 +334,8 @@ impl State {
                 &device,
                 "Sprite Mesh",
             );
-            sprite::SpriteCollection::new(vec![sm], vec![mat])
+            (sprite::SpriteCollection::new(vec![sm], vec![mat]),
+            sprite::SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]))
         };
 
         // set up imgui
@@ -387,6 +389,7 @@ impl State {
 
             sprite_render_pipeline,
             sprites,
+            sprite_hit_tester,
 
             winit_platform,
             imgui,
