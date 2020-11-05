@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
@@ -18,20 +17,6 @@ impl Tile {
             id,
             properties: HashMap::new(),
         }
-    }
-}
-
-impl Deref for Tile {
-    type Target = Tile;
-
-    fn deref(&self) -> &Self::Target {
-        &self
-    }
-}
-
-impl DerefMut for Tile {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self
     }
 }
 
@@ -56,51 +41,69 @@ impl TileSet {
             match e {
                 Ok(XmlEvent::StartElement {
                     name, attributes, ..
-                }) => match name.local_name.as_str() {
-                    "image" => {
-                        for attr in attributes {
-                            if attr.name.local_name == "source" {
-                                image_path = Some(attr.name.local_name);
-                                break;
+                }) => {
+                    match name.local_name.as_str() {
+                        //
+                        // Handle <image> block
+                        //
+                        "image" => {
+                            for attr in attributes {
+                                if attr.name.local_name == "source" {
+                                    image_path = Some(attr.name.local_name);
+                                    break;
+                                }
                             }
                         }
-                    }
-                    "tile" => {
-                        let mut id: Option<u32> = None;
-                        for attr in attributes {
-                            if attr.name.local_name == "id" {
-                                id = Some(
-                                    attr.value
-                                        .parse::<u32>()
-                                        .context("Expect 'id' attr to parse to u32")?,
-                                );
+
+                        //
+                        // Handle <tile> block - sets current_tile to be mutated by <property> block
+                        //
+                        "tile" => {
+                            let mut id: Option<u32> = None;
+                            for attr in attributes {
+                                if attr.name.local_name == "id" {
+                                    id = Some(
+                                        attr.value
+                                            .parse::<u32>()
+                                            .context("Expect 'id' attr to parse to u32")?,
+                                    );
+                                }
+                            }
+                            let id = id.context("Expect <tile> to have 'id' attr.")?;
+                            current_tile = Some(Tile::new(id));
+                        }
+
+                        //
+                        // Handle <property> block - mutates the current_tile
+                        //
+                        "property" => {
+                            let mut attr_name: Option<String> = None;
+                            let mut attr_value: Option<String> = None;
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "name" => attr_name = Some(attr.value),
+                                    "value" => attr_value = Some(attr.value),
+                                    _ => {}
+                                }
+                            }
+                            let attr_name = attr_name
+                                .context("Expected <property> to have a 'name' attribute")?;
+                            let attr_value = attr_value
+                                .context("Expected <property> to have a 'value' attribute")?;
+
+                            if let Some(tile) = &mut current_tile {
+                                tile.properties.insert(attr_name, attr_value);
+                            } else {
+                                anyhow::bail!("Expected current_tile to be Some when handling <property> block");
                             }
                         }
-                        current_tile =
-                            Some(Tile::new(id.context("Expect <tile> to have 'id' attr.")?));
+                        _ => {}
                     }
-                    "property" => {
-                        let mut attr_name: Option<String> = None;
-                        let mut attr_value: Option<String> = None;
-                        for attr in attributes {
-                            match attr.name.local_name.as_str() {
-                                "name" => attr_name = Some(attr.value),
-                                "value" => attr_value = Some(attr.value),
-                                _ => {}
-                            }
-                        }
-                        let attr_name =
-                            attr_name.context("Expected <property> to have a 'name' attribute")?;
-                        let attr_value = attr_value
-                            .context("Expected <property> to have a 'value' attribute")?;
-                        current_tile.as_deref_mut().map(|t| {
-                            t.properties.insert(attr_name, attr_value);
-                            t
-                        });
-                    }
-                    _ => {}
-                },
+                }
                 Ok(XmlEvent::EndElement { name }) => match name.local_name.as_str() {
+                    //
+                    //  Closes the <tile> block by assigning the current_tile
+                    //
                     "tile" => {
                         let tile = current_tile
                             .take()

@@ -345,7 +345,6 @@ impl State {
 
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
-        println!("Map: {:?}", map);
 
         // set up imgui
 
