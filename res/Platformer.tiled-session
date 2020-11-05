@@ -1,0 +1,60 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "level_1.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "/home/shamyl/Code/Education/wgpu/hectic-rs/src/tileset/sprites.tsx": {
+            "scaleInDock": 1
+        },
+        "/home/shamyl/Code/Education/wgpu/hectic-rs/src/tileset/stage_one.tmx": {
+            "scale": 1,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 526.5,
+                "y": 358
+            }
+        },
+        "GGQ.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 5.5
+        },
+        "level_1.tmx": {
+            "scale": 3,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 229.16666666666666,
+                "y": 193.33333333333331
+            }
+        },
+        "level_1_spritesheet.tsx": {
+            "scaleInDock": 3
+        }
+    },
+    "map.height": 128,
+    "map.lastUsedFormat": "tmx",
+    "map.renderOrder": null,
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 32,
+    "openFiles": [
+        "level_1.tmx"
+    ],
+    "project": "Platformer.tiled-project",
+    "recentFiles": [
+        "level_1.tmx",
+        "GGQ.tsx",
+        "/home/shamyl/Code/Education/wgpu/hectic-rs/src/tileset/stage_one.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.spacing": 1,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
