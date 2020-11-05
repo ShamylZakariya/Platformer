@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::{Deref, DerefMut};
-
-use crate::sprite;
 use xml::reader::{EventReader, XmlEvent};
 
 #[derive(Clone, Debug)]
