@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
 #[derive(Clone, Debug)]
@@ -41,9 +42,9 @@ pub struct TileSet {
 }
 
 impl TileSet {
-    pub fn new_tsx(spritesheet: &str) -> Result<Self> {
-        let file =
-            File::open(spritesheet).with_context(|| format!("Unable to open {}", spritesheet))?;
+    pub fn new_tsx(tsx_file: &Path) -> Result<Self> {
+        let file = File::open(tsx_file)
+            .with_context(|| format!("Unable to open {}", tsx_file.display()))?;
         let file = BufReader::new(file);
         let parser = EventReader::new(file);
 

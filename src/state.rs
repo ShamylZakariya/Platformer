@@ -1,6 +1,7 @@
 use cgmath::prelude::*;
 // use imgui::*;
 // use imgui_winit_support::WinitPlatform;
+use std::path::Path;
 use wgpu::util::DeviceExt;
 use winit::{
     dpi::PhysicalPosition,
@@ -9,10 +10,10 @@ use winit::{
 };
 
 use crate::camera;
+use crate::map;
 use crate::sprite;
 use crate::sprite::{DrawSprite, Vertex};
 use crate::texture;
-use crate::tileset;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -151,7 +152,7 @@ pub struct State {
     sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
     sprite_hit_tester: sprite::SpriteHitTester,
-    tileset: tileset::TileSet,
+    map: map::Map,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -342,9 +343,9 @@ impl State {
             )
         };
 
-        let tiles = tileset::TileSet::new_tsx("res/level_1_tileset.tsx");
-        let tiles = tiles.expect("Expected tileset to load.");
-        println!("Tiles: {:?}", tiles);
+        let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
+        let map = map.expect("Expected map to load");
+        println!("Map: {:?}", map);
 
         // set up imgui
 
@@ -398,7 +399,7 @@ impl State {
             sprite_render_pipeline,
             sprites,
             sprite_hit_tester,
-            tileset: tiles,
+            map,
 
             winit_platform,
             imgui,
