@@ -12,6 +12,7 @@ use crate::camera;
 use crate::sprite;
 use crate::sprite::{DrawSprite, Vertex};
 use crate::texture;
+use crate::tileset;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -150,6 +151,7 @@ pub struct State {
     sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
     sprite_hit_tester: sprite::SpriteHitTester,
+    tileset: tileset::TileSet,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -334,9 +336,15 @@ impl State {
                 &device,
                 "Sprite Mesh",
             );
-            (sprite::SpriteCollection::new(vec![sm], vec![mat]),
-            sprite::SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]))
+            (
+                sprite::SpriteCollection::new(vec![sm], vec![mat]),
+                sprite::SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]),
+            )
         };
+
+        let tiles = tileset::TileSet::new_tsx("res/level_1_tileset.tsx");
+        let tiles = tiles.expect("Expected tileset to load.");
+        println!("Tiles: {:?}", tiles);
 
         // set up imgui
 
@@ -390,6 +398,7 @@ impl State {
             sprite_render_pipeline,
             sprites,
             sprite_hit_tester,
+            tileset: tiles,
 
             winit_platform,
             imgui,
