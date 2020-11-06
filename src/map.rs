@@ -4,6 +4,7 @@ use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
+use crate::sprite;
 use crate::tileset;
 
 #[derive(Clone, Debug)]
@@ -220,5 +221,9 @@ impl Map {
             tile_height,
             layers,
         })
+    }
+
+    pub fn generate_sprites(&self) -> Vec<sprite::SpriteDesc> {
+        unimplemented!()
     }
 }

@@ -262,9 +262,12 @@ impl State {
             wgpu::include_spirv!("shaders/sprite.fs.spv"),
         );
 
+        let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
+        let map = map.expect("Expected map to load");
+
         let (sprites, sprite_hit_tester) = {
             let mat = {
-                let diffuse_bytes = include_bytes!("../res/cobble-diffuse.png");
+                let diffuse_bytes = include_bytes!("../res/level_1_tileset.png");
                 let diffuse_texture = texture::Texture::from_bytes(
                     &device,
                     &queue,
@@ -283,50 +286,74 @@ impl State {
             let mask = 1 as u32;
             let sb1 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::Square,
-                0,
-                0,
                 10.0,
+                0,
+                0,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [1.0, 1.0, 1.0, 1.0].into(),
                 mask,
             );
             let sb2 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::Square,
-                -1,
-                -1,
                 10.0,
+                -1,
+                -1,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [0.0, 0.0, 0.5, 1.0].into(),
                 mask,
             );
 
             let tr0 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::NorthEast,
+                10.0,
                 0,
                 4,
-                10.0,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [0.0, 1.0, 1.0, 1.0].into(),
                 mask,
             );
             let tr1 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::NorthWest,
+                10.0,
                 -1,
                 4,
-                10.0,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [1.0, 0.0, 1.0, 1.0].into(),
                 mask,
             );
             let tr2 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::SouthWest,
+                10.0,
                 -1,
                 3,
-                10.0,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [0.0, 1.0, 0.0, 1.0].into(),
                 mask,
             );
             let tr3 = sprite::SpriteDesc::unit(
                 sprite::SpriteShape::SouthEast,
+                10.0,
                 0,
                 3,
-                10.0,
+                0.0,
+                0.0,
+                1.0,
+                1.0,
                 [1.0, 1.0, 0.0, 1.0].into(),
                 mask,
             );
@@ -342,9 +369,6 @@ impl State {
                 sprite::SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]),
             )
         };
-
-        let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
-        let map = map.expect("Expected map to load");
 
         // set up imgui
 

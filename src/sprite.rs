@@ -73,14 +73,43 @@ pub enum SpriteShape {
     NorthWest,
 }
 
+impl SpriteShape {
+    pub fn flipped_horizontally(&self) -> Self {
+        match self {
+            SpriteShape::Square => SpriteShape::Square,
+            SpriteShape::NorthEast => SpriteShape::NorthWest,
+            SpriteShape::SouthEast => SpriteShape::SouthWest,
+            SpriteShape::SouthWest => SpriteShape::SouthEast,
+            SpriteShape::NorthWest => SpriteShape::NorthEast,
+        }
+    }
+    pub fn flipped_vertically(&self) -> Self {
+        match self {
+            SpriteShape::Square => SpriteShape::Square,
+            SpriteShape::NorthEast => SpriteShape::SouthEast,
+            SpriteShape::SouthEast => SpriteShape::NorthEast,
+            SpriteShape::SouthWest => SpriteShape::NorthWest,
+            SpriteShape::NorthWest => SpriteShape::SouthWest,
+        }
+    }
+    pub fn flipped_diagonally(&self) -> Self {
+        // what does diagonal mean?
+        unimplemented!()
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SpriteDesc {
     pub shape: SpriteShape,
+    pub z: f32,
     pub left: f32,
     pub bottom: f32,
     pub width: f32,
     pub height: f32,
-    pub z: f32,
+    pub tex_left: f32,
+    pub tex_bottom: f32,
+    pub tex_width: f32,
+    pub tex_height: f32,
     pub color: cgmath::Vector4<f32>,
     pub mask: u32,
 }
@@ -97,21 +126,29 @@ impl SpriteDesc {
     /// Creates a new SpriteDesc of arbitrary position and size
     pub fn new(
         shape: SpriteShape,
+        z: f32,
         left: f32,
         bottom: f32,
         width: f32,
         height: f32,
-        z: f32,
+        tex_left: f32,
+        tex_bottom: f32,
+        tex_width: f32,
+        tex_height: f32,
         color: cgmath::Vector4<f32>,
         mask: u32,
     ) -> Self {
         Self {
             shape,
+            z,
             left,
             bottom,
             width,
             height,
-            z,
+            tex_left,
+            tex_bottom,
+            tex_width,
+            tex_height,
             color,
             mask,
         }
@@ -120,21 +157,29 @@ impl SpriteDesc {
     /// Creates a 1x1 sprite with lower-left origin at left/bottom
     pub fn unit(
         shape: SpriteShape,
+        z: f32,
         left: i32,
         bottom: i32,
-        z: f32,
+        tex_left: f32,
+        tex_bottom: f32,
+        tex_width: f32,
+        tex_height: f32,
         color: cgmath::Vector4<f32>,
         mask: u32,
     ) -> Self {
         Self {
             shape,
+            z,
             left: left as f32,
             bottom: bottom as f32,
             width: 1.0,
             height: 1.0,
-            z,
+            tex_left,
+            tex_bottom,
+            tex_width,
+            tex_height,
             color,
-            mask: mask,
+            mask,
         }
     }
 
@@ -194,6 +239,49 @@ impl SpriteDesc {
 
         false
     }
+
+    // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
+    pub fn flipped_horizontally(&self) -> Self {
+        Self {
+            shape: self.shape.flipped_horizontally(),
+            z: self.z,
+            left: self.left,
+            bottom: self.bottom,
+            width: self.width,
+            height: self.height,
+            tex_left: self.tex_left + self.tex_width,
+            tex_bottom: self.tex_bottom,
+            tex_width: -self.tex_width,
+            tex_height: self.tex_height,
+            color: self.color,
+            mask: self.mask,
+        }
+    }
+
+    // returns a copy of self, flipped vertically. This only affects shape and texture coordinates
+    pub fn flipped_vertically(&self) -> Self {
+        Self {
+            shape: self.shape.flipped_vertically(),
+            z: self.z,
+            left: self.left,
+            bottom: self.bottom,
+            width: self.width,
+            height: self.height,
+            tex_left: self.tex_left,
+            tex_bottom: self.tex_bottom + self.tex_height,
+            tex_width: self.tex_width,
+            tex_height: -self.tex_height,
+            color: self.color,
+            mask: self.mask,
+        }
+    }
+
+    // returns a copy of self, flipped diagonally. This only affects shape and texture coordinates
+    pub fn flipped_diagonally(&self) -> Self {
+        // What does diagonal mean? Which diagonal?
+        unimplemented!()
+    }
+
 }
 
 #[cfg(test)]
@@ -310,9 +398,13 @@ mod sprite_desc_tests {
             SpriteShape::Square,
             0.0,
             0.0,
+            0.0,
             1.0,
             1.0,
             0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.0, 1.0].into(),
             0,
         );
@@ -455,36 +547,52 @@ mod sprite_hit_tester {
     fn new_produces_expected_unit_and_non_unit_sprite_storage() {
         let unit_0 = SpriteDesc::unit(
             SpriteShape::Square,
+            0.0,
             0,
             0,
+            0.0,
+            0.0,
+            1.0,
             1.0,
             [1.0, 1.0, 1.0, 1.0].into(),
             0,
         );
         let unit_1 = SpriteDesc::unit(
             SpriteShape::Square,
+            0.0,
             11,
             -33,
             0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.0, 1.0].into(),
             0,
         );
         let non_unit_0 = SpriteDesc::new(
             SpriteShape::NorthEast,
-            1.0,
+            0.0,
             10.0,
             5.0,
             5.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
             1.0,
             [1.0, 0.0, 0.0, 1.0].into(),
             0,
         );
         let non_unit_1 = SpriteDesc::new(
             SpriteShape::NorthEast,
+            0.0,
             -1.0,
             -10.0,
             50.0,
             5.0,
+            0.0,
+            0.0,
+            1.0,
             1.0,
             [1.0, 0.0, 0.0, 1.0].into(),
             0,
@@ -525,50 +633,74 @@ mod sprite_hit_tester {
 
         let sb1 = SpriteDesc::unit(
             SpriteShape::Square,
-            0,
-            0,
             10.0,
+            0,
+            0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [1.0, 1.0, 1.0, 1.0].into(),
             square_mask,
         );
         let sb2 = SpriteDesc::unit(
             SpriteShape::Square,
-            -1,
-            -1,
             10.0,
+            -1,
+            -1,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.5, 1.0].into(),
             square_mask,
         );
 
         let tr0 = SpriteDesc::unit(
             SpriteShape::NorthEast,
+            10.0,
             0,
             4,
-            10.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 1.0, 1.0, 1.0].into(),
             triangle_mask,
         );
         let tr1 = SpriteDesc::unit(
             SpriteShape::NorthWest,
+            10.0,
             -1,
             4,
-            10.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [1.0, 0.0, 1.0, 1.0].into(),
             triangle_mask,
         );
         let tr2 = SpriteDesc::unit(
             SpriteShape::SouthWest,
+            10.0,
             -1,
             3,
-            10.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 1.0, 0.0, 1.0].into(),
             triangle_mask,
         );
         let tr3 = SpriteDesc::unit(
             SpriteShape::SouthEast,
+            10.0,
             0,
             3,
-            10.0,
+            0.0,
+            0.0,
+            1.0,
+            1.0,
             [1.0, 1.0, 0.0, 1.0].into(),
             triangle_mask,
         );
@@ -607,31 +739,43 @@ mod sprite_hit_tester {
 
         let b0 = SpriteDesc::new(
             SpriteShape::Square,
+            0.0,
             -4.0,
             -4.0,
             8.0,
             4.0,
             0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.0, 1.0].into(),
             mask0,
         );
         let b1 = SpriteDesc::new(
             SpriteShape::Square,
+            0.0,
             3.0,
             -1.0,
             3.0,
             1.0,
             0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.0, 1.0].into(),
             mask1,
         );
         let b2 = SpriteDesc::new(
             SpriteShape::Square,
+            0.0,
             3.0,
             -2.0,
             2.0,
             5.0,
             0.0,
+            0.0,
+            1.0,
+            1.0,
             [0.0, 0.0, 0.0, 1.0].into(),
             mask2,
         );
@@ -730,10 +874,6 @@ impl SpriteMesh {
     ) -> Self {
         let mut vertices = vec![];
         let mut indices = vec![];
-        let tc_a = cgmath::vec2::<f32>(0.0, 0.0);
-        let tc_b = cgmath::vec2::<f32>(1.0, 0.0);
-        let tc_c = cgmath::vec2::<f32>(1.0, 1.0);
-        let tc_d = cgmath::vec2::<f32>(0.0, 1.0);
         for sprite in sprites {
             let p_a = cgmath::vec3(sprite.left, sprite.bottom, sprite.z);
             let p_b = cgmath::vec3(sprite.left + sprite.width, sprite.bottom, sprite.z);
@@ -743,6 +883,12 @@ impl SpriteMesh {
                 sprite.z,
             );
             let p_d = cgmath::vec3(sprite.left, sprite.bottom + sprite.height, sprite.z);
+
+            let tc_a = cgmath::vec2::<f32>(sprite.tex_left, 1.0 - sprite.tex_bottom);
+            let tc_b = cgmath::vec2::<f32>(sprite.tex_left + sprite.tex_width, 1.0 - sprite.tex_bottom);
+            let tc_c = cgmath::vec2::<f32>(sprite.tex_left + sprite.tex_width, 1.0 - (sprite.tex_bottom + sprite.tex_height));
+            let tc_d = cgmath::vec2::<f32>(sprite.tex_left, 1.0 - (sprite.tex_bottom + sprite.tex_height));
+
             let sv_a = SpriteVertex::new(p_a, tc_a, sprite.color);
             let sv_b = SpriteVertex::new(p_b, tc_b, sprite.color);
             let sv_c = SpriteVertex::new(p_c, tc_c, sprite.color);
