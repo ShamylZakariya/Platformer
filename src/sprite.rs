@@ -1,4 +1,4 @@
-use cgmath::{vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::{vec2, vec3, MetricSpace, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
 
 use crate::texture;
@@ -59,7 +59,7 @@ impl Vertex for SpriteVertex {
 // --------------------------------------------------------------------------------------------------------------------
 
 /// Represents the shape of a sprite, where Square represents a standard, square, sprite and the remainder
-/// are triangles, with the surface normal facing in the specified direction. E.g., NorthEast would be a triangle
+/// are triangles, with the surface normal facing in the specqified direction. E.g., NorthEast would be a triangle
 /// with the edge normal facing up and to the right.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum SpriteShape {
@@ -90,12 +90,22 @@ impl SpriteShape {
         }
     }
     pub fn flipped_diagonally(&self) -> Self {
-        // what does diagonal mean?
-        unimplemented!()
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
+        // On paper, this transform was worked out for triangles. Since this is a
+        // mirroring along the +x/+y diagonal axis, it only affects NorthWest and SouthEast
+        // triangles, which are not symmetrical across the flip axis.
+        match self {
+            SpriteShape::Square => SpriteShape::Square,
+            SpriteShape::NorthEast => SpriteShape::NorthEast,
+            SpriteShape::SouthEast => SpriteShape::NorthWest,
+            SpriteShape::SouthWest => SpriteShape::SouthWest,
+            SpriteShape::NorthWest => SpriteShape::SouthEast,
+        }
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug)]
 pub struct SpriteDesc {
     pub shape: SpriteShape,
     pub origin: Point3<f32>,
@@ -104,6 +114,22 @@ pub struct SpriteDesc {
     pub tex_coord_extent: Vector2<f32>,
     pub color: Vector4<f32>,
     pub mask: u32,
+}
+
+impl PartialEq for SpriteDesc {
+    fn eq(&self, other: &Self) -> bool {
+        let eps = 1e-4 as f32;
+        // TODO: cgmath uses the approx rate, which should allow for convenience macros
+        // to do safe float approximate comparison, but I can't get the
+        // traits to be visible here.
+        self.shape == other.shape
+            && self.mask == other.mask
+            && self.origin.distance2(other.origin) < eps
+            && self.extent.distance2(other.extent) < eps
+            && self.tex_coord_origin.distance2(other.tex_coord_origin) < eps
+            && self.tex_coord_extent.distance2(other.tex_coord_extent) < eps
+            && self.color.distance2(other.color) < eps
+    }
 }
 
 impl Eq for SpriteDesc {}
@@ -155,6 +181,14 @@ impl SpriteDesc {
             color,
             mask,
         }
+    }
+
+    pub fn left(&self) -> f32 {
+        self.origin.x
+    }
+
+    pub fn bottom(&self) -> f32 {
+        self.origin.y
     }
 
     pub fn right(&self) -> f32 {
@@ -250,8 +284,17 @@ impl SpriteDesc {
 
     // returns a copy of self, flipped diagonally. This only affects shape and texture coordinates
     pub fn flipped_diagonally(&self) -> Self {
-        // What does diagonal mean? Which diagonal?
-        unimplemented!()
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
+        Self {
+            shape: self.shape,
+            origin: self.origin,
+            extent: self.extent,
+            tex_coord_origin: Point2::new(self.tex_coord_origin.y, self.tex_coord_origin.x),
+            tex_coord_extent: Vector2::new(self.tex_coord_extent.y, self.tex_coord_extent.x),
+            color: self.color,
+            mask: self.mask,
+        }
     }
 }
 
@@ -432,6 +475,23 @@ mod sprite_desc_tests {
         sprite.extent.y = 1.0;
         sprite.extent.x = 50.0;
         test_containment(sprite);
+    }
+
+    #[test]
+    fn double_flip_is_identity() {
+        let mut sprite = SpriteDesc::unit(
+            SpriteShape::Square,
+            Point2::new(0, 0),
+            0.0,
+            Point2::new(0.1, 0.1),
+            Vector2::new(0.2, 0.2),
+            Vector4::new(1.0, 1.0, 1.0, 1.0),
+            0,
+        );
+
+        assert_eq!(sprite, sprite.flipped_horizontally().flipped_horizontally());
+        assert_eq!(sprite, sprite.flipped_vertically().flipped_vertically());
+        assert_eq!(sprite, sprite.flipped_diagonally().flipped_diagonally());
     }
 }
 
