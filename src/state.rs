@@ -266,6 +266,9 @@ impl State {
         let map = map.expect("Expected map to load");
 
         let (sprites, sprite_hit_tester) = {
+            use cgmath::{Point2, Vector2, Vector4};
+            use sprite::{SpriteDesc, SpriteShape};
+
             let mat = {
                 let diffuse_bytes = include_bytes!("../res/level_1_tileset.png");
                 let diffuse_texture = texture::Texture::from_bytes(
@@ -284,77 +287,67 @@ impl State {
                 )
             };
             let mask = 1 as u32;
-            let sb1 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::Square,
+            let tco = Point2::new(0.0, 0.0);
+            let tce = Vector2::new(1.0, 1.0);
+            let white = Vector4::new(1.0, 1.0, 1.0, 1.0);
+
+            let sb1 = SpriteDesc::unit(
+                SpriteShape::Square,
+                Point2::new(0, 0),
                 10.0,
-                0,
-                0,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [1.0, 1.0, 1.0, 1.0].into(),
-                mask,
-            );
-            let sb2 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::Square,
-                10.0,
-                -1,
-                -1,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [0.0, 0.0, 0.5, 1.0].into(),
+                tco,
+                tce,
+                white,
                 mask,
             );
 
-            let tr0 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::NorthEast,
+            let sb2 = SpriteDesc::unit(
+                SpriteShape::Square,
+                Point2::new(-1, -1),
                 10.0,
-                0,
-                4,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [0.0, 1.0, 1.0, 1.0].into(),
+                tco,
+                tce,
+                white,
                 mask,
             );
-            let tr1 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::NorthWest,
+
+            let tr0 = SpriteDesc::unit(
+                SpriteShape::NorthEast,
+                Point2::new(0, 4),
                 10.0,
-                -1,
-                4,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [1.0, 0.0, 1.0, 1.0].into(),
+                tco,
+                tce,
+                Vector4::new(1.0, 0.0, 1.0, 1.0),
                 mask,
             );
-            let tr2 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::SouthWest,
+
+            let tr1 = SpriteDesc::unit(
+                SpriteShape::NorthWest,
+                Point2::new(-1, 4),
                 10.0,
-                -1,
-                3,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [0.0, 1.0, 0.0, 1.0].into(),
+                tco,
+                tce,
+                Vector4::new(0.0, 1.0, 1.0, 1.0),
                 mask,
             );
-            let tr3 = sprite::SpriteDesc::unit(
-                sprite::SpriteShape::SouthEast,
+
+            let tr2 = SpriteDesc::unit(
+                SpriteShape::SouthWest,
+                Point2::new(-1, 3),
                 10.0,
-                0,
-                3,
-                0.0,
-                0.0,
-                1.0,
-                1.0,
-                [1.0, 1.0, 0.0, 1.0].into(),
+                tco,
+                tce,
+                Vector4::new(1.0, 1.0, 0.0, 1.0),
+                mask,
+            );
+
+            let tr3 = SpriteDesc::unit(
+                SpriteShape::SouthEast,
+                Point2::new(0, 3),
+                10.0,
+                tco,
+                tce,
+                Vector4::new(0.0, 1.0, 0.0, 1.0),
                 mask,
             );
 

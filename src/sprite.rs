@@ -1,3 +1,4 @@
+use cgmath::{vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
 
 use crate::texture;
@@ -12,19 +13,15 @@ pub trait Vertex {
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct SpriteVertex {
-    pub position: cgmath::Vector3<f32>,
-    pub tex_coord: cgmath::Vector2<f32>,
-    pub color: cgmath::Vector4<f32>,
+    pub position: Vector3<f32>,
+    pub tex_coord: Vector2<f32>,
+    pub color: Vector4<f32>,
 }
 unsafe impl bytemuck::Zeroable for SpriteVertex {}
 unsafe impl bytemuck::Pod for SpriteVertex {}
 
 impl SpriteVertex {
-    pub fn new(
-        position: cgmath::Vector3<f32>,
-        tex_coord: cgmath::Vector2<f32>,
-        color: cgmath::Vector4<f32>,
-    ) -> Self {
+    pub fn new(position: Vector3<f32>, tex_coord: Vector2<f32>, color: Vector4<f32>) -> Self {
         Self {
             position,
             tex_coord,
@@ -101,16 +98,11 @@ impl SpriteShape {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SpriteDesc {
     pub shape: SpriteShape,
-    pub z: f32,
-    pub left: f32,
-    pub bottom: f32,
-    pub width: f32,
-    pub height: f32,
-    pub tex_left: f32,
-    pub tex_bottom: f32,
-    pub tex_width: f32,
-    pub tex_height: f32,
-    pub color: cgmath::Vector4<f32>,
+    pub origin: Point3<f32>,
+    pub extent: Vector2<f32>,
+    pub tex_coord_origin: Point2<f32>,
+    pub tex_coord_extent: Vector2<f32>,
+    pub color: Vector4<f32>,
     pub mask: u32,
 }
 
@@ -118,108 +110,91 @@ impl Eq for SpriteDesc {}
 
 /// Simple corss product for 2D vectors; cgmath doesn't define this because cross product
 /// doesn't make sense generally for 2D.
-fn cross(a: &cgmath::Vector2<f32>, b: &cgmath::Vector2<f32>) -> f32 {
+fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
     a.x * b.y - a.y * b.x
 }
 
 impl SpriteDesc {
-    /// Creates a new SpriteDesc of arbitrary position and size
+    /// Creates a new SpriteDesc at an arbitrary origin with a specified extent
     pub fn new(
         shape: SpriteShape,
-        z: f32,
-        left: f32,
-        bottom: f32,
-        width: f32,
-        height: f32,
-        tex_left: f32,
-        tex_bottom: f32,
-        tex_width: f32,
-        tex_height: f32,
-        color: cgmath::Vector4<f32>,
+        origin: Point3<f32>,
+        extent: Vector2<f32>,
+        tex_coord_origin: Point2<f32>,
+        tex_coord_extent: Vector2<f32>,
+        color: Vector4<f32>,
         mask: u32,
     ) -> Self {
         Self {
             shape,
-            z,
-            left,
-            bottom,
-            width,
-            height,
-            tex_left,
-            tex_bottom,
-            tex_width,
-            tex_height,
+            origin,
+            extent,
+            tex_coord_origin,
+            tex_coord_extent,
             color,
             mask,
         }
     }
 
-    /// Creates a 1x1 sprite with lower-left origin at left/bottom
+    /// Creates a 1x1 sprite at a given integral origin point.
     pub fn unit(
         shape: SpriteShape,
+        origin: Point2<i32>,
         z: f32,
-        left: i32,
-        bottom: i32,
-        tex_left: f32,
-        tex_bottom: f32,
-        tex_width: f32,
-        tex_height: f32,
-        color: cgmath::Vector4<f32>,
+        tex_coord_origin: Point2<f32>,
+        tex_coord_extent: Vector2<f32>,
+        color: Vector4<f32>,
         mask: u32,
     ) -> Self {
         Self {
             shape,
-            z,
-            left: left as f32,
-            bottom: bottom as f32,
-            width: 1.0,
-            height: 1.0,
-            tex_left,
-            tex_bottom,
-            tex_width,
-            tex_height,
+            origin: Point3::new(origin.x as f32, origin.y as f32, z),
+            extent: Vector2::new(1.0, 1.0),
+            tex_coord_origin,
+            tex_coord_extent,
             color,
             mask,
         }
     }
 
     pub fn right(&self) -> f32 {
-        self.left + self.width
+        self.origin.x + self.extent.x
     }
 
     pub fn top(&self) -> f32 {
-        self.bottom + self.height
+        self.origin.y + self.extent.y
     }
 
-    pub fn contains(&self, point: &cgmath::Point2<f32>) -> bool {
-        if point.x >= self.left
-            && point.x <= self.left + self.width
-            && point.y >= self.bottom
-            && point.y <= self.bottom + self.height
+    pub fn contains(&self, point: &Point2<f32>) -> bool {
+        if point.x >= self.origin.x
+            && point.x <= self.origin.x + self.extent.x
+            && point.y >= self.origin.y
+            && point.y <= self.origin.y + self.extent.y
         {
-            let p = cgmath::Vector2::new(point.x, point.y);
+            let p = Vector2::new(point.x, point.y);
             return match self.shape {
                 SpriteShape::Square => true,
 
                 SpriteShape::NorthEast => {
-                    let a = cgmath::Vector2::new(self.left, self.bottom + self.height);
-                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom);
+                    let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
+                    let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     cross(&ba, &pa) <= 0.0
                 }
 
                 SpriteShape::SouthEast => {
-                    let a = cgmath::Vector2::new(self.left, self.bottom);
-                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom + self.height);
+                    let a = Vector2::new(self.origin.x, self.origin.y);
+                    let b =
+                        Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
                     let ba = b - a;
                     let pa = p - a;
                     cross(&ba, &pa) >= 0.0
                 }
 
                 SpriteShape::SouthWest => {
-                    let a = cgmath::Vector2::new(self.left, self.bottom + self.height);
-                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom);
+                    let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
+                    let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     // opposite winding of northeast
@@ -227,8 +202,9 @@ impl SpriteDesc {
                 }
 
                 SpriteShape::NorthWest => {
-                    let a = cgmath::Vector2::new(self.left, self.bottom);
-                    let b = cgmath::Vector2::new(self.left + self.width, self.bottom + self.height);
+                    let a = Vector2::new(self.origin.x, self.origin.y);
+                    let b =
+                        Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
                     let ba = b - a;
                     let pa = p - a;
                     // opposite winding of southeast
@@ -243,16 +219,14 @@ impl SpriteDesc {
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
     pub fn flipped_horizontally(&self) -> Self {
         Self {
-            shape: self.shape.flipped_horizontally(),
-            z: self.z,
-            left: self.left,
-            bottom: self.bottom,
-            width: self.width,
-            height: self.height,
-            tex_left: self.tex_left + self.tex_width,
-            tex_bottom: self.tex_bottom,
-            tex_width: -self.tex_width,
-            tex_height: self.tex_height,
+            shape: self.shape,
+            origin: self.origin,
+            extent: self.extent,
+            tex_coord_origin: Point2::new(
+                self.tex_coord_origin.x + self.tex_coord_extent.x,
+                self.tex_coord_origin.y,
+            ),
+            tex_coord_extent: Vector2::new(-self.tex_coord_extent.x, self.tex_coord_extent.y),
             color: self.color,
             mask: self.mask,
         }
@@ -261,16 +235,14 @@ impl SpriteDesc {
     // returns a copy of self, flipped vertically. This only affects shape and texture coordinates
     pub fn flipped_vertically(&self) -> Self {
         Self {
-            shape: self.shape.flipped_vertically(),
-            z: self.z,
-            left: self.left,
-            bottom: self.bottom,
-            width: self.width,
-            height: self.height,
-            tex_left: self.tex_left,
-            tex_bottom: self.tex_bottom + self.tex_height,
-            tex_width: self.tex_width,
-            tex_height: -self.tex_height,
+            shape: self.shape,
+            origin: self.origin,
+            extent: self.extent,
+            tex_coord_origin: Point2::new(
+                self.tex_coord_origin.x,
+                self.tex_coord_origin.y + self.tex_coord_extent.y,
+            ),
+            tex_coord_extent: Vector2::new(self.tex_coord_extent.x, -self.tex_coord_extent.y),
             color: self.color,
             mask: self.mask,
         }
@@ -281,7 +253,6 @@ impl SpriteDesc {
         // What does diagonal mean? Which diagonal?
         unimplemented!()
     }
-
 }
 
 #[cfg(test)]
@@ -291,49 +262,49 @@ mod sprite_desc_tests {
     fn test_points(
         sprite: &SpriteDesc,
     ) -> (
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
-        cgmath::Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
     ) {
         (
             // inside
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.25,
-                sprite.bottom + sprite.height * 0.5,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.25,
+                sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.5,
-                sprite.bottom + sprite.height * 0.25,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.5,
+                sprite.origin.y + sprite.extent.y * 0.25,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.75,
-                sprite.bottom + sprite.height * 0.5,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.75,
+                sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.5,
-                sprite.bottom + sprite.height * 0.75,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.5,
+                sprite.origin.y + sprite.extent.y * 0.75,
             ),
             // outside
-            cgmath::Point2::new(
-                sprite.left - sprite.width * 0.25,
-                sprite.bottom + sprite.height * 0.5,
+            Point2::new(
+                sprite.origin.x - sprite.extent.x * 0.25,
+                sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.5,
-                sprite.bottom - sprite.height * 0.25,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.5,
+                sprite.origin.y - sprite.extent.y * 0.25,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 1.25,
-                sprite.bottom + sprite.height * 0.5,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 1.25,
+                sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            cgmath::Point2::new(
-                sprite.left + sprite.width * 0.5,
-                sprite.bottom + sprite.height * 1.25,
+            Point2::new(
+                sprite.origin.x + sprite.extent.x * 0.5,
+                sprite.origin.y + sprite.extent.y * 1.25,
             ),
         )
     }
@@ -396,74 +367,70 @@ mod sprite_desc_tests {
     fn contains_works() {
         let mut sprite = SpriteDesc::new(
             SpriteShape::Square,
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.0, 1.0].into(),
+            Point3::new(0.0, 0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Point2::new(0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Vector4::new(0.0, 0.0, 0.0, 0.0),
             0,
         );
+
         test_containment(sprite);
 
         // tall, NE quadrant
-        sprite.left = 10.0;
-        sprite.bottom = 5.0;
-        sprite.height = 50.0;
-        sprite.width = 1.0;
+        sprite.origin.x = 10.0;
+        sprite.origin.y = 5.0;
+        sprite.extent.y = 50.0;
+        sprite.extent.x = 1.0;
         test_containment(sprite);
 
         // wide, NE quad
-        sprite.left = 10.0;
-        sprite.bottom = 5.0;
-        sprite.height = 1.0;
-        sprite.width = 50.0;
+        sprite.origin.x = 10.0;
+        sprite.origin.y = 5.0;
+        sprite.extent.y = 1.0;
+        sprite.extent.x = 50.0;
         test_containment(sprite);
 
         // tall, SE quadrant
-        sprite.left = 10.0;
-        sprite.bottom = -70.0;
-        sprite.height = 50.0;
-        sprite.width = 1.0;
+        sprite.origin.x = 10.0;
+        sprite.origin.y = -70.0;
+        sprite.extent.y = 50.0;
+        sprite.extent.x = 1.0;
         test_containment(sprite);
 
         // wide, SE quad
-        sprite.left = 10.0;
-        sprite.bottom = -10.0;
-        sprite.height = 1.0;
-        sprite.width = 50.0;
+        sprite.origin.x = 10.0;
+        sprite.origin.y = -10.0;
+        sprite.extent.y = 1.0;
+        sprite.extent.x = 50.0;
         test_containment(sprite);
 
         // tall, SW quadrant
-        sprite.left = -100.0;
-        sprite.bottom = -500.0;
-        sprite.height = 50.0;
-        sprite.width = 1.0;
+        sprite.origin.x = -100.0;
+        sprite.origin.y = -500.0;
+        sprite.extent.y = 50.0;
+        sprite.extent.x = 1.0;
         test_containment(sprite);
 
         // wide, SW quad
-        sprite.left = -100.0;
-        sprite.bottom = -500.0;
-        sprite.height = 1.0;
-        sprite.width = 50.0;
+        sprite.origin.x = -100.0;
+        sprite.origin.y = -500.0;
+        sprite.extent.y = 1.0;
+        sprite.extent.x = 50.0;
         test_containment(sprite);
 
         // tall, NW quadrant
-        sprite.left = -100.0;
-        sprite.bottom = 500.0;
-        sprite.height = 50.0;
-        sprite.width = 1.0;
+        sprite.origin.x = -100.0;
+        sprite.origin.y = 500.0;
+        sprite.extent.y = 50.0;
+        sprite.extent.x = 1.0;
         test_containment(sprite);
 
         // wide, NW quad
-        sprite.left = -100.0;
-        sprite.bottom = 500.0;
-        sprite.height = 1.0;
-        sprite.width = 50.0;
+        sprite.origin.x = -100.0;
+        sprite.origin.y = 500.0;
+        sprite.extent.y = 1.0;
+        sprite.extent.x = 50.0;
         test_containment(sprite);
     }
 }
@@ -471,7 +438,7 @@ mod sprite_desc_tests {
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct SpriteHitTester {
-    unit_sprites: HashMap<cgmath::Point2<i32>, SpriteDesc>,
+    unit_sprites: HashMap<Point2<i32>, SpriteDesc>,
     non_unit_sprites: Vec<SpriteDesc>,
 }
 
@@ -482,9 +449,9 @@ impl SpriteHitTester {
 
         for sprite in sprite_descs {
             // copy sprites into appropriate storage
-            if sprite.width == 1.0 && sprite.height == 1.0 {
+            if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
                 unit_sprites.insert(
-                    cgmath::Point2::new(sprite.left as i32, sprite.bottom as i32),
+                    Point2::new(sprite.origin.x as i32, sprite.origin.y as i32),
                     *sprite,
                 );
             } else {
@@ -494,9 +461,9 @@ impl SpriteHitTester {
 
         // sort non-unit sprites along x and (secondarily) y
         non_unit_sprites.sort_by(|a, b| {
-            let ord_0 = a.left.partial_cmp(&b.left).unwrap();
+            let ord_0 = a.origin.x.partial_cmp(&b.origin.x).unwrap();
             if ord_0 == std::cmp::Ordering::Equal {
-                a.bottom.partial_cmp(&b.bottom).unwrap()
+                a.origin.y.partial_cmp(&b.origin.y).unwrap()
             } else {
                 ord_0
             }
@@ -512,12 +479,12 @@ impl SpriteHitTester {
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, there is no guarantee which will be returned,
     /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test(&self, point: &cgmath::Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn test(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
         // first test the unit sprites
-        if let Some(sprite) = self.unit_sprites.get(&cgmath::Point2::new(
-            point.x.floor() as i32,
-            point.y.floor() as i32,
-        )) {
+        if let Some(sprite) = self
+            .unit_sprites
+            .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
+        {
             if sprite.mask & mask != 0 {
                 return Some(*sprite);
             }
@@ -527,7 +494,7 @@ impl SpriteHitTester {
         // TODO: Some kind of partitioning/binary search?
 
         for sprite in &self.non_unit_sprites {
-            if sprite.left > point.x {
+            if sprite.origin.x > point.x {
                 break;
             }
             if sprite.contains(point) && sprite.mask & mask != 0 {
@@ -545,56 +512,45 @@ mod sprite_hit_tester {
 
     #[test]
     fn new_produces_expected_unit_and_non_unit_sprite_storage() {
+        let tco = Point2::new(0.0, 0.0);
+        let tce = Vector2::new(1.0, 1.0);
+        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
+
         let unit_0 = SpriteDesc::unit(
             SpriteShape::Square,
+            Point2::new(0, 0),
             0.0,
-            0,
-            0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 1.0, 1.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             0,
         );
         let unit_1 = SpriteDesc::unit(
             SpriteShape::Square,
+            Point2::new(11, -33),
             0.0,
-            11,
-            -33,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             0,
         );
         let non_unit_0 = SpriteDesc::new(
-            SpriteShape::NorthEast,
-            0.0,
-            10.0,
-            5.0,
-            5.0,
-            1.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 0.0, 0.0, 1.0].into(),
+            SpriteShape::Square,
+            Point3::new(10.0, 5.0, 0.0),
+            Vector2::new(5.0, 1.0),
+            tco,
+            tce,
+            color,
             0,
         );
+
         let non_unit_1 = SpriteDesc::new(
-            SpriteShape::NorthEast,
-            0.0,
-            -1.0,
-            -10.0,
-            50.0,
-            5.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 0.0, 0.0, 1.0].into(),
+            SpriteShape::Square,
+            Point3::new(-1.0, -10.0, 0.0),
+            Vector2::new(50.0, 5.0),
+            tco,
+            tce,
+            color,
             0,
         );
 
@@ -602,20 +558,14 @@ mod sprite_hit_tester {
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&cgmath::Point2::new(
-                    unit_0.left as i32,
-                    unit_0.bottom as i32
-                ))
+                .get(&Point2::new(unit_0.origin.x as i32, unit_0.origin.y as i32))
                 .unwrap(),
             &unit_0
         );
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&cgmath::Point2::new(
-                    unit_1.left as i32,
-                    unit_1.bottom as i32
-                ))
+                .get(&Point2::new(unit_1.origin.x as i32, unit_1.origin.y as i32))
                 .unwrap(),
             &unit_1
         );
@@ -631,106 +581,96 @@ mod sprite_hit_tester {
         let triangle_mask = 1 << 1;
         let all_mask = square_mask | triangle_mask;
 
+        let tco = Point2::new(0.0, 0.0);
+        let tce = Vector2::new(1.0, 1.0);
+        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
+
         let sb1 = SpriteDesc::unit(
             SpriteShape::Square,
+            Point2::new(0, 0),
             10.0,
-            0,
-            0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 1.0, 1.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             square_mask,
         );
+
         let sb2 = SpriteDesc::unit(
             SpriteShape::Square,
+            Point2::new(-1, -1),
             10.0,
-            -1,
-            -1,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.5, 1.0].into(),
+            tco,
+            tce,
+            color,
             square_mask,
         );
 
         let tr0 = SpriteDesc::unit(
             SpriteShape::NorthEast,
+            Point2::new(0, 4),
             10.0,
-            0,
-            4,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 1.0, 1.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             triangle_mask,
         );
+
         let tr1 = SpriteDesc::unit(
             SpriteShape::NorthWest,
+            Point2::new(-1, 4),
             10.0,
-            -1,
-            4,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 0.0, 1.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             triangle_mask,
         );
+
         let tr2 = SpriteDesc::unit(
             SpriteShape::SouthWest,
+            Point2::new(-1, 3),
             10.0,
-            -1,
-            3,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 1.0, 0.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             triangle_mask,
         );
+
         let tr3 = SpriteDesc::unit(
             SpriteShape::SouthEast,
+            Point2::new(0, 3),
             10.0,
-            0,
-            3,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [1.0, 1.0, 0.0, 1.0].into(),
+            tco,
+            tce,
+            color,
             triangle_mask,
         );
 
         let hit_tester = SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test(&cgmath::Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
-        assert!(hit_tester.test(&cgmath::Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
-        assert!(hit_tester.test(&cgmath::Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
-        assert!(hit_tester.test(&cgmath::Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
+        assert!(hit_tester.test(&Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
+        assert!(hit_tester.test(&Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
+        assert!(hit_tester.test(&Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
+        assert!(hit_tester.test(&Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
         assert!(hit_tester
-            .test(&cgmath::Point2::new(0.1, 4.1), square_mask)
+            .test(&Point2::new(0.1, 4.1), square_mask)
             .is_none());
-        assert!(hit_tester
-            .test(&cgmath::Point2::new(0.1, 3.9), all_mask)
-            .is_some());
+        assert!(hit_tester.test(&Point2::new(0.1, 3.9), all_mask).is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test(&cgmath::Point2::new(0.5, 0.5), square_mask) == Some(sb1));
+        assert!(hit_tester.test(&Point2::new(0.5, 0.5), square_mask) == Some(sb1));
         assert!(hit_tester
-            .test(&cgmath::Point2::new(0.5, 0.5), triangle_mask)
+            .test(&Point2::new(0.5, 0.5), triangle_mask)
             .is_none());
-        assert!(hit_tester
-            .test(&cgmath::Point2::new(0.5, 0.5), all_mask)
-            .is_some());
+        assert!(hit_tester.test(&Point2::new(0.5, 0.5), all_mask).is_some());
     }
 
     #[test]
     fn non_unit_hit_test_works() {
+        let tco = Point2::new(0.0, 0.0);
+        let tce = Vector2::new(1.0, 1.0);
+        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
+
         let mask0 = 1 << 0;
         let mask1 = 1 << 1;
         let mask2 = 1 << 2;
@@ -739,50 +679,38 @@ mod sprite_hit_tester {
 
         let b0 = SpriteDesc::new(
             SpriteShape::Square,
-            0.0,
-            -4.0,
-            -4.0,
-            8.0,
-            4.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.0, 1.0].into(),
+            Point3::new(-4.0, -4.0, 0.0),
+            Vector2::new(8.0, 4.0),
+            tco,
+            tce,
+            color,
             mask0,
         );
+
         let b1 = SpriteDesc::new(
             SpriteShape::Square,
-            0.0,
-            3.0,
-            -1.0,
-            3.0,
-            1.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.0, 1.0].into(),
+            Point3::new(3.0, -1.0, 0.0),
+            Vector2::new(3.0, 1.0),
+            tco,
+            tce,
+            color,
             mask1,
         );
+
         let b2 = SpriteDesc::new(
             SpriteShape::Square,
-            0.0,
-            3.0,
-            -2.0,
-            2.0,
-            5.0,
-            0.0,
-            0.0,
-            1.0,
-            1.0,
-            [0.0, 0.0, 0.0, 1.0].into(),
+            Point3::new(3.0, -2.0, 0.0),
+            Vector2::new(2.0, 5.0),
+            tco,
+            tce,
+            color,
             mask2,
         );
+
         let hit_tester = SpriteHitTester::new(&[b0, b1, b2]);
 
         // this point is in all three boxes
-        let p = cgmath::Point2::new(3.5, -0.5);
+        let p = Point2::new(3.5, -0.5);
 
         assert_eq!(hit_tester.test(&p, mask0), Some(b0));
         assert_eq!(hit_tester.test(&p, mask1), Some(b1));
@@ -875,19 +803,36 @@ impl SpriteMesh {
         let mut vertices = vec![];
         let mut indices = vec![];
         for sprite in sprites {
-            let p_a = cgmath::vec3(sprite.left, sprite.bottom, sprite.z);
-            let p_b = cgmath::vec3(sprite.left + sprite.width, sprite.bottom, sprite.z);
-            let p_c = cgmath::vec3(
-                sprite.left + sprite.width,
-                sprite.bottom + sprite.height,
-                sprite.z,
+            let p_a = vec3(sprite.origin.x, sprite.origin.y, sprite.origin.z);
+            let p_b = vec3(
+                sprite.origin.x + sprite.extent.x,
+                sprite.origin.y,
+                sprite.origin.z,
             );
-            let p_d = cgmath::vec3(sprite.left, sprite.bottom + sprite.height, sprite.z);
+            let p_c = vec3(
+                sprite.origin.x + sprite.extent.x,
+                sprite.origin.y + sprite.extent.y,
+                sprite.origin.z,
+            );
+            let p_d = vec3(
+                sprite.origin.x,
+                sprite.origin.y + sprite.extent.y,
+                sprite.origin.z,
+            );
 
-            let tc_a = cgmath::vec2::<f32>(sprite.tex_left, 1.0 - sprite.tex_bottom);
-            let tc_b = cgmath::vec2::<f32>(sprite.tex_left + sprite.tex_width, 1.0 - sprite.tex_bottom);
-            let tc_c = cgmath::vec2::<f32>(sprite.tex_left + sprite.tex_width, 1.0 - (sprite.tex_bottom + sprite.tex_height));
-            let tc_d = cgmath::vec2::<f32>(sprite.tex_left, 1.0 - (sprite.tex_bottom + sprite.tex_height));
+            let tc_a = vec2::<f32>(sprite.tex_coord_origin.x, 1.0 - sprite.tex_coord_origin.y);
+            let tc_b = vec2::<f32>(
+                sprite.tex_coord_origin.x + sprite.tex_coord_extent.x,
+                1.0 - sprite.tex_coord_origin.y,
+            );
+            let tc_c = vec2::<f32>(
+                sprite.tex_coord_origin.x + sprite.tex_coord_extent.x,
+                1.0 - (sprite.tex_coord_origin.y + sprite.tex_coord_extent.y),
+            );
+            let tc_d = vec2::<f32>(
+                sprite.tex_coord_origin.x,
+                1.0 - (sprite.tex_coord_origin.y + sprite.tex_coord_extent.y),
+            );
 
             let sv_a = SpriteVertex::new(p_a, tc_a, sprite.color);
             let sv_b = SpriteVertex::new(p_b, tc_b, sprite.color);
