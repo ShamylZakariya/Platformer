@@ -19,7 +19,7 @@
  <tile id="3">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="viscous" value="true"/>
+   <property name="water" value="true"/>
   </properties>
  </tile>
  <tile id="4">

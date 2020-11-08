@@ -7,6 +7,10 @@ use xml::reader::{EventReader, XmlEvent};
 use crate::sprite;
 use crate::tileset;
 
+pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
+pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
+pub const FLAG_MAP_TILE_FALLS: u32 = 1 << 29;
+
 #[derive(Clone, Debug)]
 pub struct Layer {
     pub id: i32,
@@ -30,12 +34,13 @@ impl Default for Layer {
 
 #[derive(Debug)]
 pub struct Map {
-    tileset: tileset::TileSet,
-    width: u32,
-    height: u32,
+    pub tileset: tileset::TileSet,
+    tileset_first_gid: u32,
+    pub width: u32,
+    pub height: u32,
     tile_width: u32,
     tile_height: u32,
-    layers: Vec<Layer>,
+    pub layers: Vec<Layer>,
 }
 
 impl Map {
@@ -49,6 +54,7 @@ impl Map {
         let parser = EventReader::new(file);
 
         let mut tileset: Option<tileset::TileSet> = None;
+        let mut tileset_first_gid: Option<u32> = None;
         let mut width: Option<u32> = None;
         let mut height: Option<u32> = None;
         let mut tile_width: Option<u32> = None;
@@ -98,18 +104,28 @@ impl Map {
                     //
                     "tileset" => {
                         for attr in attributes {
-                            if attr.name.local_name == "source" {
-                                let tileset_path = parent_dir.join(attr.value);
-                                tileset =
-                                    Some(tileset::TileSet::new_tsx(&tileset_path).with_context(
-                                        || {
-                                            format!(
-                                                "Expected to load referenced <tileset> from {}",
-                                                tileset_path.display()
-                                            )
-                                        },
+                            match attr.name.local_name.as_str() {
+                                "source" => {
+                                    let tileset_path = parent_dir.join(attr.value);
+                                    tileset = Some(
+                                        tileset::TileSet::new_tsx(&tileset_path).with_context(
+                                            || {
+                                                format!(
+                                                    "Expected to load referenced <tileset> from {}",
+                                                    tileset_path.display()
+                                                )
+                                            },
+                                        )?,
+                                    );
+                                }
+                                "firstgid" => {
+                                    tileset_first_gid = Some(attr.value.parse().context(
+                                        "Expected to parse <tileset> 'firstgid' to u32",
                                     )?);
+                                }
+                                _ => {}
                             }
+                            if attr.name.local_name == "source" {}
                         }
                     }
 
@@ -134,6 +150,9 @@ impl Map {
                                     layer.height = attr.value.parse().context(
                                         "Expected to parse 'height' field of <layer> to u32'",
                                     )?
+                                }
+                                "name" => {
+                                    layer.name = attr.value;
                                 }
                                 _ => {}
                             }
@@ -208,6 +227,8 @@ impl Map {
 
         // verify all required fields were loaded
         let tileset = tileset.context("Expected to read <tileset> from tmx file.")?;
+        let tileset_first_gid =
+            tileset_first_gid.context("Expected to read 'firstgid' attr on <tileset> block")?;
         let width = width.context("Expected to read width attribute on <map>")?;
         let height = height.context("Expected to read height attribute on <map>")?;
         let tile_width = tile_width.context("Expected to read tile_width attribute on <map>")?;
@@ -215,6 +236,7 @@ impl Map {
 
         Ok(Map {
             tileset,
+            tileset_first_gid,
             width,
             height,
             tile_width,
@@ -223,7 +245,79 @@ impl Map {
         })
     }
 
-    pub fn generate_sprites(&self) -> Vec<sprite::SpriteDesc> {
-        unimplemented!()
+    pub fn layer_named(&self, name: &str) -> Option<&Layer> {
+        for layer in &self.layers {
+            if layer.name == name {
+                return Some(layer);
+            }
+        }
+        None
+    }
+
+    /// Generates a vector of SpriteDesc for the contents of the specified layer
+    pub fn generate_sprites(&self, layer: &Layer) -> Vec<sprite::SpriteDesc> {
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
+        let flipped_horizontally_flag = 0x80000000 as u32;
+        let flipped_vertically_flag = 0x40000000 as u32;
+        let flipped_diagonally_flag = 0x20000000 as u32;
+
+        let mut sprites: Vec<sprite::SpriteDesc> = vec![];
+        for y in 0..layer.height {
+            for x in 0..layer.width {
+                let index: usize = (y * layer.width + x) as usize;
+                let tile_id = layer.tile_data[index];
+                let flipped_horizontally = tile_id & flipped_horizontally_flag != 0;
+                let flipped_vertically = tile_id & flipped_vertically_flag != 0;
+                let flipped_diagonally = tile_id & flipped_diagonally_flag != 0;
+                let tile_id = tile_id
+                    & !(flipped_diagonally_flag
+                        | flipped_vertically_flag
+                        | flipped_diagonally_flag);
+
+                if self.tileset_first_gid <= tile_id
+                    && tile_id - self.tileset_first_gid < self.tileset.tiles.len() as u32
+                {
+                    let tile = &self.tileset.tiles[(tile_id - self.tileset_first_gid) as usize];
+                    let (tex_coord_origin, tex_coord_extent) =
+                        self.tileset.tex_coords_for_tile(tile);
+                    let mut mask = 0;
+
+                    if tile.has_property("collision_shape") {
+                        mask |= FLAG_MAP_TILE_IS_COLLIDER;
+                    }
+                    if tile.has_property("water") {
+                        mask |= FLAG_MAP_TILE_IS_WATER;
+                    }
+                    if tile.has_property("falls") {
+                        mask |= FLAG_MAP_TILE_FALLS;
+                    }
+
+                    let mut sd = sprite::SpriteDesc::unit(
+                        tile.shape(),
+                        cgmath::Point2::new(x as i32, y as i32),
+                        1.0,
+                        tex_coord_origin,
+                        tex_coord_extent,
+                        cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
+                        mask,
+                    );
+
+                    if flipped_diagonally {
+                        sd = sd.flipped_diagonally();
+                    }
+
+                    if flipped_horizontally {
+                        sd = sd.flipped_horizontally();
+                    }
+
+                    if flipped_vertically {
+                        sd = sd.flipped_vertically();
+                    }
+
+                    sprites.push(sd);
+                }
+            }
+        }
+        sprites
     }
 }

@@ -202,8 +202,8 @@ impl State {
 
         // Buyild camera, and camera uniform storage
 
-        let camera = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0));
-        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 24.0, 0.1, 100.0);
+        let camera = camera::Camera::new((62.0, 11.0, -1.0), (0.0, 0.0, 1.0));
+        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 124.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
 
         let mut camera_uniforms = CameraUniforms::new();
@@ -266,100 +266,39 @@ impl State {
         let map = map.expect("Expected map to load");
 
         let (sprites, sprite_hit_tester) = {
-            use cgmath::{Point2, Vector2, Vector4};
-            use sprite::{SpriteDesc, SpriteShape};
-
             let mat = {
-                let diffuse_bytes = include_bytes!("../res/level_1_tileset.png");
-                let diffuse_texture = texture::Texture::from_bytes(
-                    &device,
-                    &queue,
-                    diffuse_bytes,
-                    "res/cobble-diffuse",
-                    false,
-                )
-                .unwrap();
+                let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
+                let spritesheet =
+                    texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
                 sprite::SpriteMaterial::new(
                     &device,
                     "Sprite Material",
-                    diffuse_texture,
+                    spritesheet,
                     &material_bind_group_layout,
                 )
             };
-            let mask = 1 as u32;
-            let tco = Point2::new(0.0, 0.0);
-            let tce = Vector2::new(1.0, 1.0);
-            let white = Vector4::new(1.0, 1.0, 1.0, 1.0);
 
-            let sb1 = SpriteDesc::unit(
-                SpriteShape::Square,
-                Point2::new(0, 0),
-                10.0,
-                tco,
-                tce,
-                white,
-                mask,
-            );
+            let bg_layer = map
+                .layer_named("Background")
+                .expect("Expected layer named 'Background'");
+            let level_layer = map
+                .layer_named("Level")
+                .expect("Expected layer named 'Level'");
 
-            let sb2 = SpriteDesc::unit(
-                SpriteShape::Square,
-                Point2::new(-1, -1),
-                10.0,
-                tco,
-                tce,
-                white,
-                mask,
-            );
+            let bg_sprites = map.generate_sprites(bg_layer);
+            let level_sprites = map.generate_sprites(level_layer);
+            let mut all_sprites = vec![];
+            for s in &bg_sprites {
+                all_sprites.push(s.clone());
+            }
+            for s in &level_sprites {
+                all_sprites.push(s.clone());
+            }
 
-            let tr0 = SpriteDesc::unit(
-                SpriteShape::NorthEast,
-                Point2::new(0, 4),
-                10.0,
-                tco,
-                tce,
-                Vector4::new(1.0, 0.0, 1.0, 1.0),
-                mask,
-            );
-
-            let tr1 = SpriteDesc::unit(
-                SpriteShape::NorthWest,
-                Point2::new(-1, 4),
-                10.0,
-                tco,
-                tce,
-                Vector4::new(0.0, 1.0, 1.0, 1.0),
-                mask,
-            );
-
-            let tr2 = SpriteDesc::unit(
-                SpriteShape::SouthWest,
-                Point2::new(-1, 3),
-                10.0,
-                tco,
-                tce,
-                Vector4::new(1.0, 1.0, 0.0, 1.0),
-                mask,
-            );
-
-            let tr3 = SpriteDesc::unit(
-                SpriteShape::SouthEast,
-                Point2::new(0, 3),
-                10.0,
-                tco,
-                tce,
-                Vector4::new(0.0, 1.0, 0.0, 1.0),
-                mask,
-            );
-
-            let sm = sprite::SpriteMesh::new(
-                &vec![sb1, sb2, tr0, tr1, tr2, tr3],
-                0,
-                &device,
-                "Sprite Mesh",
-            );
+            let sm = sprite::SpriteMesh::new(&all_sprites, 0, &device, "Sprite Mesh");
             (
                 sprite::SpriteCollection::new(vec![sm], vec![mat]),
-                sprite::SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]),
+                sprite::SpriteHitTester::new(&level_sprites),
             )
         };
 

@@ -1,4 +1,4 @@
-use cgmath::{vec2, vec3, MetricSpace, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::{relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
 
 use crate::texture;
@@ -90,7 +90,7 @@ impl SpriteShape {
         }
     }
     pub fn flipped_diagonally(&self) -> Self {
-        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
         // On paper, this transform was worked out for triangles. Since this is a
         // mirroring along the +x/+y diagonal axis, it only affects NorthWest and SouthEast
@@ -118,17 +118,13 @@ pub struct SpriteDesc {
 
 impl PartialEq for SpriteDesc {
     fn eq(&self, other: &Self) -> bool {
-        let eps = 1e-4 as f32;
-        // TODO: cgmath uses the approx rate, which should allow for convenience macros
-        // to do safe float approximate comparison, but I can't get the
-        // traits to be visible here.
         self.shape == other.shape
             && self.mask == other.mask
-            && self.origin.distance2(other.origin) < eps
-            && self.extent.distance2(other.extent) < eps
-            && self.tex_coord_origin.distance2(other.tex_coord_origin) < eps
-            && self.tex_coord_extent.distance2(other.tex_coord_extent) < eps
-            && self.color.distance2(other.color) < eps
+            && relative_eq!(self.origin, other.origin)
+            && relative_eq!(self.extent, other.extent)
+            && relative_eq!(self.tex_coord_origin, other.tex_coord_origin)
+            && relative_eq!(self.tex_coord_extent, other.tex_coord_extent)
+            && relative_eq!(self.color, other.color)
     }
 }
 
@@ -284,7 +280,7 @@ impl SpriteDesc {
 
     // returns a copy of self, flipped diagonally. This only affects shape and texture coordinates
     pub fn flipped_diagonally(&self) -> Self {
-        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
         Self {
             shape: self.shape,
