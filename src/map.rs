@@ -272,7 +272,7 @@ impl Map {
                 let tile_id = tile_id
                     & !(flipped_diagonally_flag
                         | flipped_vertically_flag
-                        | flipped_diagonally_flag);
+                        | flipped_horizontally_flag);
 
                 if self.tileset_first_gid <= tile_id
                     && tile_id - self.tileset_first_gid < self.tileset.tiles.len() as u32
@@ -294,12 +294,17 @@ impl Map {
 
                     let mut sd = sprite::SpriteDesc::unit(
                         tile.shape(),
-                        cgmath::Point2::new(x as i32, y as i32),
+                        cgmath::Point2::new(x as i32, (layer.height - y) as i32),
                         1.0,
                         tex_coord_origin,
                         tex_coord_extent,
                         cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
                         mask,
+                    );
+
+                    println!(
+                        "created tile ({},{}): flips (d: {}, h: {} v: {}) {:#?}",
+                        x, y, flipped_diagonally, flipped_horizontally, flipped_vertically, sd
                     );
 
                     if flipped_diagonally {

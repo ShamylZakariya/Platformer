@@ -200,7 +200,7 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        // Buyild camera, and camera uniform storage
+        // Build camera, and camera uniform storage
 
         let camera = camera::Camera::new((62.0, 11.0, -1.0), (0.0, 0.0, 1.0));
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 124.0, 0.1, 100.0);
@@ -288,9 +288,11 @@ impl State {
             let bg_sprites = map.generate_sprites(bg_layer);
             let level_sprites = map.generate_sprites(level_layer);
             let mut all_sprites = vec![];
+
             for s in &bg_sprites {
                 all_sprites.push(s.clone());
             }
+
             for s in &level_sprites {
                 all_sprites.push(s.clone());
             }
@@ -461,7 +463,7 @@ impl State {
                             r: 0.1,
                             g: 0.1,
                             b: 0.1,
-                            a: 1.0,
+                            a: 0.1,
                         }),
                         store: true,
                     },

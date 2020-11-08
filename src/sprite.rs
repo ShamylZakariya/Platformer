@@ -1,5 +1,6 @@
 use cgmath::{relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
+use std::mem;
 
 use crate::texture;
 use wgpu::util::DeviceExt;
@@ -114,6 +115,9 @@ pub struct SpriteDesc {
     pub tex_coord_extent: Vector2<f32>,
     pub color: Vector4<f32>,
     pub mask: u32,
+    flipped_diagonally: bool,
+    flipped_horizontally: bool,
+    flipped_vertically: bool,
 }
 
 impl PartialEq for SpriteDesc {
@@ -125,6 +129,9 @@ impl PartialEq for SpriteDesc {
             && relative_eq!(self.tex_coord_origin, other.tex_coord_origin)
             && relative_eq!(self.tex_coord_extent, other.tex_coord_extent)
             && relative_eq!(self.color, other.color)
+            && self.flipped_diagonally == other.flipped_diagonally
+            && self.flipped_horizontally == other.flipped_horizontally
+            && self.flipped_vertically == other.flipped_vertically
     }
 }
 
@@ -155,6 +162,9 @@ impl SpriteDesc {
             tex_coord_extent,
             color,
             mask,
+            flipped_diagonally: false,
+            flipped_horizontally: false,
+            flipped_vertically: false,
         }
     }
 
@@ -176,23 +186,10 @@ impl SpriteDesc {
             tex_coord_extent,
             color,
             mask,
+            flipped_diagonally: false,
+            flipped_horizontally: false,
+            flipped_vertically: false,
         }
-    }
-
-    pub fn left(&self) -> f32 {
-        self.origin.x
-    }
-
-    pub fn bottom(&self) -> f32 {
-        self.origin.y
-    }
-
-    pub fn right(&self) -> f32 {
-        self.origin.x + self.extent.x
-    }
-
-    pub fn top(&self) -> f32 {
-        self.origin.y + self.extent.y
     }
 
     pub fn contains(&self, point: &Point2<f32>) -> bool {
@@ -249,32 +246,32 @@ impl SpriteDesc {
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
     pub fn flipped_horizontally(&self) -> Self {
         Self {
-            shape: self.shape,
+            shape: self.shape.flipped_horizontally(),
             origin: self.origin,
             extent: self.extent,
-            tex_coord_origin: Point2::new(
-                self.tex_coord_origin.x + self.tex_coord_extent.x,
-                self.tex_coord_origin.y,
-            ),
-            tex_coord_extent: Vector2::new(-self.tex_coord_extent.x, self.tex_coord_extent.y),
+            tex_coord_origin: self.tex_coord_origin,
+            tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            flipped_diagonally: self.flipped_diagonally,
+            flipped_horizontally: !self.flipped_horizontally,
+            flipped_vertically: self.flipped_vertically,
         }
     }
 
     // returns a copy of self, flipped vertically. This only affects shape and texture coordinates
     pub fn flipped_vertically(&self) -> Self {
         Self {
-            shape: self.shape,
+            shape: self.shape.flipped_vertically(),
             origin: self.origin,
             extent: self.extent,
-            tex_coord_origin: Point2::new(
-                self.tex_coord_origin.x,
-                self.tex_coord_origin.y + self.tex_coord_extent.y,
-            ),
-            tex_coord_extent: Vector2::new(self.tex_coord_extent.x, -self.tex_coord_extent.y),
+            tex_coord_origin: self.tex_coord_origin,
+            tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            flipped_diagonally: self.flipped_diagonally,
+            flipped_horizontally: self.flipped_horizontally,
+            flipped_vertically: !self.flipped_vertically,
         }
     }
 
@@ -283,13 +280,16 @@ impl SpriteDesc {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
         Self {
-            shape: self.shape,
+            shape: self.shape.flipped_diagonally(),
             origin: self.origin,
             extent: self.extent,
-            tex_coord_origin: Point2::new(self.tex_coord_origin.y, self.tex_coord_origin.x),
-            tex_coord_extent: Vector2::new(self.tex_coord_extent.y, self.tex_coord_extent.x),
+            tex_coord_origin: self.tex_coord_origin,
+            tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            flipped_diagonally: !self.flipped_diagonally,
+            flipped_horizontally: self.flipped_horizontally,
+            flipped_vertically: self.flipped_vertically,
         }
     }
 }
@@ -876,19 +876,33 @@ impl SpriteMesh {
                 sprite.origin.z,
             );
 
-            let tc_a = vec2::<f32>(sprite.tex_coord_origin.x, 1.0 - sprite.tex_coord_origin.y);
-            let tc_b = vec2::<f32>(
+            let mut tc_a = vec2::<f32>(sprite.tex_coord_origin.x, 1.0 - sprite.tex_coord_origin.y);
+            let mut tc_b = vec2::<f32>(
                 sprite.tex_coord_origin.x + sprite.tex_coord_extent.x,
-                1.0 - sprite.tex_coord_origin.y,
+                1.0 - (sprite.tex_coord_origin.y),
             );
-            let tc_c = vec2::<f32>(
+            let mut tc_c = vec2::<f32>(
                 sprite.tex_coord_origin.x + sprite.tex_coord_extent.x,
                 1.0 - (sprite.tex_coord_origin.y + sprite.tex_coord_extent.y),
             );
-            let tc_d = vec2::<f32>(
+            let mut tc_d = vec2::<f32>(
                 sprite.tex_coord_origin.x,
                 1.0 - (sprite.tex_coord_origin.y + sprite.tex_coord_extent.y),
             );
+
+            if sprite.flipped_diagonally {
+                std::mem::swap(&mut tc_a, &mut tc_c);
+            }
+
+            if sprite.flipped_horizontally {
+                std::mem::swap(&mut tc_a, &mut tc_b);
+                std::mem::swap(&mut tc_d, &mut tc_c);
+            }
+
+            if sprite.flipped_vertically {
+                std::mem::swap(&mut tc_a, &mut tc_d);
+                std::mem::swap(&mut tc_b, &mut tc_c);
+            }
 
             let sv_a = SpriteVertex::new(p_a, tc_a, sprite.color);
             let sv_b = SpriteVertex::new(p_b, tc_b, sprite.color);

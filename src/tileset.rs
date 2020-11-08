@@ -231,7 +231,7 @@ impl TileSet {
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
         let px_x = col * self.tile_width + col * self.spacing;
-        let px_y = row * self.tile_height + row * self.spacing;
+        let px_y = self.image_height - ((row + 1) * self.tile_height + row * self.spacing);
 
         (
             cgmath::Point2::new(
