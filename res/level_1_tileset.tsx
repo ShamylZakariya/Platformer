@@ -178,4 +178,14 @@
    <property name="collision_shape" value="none"/>
   </properties>
  </tile>
+ <tile id="35">
+  <properties>
+   <property name="collision_shape" value="square"/>
+  </properties>
+ </tile>
+ <tile id="36">
+  <properties>
+   <property name="collision_shape" value="none"/>
+  </properties>
+ </tile>
 </tileset>

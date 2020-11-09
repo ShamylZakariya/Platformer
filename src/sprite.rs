@@ -108,7 +108,7 @@ impl SpriteShape {
 
 #[derive(Copy, Clone, Debug)]
 pub struct SpriteDesc {
-    pub shape: SpriteShape,
+    pub collision_shape: SpriteShape,
     pub origin: Point3<f32>,
     pub extent: Vector2<f32>,
     pub tex_coord_origin: Point2<f32>,
@@ -122,7 +122,7 @@ pub struct SpriteDesc {
 
 impl PartialEq for SpriteDesc {
     fn eq(&self, other: &Self) -> bool {
-        self.shape == other.shape
+        self.collision_shape == other.collision_shape
             && self.mask == other.mask
             && relative_eq!(self.origin, other.origin)
             && relative_eq!(self.extent, other.extent)
@@ -146,7 +146,7 @@ fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
 impl SpriteDesc {
     /// Creates a new SpriteDesc at an arbitrary origin with a specified extent
     pub fn new(
-        shape: SpriteShape,
+        collision_shape: SpriteShape,
         origin: Point3<f32>,
         extent: Vector2<f32>,
         tex_coord_origin: Point2<f32>,
@@ -155,7 +155,7 @@ impl SpriteDesc {
         mask: u32,
     ) -> Self {
         Self {
-            shape,
+            collision_shape,
             origin,
             extent,
             tex_coord_origin,
@@ -170,7 +170,7 @@ impl SpriteDesc {
 
     /// Creates a 1x1 sprite at a given integral origin point.
     pub fn unit(
-        shape: SpriteShape,
+        collision_shape: SpriteShape,
         origin: Point2<i32>,
         z: f32,
         tex_coord_origin: Point2<f32>,
@@ -179,7 +179,7 @@ impl SpriteDesc {
         mask: u32,
     ) -> Self {
         Self {
-            shape,
+            collision_shape,
             origin: Point3::new(origin.x as f32, origin.y as f32, z),
             extent: Vector2::new(1.0, 1.0),
             tex_coord_origin,
@@ -199,7 +199,7 @@ impl SpriteDesc {
             && point.y <= self.origin.y + self.extent.y
         {
             let p = Vector2::new(point.x, point.y);
-            return match self.shape {
+            return match self.collision_shape {
                 SpriteShape::Square => true,
 
                 SpriteShape::NorthEast => {
@@ -246,7 +246,7 @@ impl SpriteDesc {
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
     pub fn flipped_horizontally(&self) -> Self {
         Self {
-            shape: self.shape.flipped_horizontally(),
+            collision_shape: self.collision_shape.flipped_horizontally(),
             origin: self.origin,
             extent: self.extent,
             tex_coord_origin: self.tex_coord_origin,
@@ -262,7 +262,7 @@ impl SpriteDesc {
     // returns a copy of self, flipped vertically. This only affects shape and texture coordinates
     pub fn flipped_vertically(&self) -> Self {
         Self {
-            shape: self.shape.flipped_vertically(),
+            collision_shape: self.collision_shape.flipped_vertically(),
             origin: self.origin,
             extent: self.extent,
             tex_coord_origin: self.tex_coord_origin,
@@ -280,7 +280,7 @@ impl SpriteDesc {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
         Self {
-            shape: self.shape.flipped_diagonally(),
+            collision_shape: self.collision_shape.flipped_diagonally(),
             origin: self.origin,
             extent: self.extent,
             tex_coord_origin: self.tex_coord_origin,
@@ -351,7 +351,7 @@ mod sprite_desc_tests {
     fn test_containment(mut sprite: SpriteDesc) {
         let (p0, p1, p2, p3, p4, p5, p6, p7) = test_points(&sprite);
 
-        sprite.shape = SpriteShape::Square;
+        sprite.collision_shape = SpriteShape::Square;
         assert!(sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -361,7 +361,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.shape = SpriteShape::NorthEast;
+        sprite.collision_shape = SpriteShape::NorthEast;
         assert!(sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(!sprite.contains(&p2));
@@ -371,7 +371,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.shape = SpriteShape::SouthEast;
+        sprite.collision_shape = SpriteShape::SouthEast;
         assert!(sprite.contains(&p0));
         assert!(!sprite.contains(&p1));
         assert!(!sprite.contains(&p2));
@@ -381,7 +381,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.shape = SpriteShape::SouthWest;
+        sprite.collision_shape = SpriteShape::SouthWest;
         assert!(!sprite.contains(&p0));
         assert!(!sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -391,7 +391,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.shape = SpriteShape::NorthWest;
+        sprite.collision_shape = SpriteShape::NorthWest;
         assert!(!sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -910,54 +910,18 @@ impl SpriteMesh {
             let sv_d = SpriteVertex::new(p_d, tc_d, sprite.color);
             let idx = vertices.len();
 
-            match sprite.shape {
-                SpriteShape::Square => {
-                    vertices.push(sv_a);
-                    vertices.push(sv_b);
-                    vertices.push(sv_c);
-                    vertices.push(sv_d);
+            vertices.push(sv_a);
+            vertices.push(sv_b);
+            vertices.push(sv_c);
+            vertices.push(sv_d);
 
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 1) as u32);
-                    indices.push((idx + 2) as u32);
+            indices.push((idx + 0) as u32);
+            indices.push((idx + 1) as u32);
+            indices.push((idx + 2) as u32);
 
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 2) as u32);
-                    indices.push((idx + 3) as u32);
-                }
-                SpriteShape::NorthEast => {
-                    vertices.push(sv_a);
-                    vertices.push(sv_b);
-                    vertices.push(sv_d);
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 1) as u32);
-                    indices.push((idx + 2) as u32);
-                }
-                SpriteShape::SouthEast => {
-                    vertices.push(sv_a);
-                    vertices.push(sv_c);
-                    vertices.push(sv_d);
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 1) as u32);
-                    indices.push((idx + 2) as u32);
-                }
-                SpriteShape::SouthWest => {
-                    vertices.push(sv_b);
-                    vertices.push(sv_c);
-                    vertices.push(sv_d);
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 1) as u32);
-                    indices.push((idx + 2) as u32);
-                }
-                SpriteShape::NorthWest => {
-                    vertices.push(sv_a);
-                    vertices.push(sv_b);
-                    vertices.push(sv_c);
-                    indices.push((idx + 0) as u32);
-                    indices.push((idx + 1) as u32);
-                    indices.push((idx + 2) as u32);
-                }
-            }
+            indices.push((idx + 0) as u32);
+            indices.push((idx + 2) as u32);
+            indices.push((idx + 3) as u32);
         }
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {

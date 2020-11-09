@@ -302,11 +302,6 @@ impl Map {
                         mask,
                     );
 
-                    println!(
-                        "created tile ({},{}): flips (d: {}, h: {} v: {}) {:#?}",
-                        x, y, flipped_diagonally, flipped_horizontally, flipped_vertically, sd
-                    );
-
                     if flipped_diagonally {
                         sd = sd.flipped_diagonally();
                     }
