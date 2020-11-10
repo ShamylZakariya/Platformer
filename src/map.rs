@@ -255,7 +255,7 @@ impl Map {
     }
 
     /// Generates a vector of SpriteDesc for the contents of the specified layer
-    pub fn generate_sprites(&self, layer: &Layer) -> Vec<sprite::SpriteDesc> {
+    pub fn generate_sprites(&self, layer: &Layer, z_depth: f32) -> Vec<sprite::SpriteDesc> {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         let flipped_horizontally_flag = 0x80000000 as u32;
         let flipped_vertically_flag = 0x40000000 as u32;
@@ -295,7 +295,7 @@ impl Map {
                     let mut sd = sprite::SpriteDesc::unit(
                         tile.shape(),
                         cgmath::Point2::new(x as i32, (layer.height - y) as i32),
-                        1.0,
+                        z_depth,
                         tex_coord_origin,
                         tex_coord_extent,
                         cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),

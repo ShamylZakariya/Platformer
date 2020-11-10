@@ -1,9 +1,36 @@
-use cgmath::{relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
-use std::mem;
 
+use crate::camera;
 use crate::texture;
 use wgpu::util::DeviceExt;
+
+// --------------------------------------------------------------------------------------------------------------------
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct Uniforms {
+    // use vec4 for 16-byte spacing requirement
+    view_position: cgmath::Vector4<f32>,
+    view_proj: cgmath::Matrix4<f32>,
+}
+
+unsafe impl bytemuck::Pod for Uniforms {}
+unsafe impl bytemuck::Zeroable for Uniforms {}
+
+impl Uniforms {
+    pub fn new() -> Self {
+        Self {
+            view_position: Zero::zero(),
+            view_proj: cgmath::Matrix4::identity(),
+        }
+    }
+
+    pub fn update_view_proj(&mut self, camera: &camera::Camera, projection: &camera::Projection) {
+        self.view_position = camera.position.to_homogeneous(); // converts to vec4
+        self.view_proj = projection.calc_matrix() * camera.calc_matrix();
+    }
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 

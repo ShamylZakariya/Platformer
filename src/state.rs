@@ -1,6 +1,3 @@
-use cgmath::prelude::*;
-// use imgui::*;
-// use imgui_winit_support::WinitPlatform;
 use std::path::Path;
 use wgpu::util::DeviceExt;
 use winit::{
@@ -74,33 +71,6 @@ fn create_render_pipeline(
 
 // --------------------------------------------------------------------------------------------------------------------
 
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-struct Uniforms {
-    // use vec4 for 16-byte spacing requirement
-    view_position: cgmath::Vector4<f32>,
-    view_proj: cgmath::Matrix4<f32>,
-}
-
-unsafe impl bytemuck::Pod for Uniforms {}
-unsafe impl bytemuck::Zeroable for Uniforms {}
-
-impl Uniforms {
-    fn new() -> Self {
-        Self {
-            view_position: Zero::zero(),
-            view_proj: cgmath::Matrix4::identity(),
-        }
-    }
-
-    fn update_view_proj(&mut self, camera: &camera::Camera, projection: &camera::Projection) {
-        self.view_position = camera.position.to_homogeneous(); // converts to vec4
-        self.view_proj = projection.calc_matrix() * camera.calc_matrix();
-    }
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-
 #[derive(Copy, Clone, Debug)]
 struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
@@ -146,7 +116,7 @@ pub struct State {
     mouse_pressed: bool,
 
 
-    uniforms: Uniforms,
+    uniforms: sprite::Uniforms,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
 
@@ -208,7 +178,7 @@ impl State {
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 124.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
 
-        let mut uniforms = Uniforms::new();
+        let mut uniforms = sprite::Uniforms::new();
         uniforms.update_view_proj(&camera, &projection);
 
         let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -287,8 +257,8 @@ impl State {
                 .layer_named("Level")
                 .expect("Expected layer named 'Level'");
 
-            let bg_sprites = map.generate_sprites(bg_layer);
-            let level_sprites = map.generate_sprites(level_layer);
+            let bg_sprites = map.generate_sprites(bg_layer, 1.0);
+            let level_sprites = map.generate_sprites(level_layer, 0.0);
             let mut all_sprites = vec![];
 
             for s in &bg_sprites {
