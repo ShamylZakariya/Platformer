@@ -12,7 +12,7 @@ use winit::{
 use crate::camera;
 use crate::map;
 use crate::sprite;
-use crate::sprite::{DrawSprite, Vertex};
+use crate::sprite::Vertex;
 use crate::texture;
 
 // ---------------------------------------------------------------------------------------------------------------------
