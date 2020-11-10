@@ -8,6 +8,7 @@ use winit::{
 mod camera;
 mod map;
 mod sprite;
+mod sprite_entity;
 mod state;
 mod texture;
 mod tileset;

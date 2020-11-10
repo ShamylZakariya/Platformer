@@ -958,6 +958,17 @@ impl SpriteCollection {
     pub fn new(meshes: Vec<SpriteMesh>, materials: Vec<SpriteMaterial>) -> Self {
         Self { meshes, materials }
     }
+
+    pub fn draw<'a, 'b>(&'a self, render_pass: &'b mut wgpu::RenderPass<'a>, uniforms: &'a wgpu::BindGroup) {
+        for mesh in &self.meshes {
+            let material = &self.materials[mesh.material];
+            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer.slice(..));
+            render_pass.set_bind_group(0, &material.bind_group, &[]);
+            render_pass.set_bind_group(1, &uniforms, &[]);
+            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
+        }
+    }
 }
 
 impl Default for SpriteCollection {
@@ -965,55 +976,6 @@ impl Default for SpriteCollection {
         Self {
             meshes: vec![],
             materials: vec![],
-        }
-    }
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-
-pub trait DrawSprite<'a, 'b>
-where
-    'b: 'a,
-{
-    fn draw_sprite(
-        &mut self,
-        sprite_mesh: &'b SpriteMesh,
-        material: &'b SpriteMaterial,
-        uniforms: &'b wgpu::BindGroup,
-    );
-
-    fn draw_sprite_collection(
-        &mut self,
-        sprites: &'b SpriteCollection,
-        uniforms: &'b wgpu::BindGroup,
-    );
-}
-
-impl<'a, 'b> DrawSprite<'a, 'b> for wgpu::RenderPass<'a>
-where
-    'b: 'a,
-{
-    fn draw_sprite(
-        &mut self,
-        sprite_mesh: &'b SpriteMesh,
-        material: &'b SpriteMaterial,
-        uniforms: &'b wgpu::BindGroup,
-    ) {
-        self.set_vertex_buffer(0, sprite_mesh.vertex_buffer.slice(..));
-        self.set_index_buffer(sprite_mesh.index_buffer.slice(..));
-        self.set_bind_group(0, &material.bind_group, &[]);
-        self.set_bind_group(1, &uniforms, &[]);
-        self.draw_indexed(0..sprite_mesh.num_elements, 0, 0..1);
-    }
-
-    fn draw_sprite_collection(
-        &mut self,
-        sprites: &'b SpriteCollection,
-        uniforms: &'b wgpu::BindGroup,
-    ) {
-        for sprite_mesh in &sprites.meshes {
-            let material = &sprites.materials[sprite_mesh.material];
-            self.draw_sprite(sprite_mesh, material, uniforms);
         }
     }
 }
