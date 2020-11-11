@@ -40,6 +40,10 @@ impl Tile {
     pub fn has_property(&self, name: &str) -> bool {
         self.properties.get(name).is_some()
     }
+
+    pub fn get_property(&self, name: &str) -> Option<&String> {
+        self.properties.get(name)
+    }
 }
 
 #[derive(Debug)]
@@ -214,6 +218,9 @@ impl TileSet {
         let spacing = spacing.context("Expected to read a 'spacing' attribute on <tileset>")?;
         let columns = columns.context("Expected to read a 'columns' attribute on <tileset>")?;
 
+        // ensure tiles are sorted
+        tiles.sort_by(|a, b| a.id.cmp(&b.id));
+
         Ok(TileSet {
             image_path,
             image_width,
@@ -224,6 +231,28 @@ impl TileSet {
             spacing,
             columns,
         })
+    }
+
+    /// Returns the column and row of the given tile, where (0,0) is the first or top-left tile in the tileset.
+    pub fn tile_position(&self, tile: &Tile) -> cgmath::Point2<u32> {
+        let col = tile.id % self.columns;
+        let row = tile.id / self.columns;
+        return cgmath::Point2::new(col, row);
+    }
+
+    /// Returns the tile at a given row/col position (where (0,0) is the first or top-left tile in the tileset)
+    /// or None if the position is outside the tileset.
+    pub fn get_tile_at_position(&self, position: cgmath::Point2<u32>) -> Option<&Tile> {
+        if position.x >= self.columns {
+            None
+        } else {
+            let idx = (position.y * self.columns + position.x) as usize;
+            if idx >= self.tiles.len() {
+                None
+            } else {
+                Some(&self.tiles[idx])
+            }
+        }
     }
 
     pub fn tex_coords_for_tile(&self, tile: &Tile) -> (cgmath::Point2<f32>, cgmath::Vector2<f32>) {

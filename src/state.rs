@@ -115,7 +115,6 @@ pub struct State {
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
-
     uniforms: sprite::Uniforms,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: wgpu::BindGroup,
@@ -216,10 +215,7 @@ impl State {
 
         let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[
-                    &material_bind_group_layout,
-                    &uniform_bind_group_layout,
-                ],
+                bind_group_layouts: &[&material_bind_group_layout, &uniform_bind_group_layout],
                 label: Some("Render Pipeline Layout"),
                 push_constant_ranges: &[],
             });
@@ -395,11 +391,12 @@ impl State {
             .update_camera(&mut self.camera, &mut self.projection, dt);
         self.uniforms
             .update_view_proj(&self.camera, &self.projection);
-        self.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[self.uniforms]),
-        );
+
+        // self.queue.write_buffer(
+        //     &self.uniform_buffer,
+        //     0,
+        //     bytemuck::cast_slice(&[self.uniforms]),
+        // );
 
         self.update_ui_display_state(window, dt)
     }
@@ -426,6 +423,13 @@ impl State {
         //
 
         {
+            self.uniforms.set_color(&cgmath::Vector4::new(0.0, 1.0, 1.0, 1.0));
+            self.queue.write_buffer(
+                &self.uniform_buffer,
+                0,
+                bytemuck::cast_slice(&[self.uniforms]),
+            );
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
@@ -451,7 +455,8 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.sprite_render_pipeline);
-            self.sprites.draw(&mut render_pass, &self.uniform_bind_group);
+            self.sprites
+                .draw(&mut render_pass, &self.uniform_bind_group);
         }
 
         //

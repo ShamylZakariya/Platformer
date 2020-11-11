@@ -13,6 +13,8 @@ pub struct Uniforms {
     // use vec4 for 16-byte spacing requirement
     view_position: cgmath::Vector4<f32>,
     view_proj: cgmath::Matrix4<f32>,
+    model_position: cgmath::Vector4<f32>,
+    color: cgmath::Vector4<f32>,
 }
 
 unsafe impl bytemuck::Pod for Uniforms {}
@@ -23,12 +25,24 @@ impl Uniforms {
         Self {
             view_position: Zero::zero(),
             view_proj: cgmath::Matrix4::identity(),
+            model_position: cgmath::Vector4::zero(),
+            color: cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
         }
     }
 
     pub fn update_view_proj(&mut self, camera: &camera::Camera, projection: &camera::Projection) {
         self.view_position = camera.position.to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
+    }
+
+    pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) {
+        self.color = *color;
+    }
+
+    pub fn set_model_position(&mut self, position: &cgmath::Point3<f32>) {
+        self.model_position.x = position.x;
+        self.model_position.y = position.y;
+        self.model_position.z = position.z;
     }
 }
 

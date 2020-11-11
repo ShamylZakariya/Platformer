@@ -124,6 +124,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="stand"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="18">
@@ -145,6 +146,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="shoot"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="21">
@@ -166,6 +168,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="walk_0"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="24">
@@ -187,6 +190,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="walk_1"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="27">
@@ -208,6 +212,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="walk_2"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="30">
@@ -332,6 +337,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="50">
@@ -353,6 +359,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="fly_1"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="53">
@@ -374,6 +381,7 @@
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="wall"/>
    <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="56">
