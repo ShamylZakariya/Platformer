@@ -24,6 +24,46 @@ impl Uniforms {
         }
     }
 
+    pub fn create_resources(
+        &self,
+        device: &wgpu::Device,
+    ) -> (wgpu::Buffer, wgpu::BindGroupLayout, wgpu::BindGroup) {
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sprite Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[*self]),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let uniform_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("Sprite Uniform Bind Group Layout"),
+            });
+
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &uniform_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
+            }],
+            label: Some("Sprite Uniform Bind Group"),
+        });
+
+        (
+            uniform_buffer,
+            uniform_bind_group_layout,
+            uniform_bind_group,
+        )
+    }
+
     pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) {
         self.color = *color;
     }

@@ -176,6 +176,7 @@ impl State {
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
         // Build camera, and camera uniform storage
+        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
 
         let camera = camera::Camera::new((62.0, 11.0, -1.0), (0.0, 0.0, 1.0));
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 124.0, 0.1, 100.0);
@@ -183,70 +184,14 @@ impl State {
 
         let mut camera_uniforms = camera::Uniforms::new();
         camera_uniforms.update_view_proj(&camera, &projection);
-
-        let camera_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniforms]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let camera_uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("camera_uniform_bind_group_layout"),
-            });
-
-        let camera_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(camera_uniform_buffer.slice(..)),
-            }],
-            label: Some("camera_uniform_bind_group"),
-        });
+        let (camera_uniform_buffer, camera_uniform_bind_group_layout, camera_uniform_bind_group) =
+            camera_uniforms.create_resources(&device);
 
         let sprite_uniforms = sprite::Uniforms::new();
-
-        let sprite_uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[sprite_uniforms]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let sprite_uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("sprite_uniform_bind_group_layout"),
-            });
-
-        let sprite_uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &sprite_uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(sprite_uniform_buffer.slice(..)),
-            }],
-            label: Some("sprite_uniform_bind_group"),
-        });
+        let (sprite_uniform_buffer, sprite_uniform_bind_group_layout, sprite_uniform_bind_group) =
+            sprite_uniforms.create_resources(&device);
 
         // Build the sprite render pipeline
-
-        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
 
         let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
