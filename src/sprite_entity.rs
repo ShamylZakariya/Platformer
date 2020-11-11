@@ -67,7 +67,8 @@ impl SpriteEntity {
         &'a self,
         what: &str,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        uniforms: &'a wgpu::BindGroup,
+        camera_uniforms: &'a wgpu::BindGroup,
+        sprite_uniforms: &'a wgpu::BindGroup,
     ) where
         'a: 'b,
     {
@@ -75,7 +76,8 @@ impl SpriteEntity {
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_index_buffer(mesh.index_buffer.slice(..));
             render_pass.set_bind_group(0, &self.material.bind_group, &[]);
-            render_pass.set_bind_group(1, &uniforms, &[]);
+            render_pass.set_bind_group(1, &camera_uniforms, &[]);
+            render_pass.set_bind_group(2, &sprite_uniforms, &[]);
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
     }

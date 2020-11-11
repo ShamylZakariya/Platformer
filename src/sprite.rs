@@ -1,7 +1,6 @@
 use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
 use std::collections::HashMap;
 
-use crate::camera;
 use crate::texture;
 use wgpu::util::DeviceExt;
 
@@ -10,9 +9,6 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Uniforms {
-    // use vec4 for 16-byte spacing requirement
-    view_position: cgmath::Vector4<f32>,
-    view_proj: cgmath::Matrix4<f32>,
     model_position: cgmath::Vector4<f32>,
     color: cgmath::Vector4<f32>,
 }
@@ -23,16 +19,9 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     pub fn new() -> Self {
         Self {
-            view_position: Zero::zero(),
-            view_proj: cgmath::Matrix4::identity(),
             model_position: cgmath::Vector4::zero(),
             color: cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
         }
-    }
-
-    pub fn update_view_proj(&mut self, camera: &camera::Camera, projection: &camera::Projection) {
-        self.view_position = camera.position.to_homogeneous(); // converts to vec4
-        self.view_proj = projection.calc_matrix() * camera.calc_matrix();
     }
 
     pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) {
@@ -1000,13 +989,19 @@ impl SpriteCollection {
         Self { meshes, materials }
     }
 
-    pub fn draw<'a, 'b>(&'a self, render_pass: &'b mut wgpu::RenderPass<'a>, uniforms: &'a wgpu::BindGroup) {
+    pub fn draw<'a, 'b>(
+        &'a self,
+        render_pass: &'b mut wgpu::RenderPass<'a>,
+        camera_uniforms: &'a wgpu::BindGroup,
+        sprite_uniforms: &'a wgpu::BindGroup,
+    ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_index_buffer(mesh.index_buffer.slice(..));
             render_pass.set_bind_group(0, &material.bind_group, &[]);
-            render_pass.set_bind_group(1, &uniforms, &[]);
+            render_pass.set_bind_group(1, &camera_uniforms, &[]);
+            render_pass.set_bind_group(2, &sprite_uniforms, &[]);
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
     }
