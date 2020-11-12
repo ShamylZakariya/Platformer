@@ -6,6 +6,73 @@ use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
 
+pub fn create_render_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    color_format: wgpu::TextureFormat,
+    depth_format: Option<wgpu::TextureFormat>,
+) -> wgpu::RenderPipeline {
+    let vertex_descs = &[SpriteVertex::desc()];
+    let vs_src = wgpu::include_spirv!("shaders/sprite.vs.spv");
+    let fs_src = wgpu::include_spirv!("shaders/sprite.fs.spv");
+
+
+    let vs_module = device.create_shader_module(vs_src);
+    let fs_module = device.create_shader_module(fs_src);
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("Render Pipeline"),
+        layout: Some(&layout),
+        vertex_stage: wgpu::ProgrammableStageDescriptor {
+            module: &vs_module,
+            entry_point: "main",
+        },
+        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+            module: &fs_module,
+            entry_point: "main",
+        }),
+        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+            // Since we're rendering sprites, we don't care about backface culling
+            front_face: wgpu::FrontFace::Cw,
+            cull_mode: wgpu::CullMode::None,
+            depth_bias: 0,
+            depth_bias_slope_scale: 0.0,
+            depth_bias_clamp: 0.0,
+            clamp_depth: false,
+        }),
+        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+        color_states: &[wgpu::ColorStateDescriptor {
+            format: color_format,
+            color_blend: wgpu::BlendDescriptor {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
+            alpha_blend: wgpu::BlendDescriptor {
+                src_factor: wgpu::BlendFactor::One,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
+            write_mask: wgpu::ColorWrite::ALL,
+        }],
+        depth_stencil_state: depth_format.map(|format| wgpu::DepthStencilStateDescriptor {
+            format,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilStateDescriptor::default(),
+        }),
+        sample_count: 1,
+        sample_mask: !0,
+        alpha_to_coverage_enabled: false,
+        vertex_state: wgpu::VertexStateDescriptor {
+            index_format: wgpu::IndexFormat::Uint32,
+            vertex_buffers: vertex_descs,
+        },
+    })
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Uniforms {
