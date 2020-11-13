@@ -60,16 +60,16 @@ pub struct State {
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
+    sprite_render_pipeline: wgpu::RenderPipeline,
+
     // Stage rendering
     stage_uniforms: sprite::Uniforms,
-    stage_render_pipeline: wgpu::RenderPipeline,
     stage_sprite_collection: sprite::SpriteCollection,
     stage_hit_tester: sprite::SpriteHitTester,
     map: map::Map,
 
     // Entity rendering
     entity_uniforms: sprite::Uniforms,
-    entity_render_pipeline: wgpu::RenderPipeline,
     entity_material: Rc<sprite::SpriteMaterial>,
     firebrand: sprite_entity::SpriteEntity,
 
@@ -196,24 +196,6 @@ impl State {
         // Entities
         let entity_uniforms = sprite::Uniforms::new(&device);
 
-        let entity_render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[
-                    &material_bind_group_layout,
-                    &camera_uniforms.bind_group_layout,
-                    &entity_uniforms.bind_group_layout,
-                ],
-                label: Some("Entity Sprite Pipeline Layout"),
-                push_constant_ranges: &[],
-            });
-
-        let entity_render_pipeline = sprite::create_render_pipeline(
-            &device,
-            &entity_render_pipeline_layout,
-            sc_desc.format,
-            Some(texture::Texture::DEPTH_FORMAT),
-        );
-
         let entity_tileset = tileset::TileSet::new_tsx("./res/entities.tsx")
             .expect("Expected to load entities tileset");
 
@@ -287,13 +269,12 @@ impl State {
 
             stage_uniforms,
 
-            stage_render_pipeline,
+            sprite_render_pipeline: stage_render_pipeline,
             stage_sprite_collection,
             stage_hit_tester,
             map,
 
             entity_uniforms,
-            entity_render_pipeline,
             entity_material,
             firebrand,
 
@@ -438,8 +419,9 @@ impl State {
                 }),
             });
 
+            render_pass.set_pipeline(&self.sprite_render_pipeline);
+
             // Render stage
-            render_pass.set_pipeline(&self.stage_render_pipeline);
             self.stage_sprite_collection.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
@@ -447,7 +429,6 @@ impl State {
             );
 
             // Render Entities
-            render_pass.set_pipeline(&self.entity_render_pipeline);
             self.firebrand.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
