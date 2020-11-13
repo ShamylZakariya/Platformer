@@ -23,7 +23,6 @@ impl SpriteEntity {
         material: Rc<sprite::SpriteMaterial>,
         device: &wgpu::Device,
         named: &str,
-        z_depth: f32,
         mask: u32,
     ) -> Self {
         let named = named.to_string();
@@ -57,14 +56,13 @@ impl SpriteEntity {
                 let tile_position = tileset.get_tile_position(tile).cast::<i32>().unwrap();
 
                 let sprite_position = tile_position - root_position;
-                let sprite_position =
-                    cgmath::Point2::new(sprite_position.x as i32, sprite_position.y as i32);
+
                 let (tex_coords, tex_extents) = tileset.get_tex_coords_for_tile(tile);
                 // now create a SpriteDesc at this position
                 let sd = sprite::SpriteDesc::unit(
                     tile.shape(),
-                    sprite_position,
-                    z_depth,
+                    cgmath::Point2::new(sprite_position.x, -sprite_position.y),
+                    0.0,
                     tex_coords,
                     tex_extents,
                     cgmath::vec4(1.0, 1.0, 1.0, 1.0),

@@ -217,7 +217,6 @@ impl State {
             entity_material.clone(),
             &device,
             "firebrand",
-            0.5,
             0,
         );
 
@@ -365,7 +364,7 @@ impl State {
 
         self.entity_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(2.0, 8.0, 0.0));
+            .set_model_position(&cgmath::Point3::new(2.0, 8.0, 0.5));
 
         self.entity_uniforms.write(&mut self.queue);
 
