@@ -25,12 +25,7 @@ impl SpriteEntity {
         named: &str,
         mask: u32,
     ) -> Self {
-        let named = named.to_string();
-        let tiles = tileset
-            .tiles
-            .iter()
-            .filter(|tile| tile.get_property("name") == Some(&named))
-            .collect::<Vec<_>>();
+        let tiles = tileset.get_tiles_with_property("name", named);
 
         // collect all tiles for each cycle, and root tiles too
         let mut tiles_by_cycle: HashMap<&str, Vec<&tileset::Tile>> = HashMap::new();

@@ -275,9 +275,12 @@ impl Map {
                         | flipped_horizontally_flag);
 
                 if self.tileset_first_gid <= tile_id
-                    && tile_id - self.tileset_first_gid < self.tileset.tiles.len() as u32
+                    && tile_id - self.tileset_first_gid < self.tileset.tile_count
                 {
-                    let tile = &self.tileset.tiles[(tile_id - self.tileset_first_gid) as usize];
+                    let tile = &self
+                        .tileset
+                        .get_tile(tile_id - self.tileset_first_gid)
+                        .unwrap();
                     let (tex_coord_origin, tex_coord_extent) =
                         self.tileset.get_tex_coords_for_tile(tile);
                     let mut mask = 0;

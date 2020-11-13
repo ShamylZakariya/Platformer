@@ -21,19 +21,19 @@ impl Tile {
         }
     }
 
-    pub fn shape(&self) -> sprite::SpriteShape {
+    pub fn shape(&self) -> sprite::SpriteCollisionShape {
         let collision_shape = self.properties.get("collision_shape");
         if let Some(collision_shape) = collision_shape {
             match collision_shape.as_str() {
-                "square" => sprite::SpriteShape::Square,
-                "triangle_ne" => sprite::SpriteShape::NorthEast,
-                "triangle_se" => sprite::SpriteShape::SouthEast,
-                "triangle_sw" => sprite::SpriteShape::SouthWest,
-                "triangle_nw" => sprite::SpriteShape::NorthWest,
-                _ => sprite::SpriteShape::Square,
+                "square" => sprite::SpriteCollisionShape::Square,
+                "triangle_ne" => sprite::SpriteCollisionShape::NorthEast,
+                "triangle_se" => sprite::SpriteCollisionShape::SouthEast,
+                "triangle_sw" => sprite::SpriteCollisionShape::SouthWest,
+                "triangle_nw" => sprite::SpriteCollisionShape::NorthWest,
+                _ => sprite::SpriteCollisionShape::None,
             }
         } else {
-            sprite::SpriteShape::Square
+            sprite::SpriteCollisionShape::None
         }
     }
 
@@ -51,11 +51,12 @@ pub struct TileSet {
     pub image_path: String,
     pub image_width: u32,
     pub image_height: u32,
+    pub tile_count: u32,
     pub tile_width: u32,
     pub tile_height: u32,
-    pub tiles: Vec<Tile>,
     pub spacing: u32,
     pub columns: u32,
+    tiles: HashMap<u32, Tile>,
 }
 
 impl TileSet {
@@ -71,6 +72,7 @@ impl TileSet {
         let mut image_height: Option<u32> = None;
         let mut tile_width: Option<u32> = None;
         let mut tile_height: Option<u32> = None;
+        let mut tile_count: Option<u32> = None;
         let mut tiles: Vec<Tile> = vec![];
         let mut current_tile: Option<Tile> = None;
         let mut spacing: Option<u32> = None;
@@ -116,6 +118,13 @@ impl TileSet {
                                             attr.value
                                                 .parse()
                                                 .context("Expected to parse 'tileheight' to u32")?,
+                                        )
+                                    }
+                                    "tilecount" => {
+                                        tile_count = Some(
+                                            attr.value
+                                                .parse()
+                                                .context("Expected to parse 'tilecount' to u32")?,
                                         )
                                     }
                                     _ => {}
@@ -212,6 +221,8 @@ impl TileSet {
             image_width.context("Expected <image> element to have width attribute")?;
         let image_height =
             image_height.context("Expected <image> element to have height attribute")?;
+        let tile_count =
+            tile_count.context("Expected <image> element to have tilecount attribute")?;
         let tile_width =
             tile_width.context("Expected <image> element to have tilewidth attribute")?;
         let tile_height =
@@ -220,18 +231,40 @@ impl TileSet {
         let columns = columns.context("Expected to read a 'columns' attribute on <tileset>")?;
 
         // ensure tiles are sorted
-        tiles.sort_by(|a, b| a.id.cmp(&b.id));
+        let mut tiles_map = HashMap::new();
+        for tile in tiles {
+            tiles_map.insert(tile.id, tile);
+        }
+        for idx in 0..tile_count {
+            tiles_map.entry(idx).or_insert(Tile::new(idx));
+        }
 
         Ok(TileSet {
             image_path,
             image_width,
             image_height,
+            tile_count,
             tile_width,
             tile_height,
-            tiles,
+            tiles: tiles_map,
             spacing,
             columns,
         })
+    }
+
+    pub fn get_tile(&self, id: u32) -> Option<&Tile> {
+        self.tiles.get(&id)
+    }
+
+    pub fn get_tiles(&self) -> Vec<&Tile> {
+        self.tiles.values().collect()
+    }
+
+    pub fn get_tiles_with_property(&self, property_key: &str, property_value: &str) -> Vec<&Tile> {
+        self.tiles
+            .values()
+            .filter(|tile| tile.get_property(property_key) == Some(property_value))
+            .collect::<Vec<_>>()
     }
 
     /// Returns the column and row of the given tile, where (0,0) is the first or top-left tile in the tileset.
@@ -247,12 +280,8 @@ impl TileSet {
         if position.x >= self.columns {
             None
         } else {
-            let idx = (position.y * self.columns + position.x) as usize;
-            if idx >= self.tiles.len() {
-                None
-            } else {
-                Some(&self.tiles[idx])
-            }
+            let idx = position.y * self.columns + position.x;
+            self.tiles.get(&idx)
         }
     }
 

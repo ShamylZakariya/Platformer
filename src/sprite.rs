@@ -214,7 +214,8 @@ impl Vertex for SpriteVertex {
 /// are triangles, with the surface normal facing in the specqified direction. E.g., NorthEast would be a triangle
 /// with the edge normal facing up and to the right.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum SpriteShape {
+pub enum SpriteCollisionShape {
+    None,
     Square,
     NorthEast,
     SouthEast,
@@ -222,23 +223,25 @@ pub enum SpriteShape {
     NorthWest,
 }
 
-impl SpriteShape {
+impl SpriteCollisionShape {
     pub fn flipped_horizontally(&self) -> Self {
         match self {
-            SpriteShape::Square => SpriteShape::Square,
-            SpriteShape::NorthEast => SpriteShape::NorthWest,
-            SpriteShape::SouthEast => SpriteShape::SouthWest,
-            SpriteShape::SouthWest => SpriteShape::SouthEast,
-            SpriteShape::NorthWest => SpriteShape::NorthEast,
+            SpriteCollisionShape::None => SpriteCollisionShape::None,
+            SpriteCollisionShape::Square => SpriteCollisionShape::Square,
+            SpriteCollisionShape::NorthEast => SpriteCollisionShape::NorthWest,
+            SpriteCollisionShape::SouthEast => SpriteCollisionShape::SouthWest,
+            SpriteCollisionShape::SouthWest => SpriteCollisionShape::SouthEast,
+            SpriteCollisionShape::NorthWest => SpriteCollisionShape::NorthEast,
         }
     }
     pub fn flipped_vertically(&self) -> Self {
         match self {
-            SpriteShape::Square => SpriteShape::Square,
-            SpriteShape::NorthEast => SpriteShape::SouthEast,
-            SpriteShape::SouthEast => SpriteShape::NorthEast,
-            SpriteShape::SouthWest => SpriteShape::NorthWest,
-            SpriteShape::NorthWest => SpriteShape::SouthWest,
+            SpriteCollisionShape::None => SpriteCollisionShape::None,
+            SpriteCollisionShape::Square => SpriteCollisionShape::Square,
+            SpriteCollisionShape::NorthEast => SpriteCollisionShape::SouthEast,
+            SpriteCollisionShape::SouthEast => SpriteCollisionShape::NorthEast,
+            SpriteCollisionShape::SouthWest => SpriteCollisionShape::NorthWest,
+            SpriteCollisionShape::NorthWest => SpriteCollisionShape::SouthWest,
         }
     }
     pub fn flipped_diagonally(&self) -> Self {
@@ -248,18 +251,19 @@ impl SpriteShape {
         // mirroring along the +x/+y diagonal axis, it only affects NorthWest and SouthEast
         // triangles, which are not symmetrical across the flip axis.
         match self {
-            SpriteShape::Square => SpriteShape::Square,
-            SpriteShape::NorthEast => SpriteShape::NorthEast,
-            SpriteShape::SouthEast => SpriteShape::NorthWest,
-            SpriteShape::SouthWest => SpriteShape::SouthWest,
-            SpriteShape::NorthWest => SpriteShape::SouthEast,
+            SpriteCollisionShape::None => SpriteCollisionShape::None,
+            SpriteCollisionShape::Square => SpriteCollisionShape::Square,
+            SpriteCollisionShape::NorthEast => SpriteCollisionShape::NorthEast,
+            SpriteCollisionShape::SouthEast => SpriteCollisionShape::NorthWest,
+            SpriteCollisionShape::SouthWest => SpriteCollisionShape::SouthWest,
+            SpriteCollisionShape::NorthWest => SpriteCollisionShape::SouthEast,
         }
     }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct SpriteDesc {
-    pub collision_shape: SpriteShape,
+    pub collision_shape: SpriteCollisionShape,
     pub origin: Point3<f32>,
     pub extent: Vector2<f32>,
     pub tex_coord_origin: Point2<f32>,
@@ -297,7 +301,7 @@ fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
 impl SpriteDesc {
     /// Creates a new SpriteDesc at an arbitrary origin with a specified extent
     pub fn new(
-        collision_shape: SpriteShape,
+        collision_shape: SpriteCollisionShape,
         origin: Point3<f32>,
         extent: Vector2<f32>,
         tex_coord_origin: Point2<f32>,
@@ -321,7 +325,7 @@ impl SpriteDesc {
 
     /// Creates a 1x1 sprite at a given integral origin point.
     pub fn unit(
-        collision_shape: SpriteShape,
+        collision_shape: SpriteCollisionShape,
         origin: Point2<i32>,
         z: f32,
         tex_coord_origin: Point2<f32>,
@@ -351,9 +355,11 @@ impl SpriteDesc {
         {
             let p = Vector2::new(point.x, point.y);
             return match self.collision_shape {
-                SpriteShape::Square => true,
+                SpriteCollisionShape::None => false,
 
-                SpriteShape::NorthEast => {
+                SpriteCollisionShape::Square => true,
+
+                SpriteCollisionShape::NorthEast => {
                     let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
                     let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
@@ -361,7 +367,7 @@ impl SpriteDesc {
                     cross(&ba, &pa) <= 0.0
                 }
 
-                SpriteShape::SouthEast => {
+                SpriteCollisionShape::SouthEast => {
                     let a = Vector2::new(self.origin.x, self.origin.y);
                     let b =
                         Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
@@ -370,7 +376,7 @@ impl SpriteDesc {
                     cross(&ba, &pa) >= 0.0
                 }
 
-                SpriteShape::SouthWest => {
+                SpriteCollisionShape::SouthWest => {
                     let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
                     let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
@@ -379,7 +385,7 @@ impl SpriteDesc {
                     cross(&ba, &pa) >= 0.0
                 }
 
-                SpriteShape::NorthWest => {
+                SpriteCollisionShape::NorthWest => {
                     let a = Vector2::new(self.origin.x, self.origin.y);
                     let b =
                         Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
@@ -502,7 +508,17 @@ mod sprite_desc_tests {
     fn test_containment(mut sprite: SpriteDesc) {
         let (p0, p1, p2, p3, p4, p5, p6, p7) = test_points(&sprite);
 
-        sprite.collision_shape = SpriteShape::Square;
+        sprite.collision_shape = SpriteCollisionShape::None;
+        assert!(!sprite.contains(&p0));
+        assert!(!sprite.contains(&p1));
+        assert!(!sprite.contains(&p2));
+        assert!(!sprite.contains(&p3));
+        assert!(!sprite.contains(&p4));
+        assert!(!sprite.contains(&p5));
+        assert!(!sprite.contains(&p6));
+        assert!(!sprite.contains(&p7));
+
+        sprite.collision_shape = SpriteCollisionShape::Square;
         assert!(sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -512,7 +528,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.collision_shape = SpriteShape::NorthEast;
+        sprite.collision_shape = SpriteCollisionShape::NorthEast;
         assert!(sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(!sprite.contains(&p2));
@@ -522,7 +538,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.collision_shape = SpriteShape::SouthEast;
+        sprite.collision_shape = SpriteCollisionShape::SouthEast;
         assert!(sprite.contains(&p0));
         assert!(!sprite.contains(&p1));
         assert!(!sprite.contains(&p2));
@@ -532,7 +548,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.collision_shape = SpriteShape::SouthWest;
+        sprite.collision_shape = SpriteCollisionShape::SouthWest;
         assert!(!sprite.contains(&p0));
         assert!(!sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -542,7 +558,7 @@ mod sprite_desc_tests {
         assert!(!sprite.contains(&p6));
         assert!(!sprite.contains(&p7));
 
-        sprite.collision_shape = SpriteShape::NorthWest;
+        sprite.collision_shape = SpriteCollisionShape::NorthWest;
         assert!(!sprite.contains(&p0));
         assert!(sprite.contains(&p1));
         assert!(sprite.contains(&p2));
@@ -556,7 +572,7 @@ mod sprite_desc_tests {
     #[test]
     fn contains_works() {
         let mut sprite = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(0.0, 0.0, 0.0),
             Vector2::new(1.0, 1.0),
             Point2::new(0.0, 0.0),
@@ -627,7 +643,7 @@ mod sprite_desc_tests {
     #[test]
     fn double_flip_is_identity() {
         let mut sprite = SpriteDesc::unit(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point2::new(0, 0),
             0.0,
             Point2::new(0.1, 0.1),
@@ -724,7 +740,7 @@ mod sprite_hit_tester {
         let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
 
         let unit_0 = SpriteDesc::unit(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point2::new(0, 0),
             0.0,
             tco,
@@ -733,7 +749,7 @@ mod sprite_hit_tester {
             0,
         );
         let unit_1 = SpriteDesc::unit(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point2::new(11, -33),
             0.0,
             tco,
@@ -742,7 +758,7 @@ mod sprite_hit_tester {
             0,
         );
         let non_unit_0 = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(10.0, 5.0, 0.0),
             Vector2::new(5.0, 1.0),
             tco,
@@ -752,7 +768,7 @@ mod sprite_hit_tester {
         );
 
         let non_unit_1 = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(-1.0, -10.0, 0.0),
             Vector2::new(50.0, 5.0),
             tco,
@@ -793,7 +809,7 @@ mod sprite_hit_tester {
         let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
 
         let sb1 = SpriteDesc::unit(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point2::new(0, 0),
             10.0,
             tco,
@@ -803,7 +819,7 @@ mod sprite_hit_tester {
         );
 
         let sb2 = SpriteDesc::unit(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point2::new(-1, -1),
             10.0,
             tco,
@@ -813,7 +829,7 @@ mod sprite_hit_tester {
         );
 
         let tr0 = SpriteDesc::unit(
-            SpriteShape::NorthEast,
+            SpriteCollisionShape::NorthEast,
             Point2::new(0, 4),
             10.0,
             tco,
@@ -823,7 +839,7 @@ mod sprite_hit_tester {
         );
 
         let tr1 = SpriteDesc::unit(
-            SpriteShape::NorthWest,
+            SpriteCollisionShape::NorthWest,
             Point2::new(-1, 4),
             10.0,
             tco,
@@ -833,7 +849,7 @@ mod sprite_hit_tester {
         );
 
         let tr2 = SpriteDesc::unit(
-            SpriteShape::SouthWest,
+            SpriteCollisionShape::SouthWest,
             Point2::new(-1, 3),
             10.0,
             tco,
@@ -843,7 +859,7 @@ mod sprite_hit_tester {
         );
 
         let tr3 = SpriteDesc::unit(
-            SpriteShape::SouthEast,
+            SpriteCollisionShape::SouthEast,
             Point2::new(0, 3),
             10.0,
             tco,
@@ -885,7 +901,7 @@ mod sprite_hit_tester {
         let all_mask = mask0 | mask1 | mask2 | unused_mask;
 
         let b0 = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(-4.0, -4.0, 0.0),
             Vector2::new(8.0, 4.0),
             tco,
@@ -895,7 +911,7 @@ mod sprite_hit_tester {
         );
 
         let b1 = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(3.0, -1.0, 0.0),
             Vector2::new(3.0, 1.0),
             tco,
@@ -905,7 +921,7 @@ mod sprite_hit_tester {
         );
 
         let b2 = SpriteDesc::new(
-            SpriteShape::Square,
+            SpriteCollisionShape::Square,
             Point3::new(3.0, -2.0, 0.0),
             Vector2::new(2.0, 5.0),
             tco,
