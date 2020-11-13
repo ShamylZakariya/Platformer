@@ -60,15 +60,16 @@ pub struct State {
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
+    // Stage rendering
     stage_uniforms: sprite::Uniforms,
-
-    // Sprite rendering
-    sprite_render_pipeline: wgpu::RenderPipeline,
-    sprites: sprite::SpriteCollection,
-    sprite_hit_tester: sprite::SpriteHitTester,
+    stage_render_pipeline: wgpu::RenderPipeline,
+    stage_sprite_collection: sprite::SpriteCollection,
+    stage_hit_tester: sprite::SpriteHitTester,
     map: map::Map,
 
     // Entity rendering
+    entity_uniforms: sprite::Uniforms,
+    entity_render_pipeline: wgpu::RenderPipeline,
     entity_material: Rc<sprite::SpriteMaterial>,
     firebrand: sprite_entity::SpriteEntity,
 
@@ -139,11 +140,11 @@ impl State {
                     &camera_uniforms.bind_group_layout,
                     &stage_uniforms.bind_group_layout,
                 ],
-                label: Some("Render Pipeline Layout"),
+                label: Some("Stage Sprite Pipeline Layout"),
                 push_constant_ranges: &[],
             });
 
-        let sprite_render_pipeline = sprite::create_render_pipeline(
+        let stage_render_pipeline = sprite::create_render_pipeline(
             &device,
             &sprite_render_pipeline_layout,
             sc_desc.format,
@@ -153,7 +154,7 @@ impl State {
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
 
-        let (sprites, sprite_hit_tester) = {
+        let (stage_sprite_collection, stage_hit_tester) = {
             let mat = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
@@ -193,6 +194,25 @@ impl State {
         };
 
         // Entities
+        let entity_uniforms = sprite::Uniforms::new(&device);
+
+        let entity_render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: &[
+                    &material_bind_group_layout,
+                    &camera_uniforms.bind_group_layout,
+                    &entity_uniforms.bind_group_layout,
+                ],
+                label: Some("Entity Sprite Pipeline Layout"),
+                push_constant_ranges: &[],
+            });
+
+        let entity_render_pipeline = sprite::create_render_pipeline(
+            &device,
+            &entity_render_pipeline_layout,
+            sc_desc.format,
+            Some(texture::Texture::DEPTH_FORMAT),
+        );
 
         let entity_tileset = tileset::TileSet::new_tsx("./res/entities.tsx")
             .expect("Expected to load entities tileset");
@@ -267,11 +287,13 @@ impl State {
 
             stage_uniforms,
 
-            sprite_render_pipeline,
-            sprites,
-            sprite_hit_tester,
+            stage_render_pipeline,
+            stage_sprite_collection,
+            stage_hit_tester,
             map,
 
+            entity_uniforms,
+            entity_render_pipeline,
             entity_material,
             firebrand,
 
@@ -336,6 +358,7 @@ impl State {
     pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
 
+        // Update camera uniform state
         self.camera_controller
             .update_camera(&mut self.camera, &mut self.projection, dt);
         self.camera_uniforms
@@ -344,6 +367,28 @@ impl State {
 
         self.camera_uniforms.write(&mut self.queue);
 
+        // Update stage uniform state
+        self.stage_uniforms
+            .data
+            .set_model_position(&cgmath::Point3::new(0.0, 0.0, 0.0));
+        self.stage_uniforms
+            .data
+            .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
+
+        self.stage_uniforms.write(&mut self.queue);
+
+        // Update entity state
+        self.entity_uniforms
+            .data
+            .set_color(&cgmath::Vector4::new(0.0, 1.0, 1.0, 1.0));
+
+        self.entity_uniforms
+            .data
+            .set_model_position(&cgmath::Point3::new(2.0, 8.0, 0.0));
+
+        self.entity_uniforms.write(&mut self.queue);
+
+        // Update UI
         self.update_ui_display_state(window, dt)
     }
 
@@ -392,44 +437,23 @@ impl State {
                     stencil_ops: None,
                 }),
             });
-            render_pass.set_pipeline(&self.sprite_render_pipeline);
 
-            // Render level
-
-            self.stage_uniforms
-                .data
-                .set_model_position(&cgmath::Point3::new(0.0, 0.0, 0.0));
-            self.stage_uniforms
-                .data
-                .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
-
-            self.stage_uniforms.write(&mut self.queue);
-
-            self.sprites.draw(
+            // Render stage
+            render_pass.set_pipeline(&self.stage_render_pipeline);
+            self.stage_sprite_collection.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
                 &self.stage_uniforms.bind_group,
             );
 
-            // // render entities
-
-            // self.sprite_uniforms
-            //     .set_model_position(&cgmath::Point3::new(0.0, 10.0, 0.0));
-            // self.sprite_uniforms
-            //     .set_color(&cgmath::Vector4::new(1.0, 0.0, 1.0, 1.0));
-
-            // self.queue.write_buffer(
-            //     &self.sprite_uniform_buffer,
-            //     0,
-            //     bytemuck::cast_slice(&[self.sprite_uniforms]),
-            // );
-
-            // self.firebrand.draw(
-            //     &mut render_pass,
-            //     &self.camera_uniform_bind_group,
-            //     &self.sprite_uniform_bind_group,
-            //     "default",
-            // );
+            // Render Entities
+            render_pass.set_pipeline(&self.entity_render_pipeline);
+            self.firebrand.draw(
+                &mut render_pass,
+                &self.camera_uniforms.bind_group,
+                &self.entity_uniforms.bind_group,
+                "default",
+            );
         }
 
         //

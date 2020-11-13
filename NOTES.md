@@ -11,8 +11,9 @@ CURRENTLY:
 BUGS:
     - setting position on firebrand doesn't take effect - he is just at 1 below bottom of level, or 0,0
         - color does take effect, but it applies to both level and firebrand
-        - uniforms are UNIFORM constants for a given render pass! So I need a separate pass per entity, or some other way to spread the position info. Perhaps something like the instance buffer... if each entity had some index to index into an array of offsets. But if we only have a few entities on screen at a time, I can just submit a pass per entity.
         - we know color works, so uniform data is submitted. Not certain yet why position uniform doesn't work, but it's likely related to above issues
+    - seems to only be drawing firebrand's root tile?
 
-    - seems to only be drawing root tile?
+TODO:
+    - Uniforms struct can be parameterized on the underlying data...
 

@@ -98,6 +98,7 @@ impl UniformData {
         self.model_position.x = position.x;
         self.model_position.y = position.y;
         self.model_position.z = position.z;
+        self.model_position.w = 1.0;
     }
 }
 

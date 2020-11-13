@@ -19,6 +19,6 @@ layout(set = 2, binding = 0) uniform SpriteUniforms {
 
 void main() {
   v_tex_coords = a_tex_coords;
-  v_color = a_color;
+  v_color = a_color * u_color;
   gl_Position = u_view_proj * vec4(a_position + u_model_position.xyz, 1.0);
 }
