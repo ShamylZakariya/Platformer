@@ -109,7 +109,9 @@
  <tile id="15">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
    <property name="name" value="fireball"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="16">
@@ -122,7 +124,7 @@
  <tile id="17">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="stand"/>
+   <property name="cycle" value="default"/>
    <property name="name" value="firebrand"/>
    <property name="role" value="root"/>
   </properties>

@@ -1,5 +1,5 @@
 use std::path::Path;
-use wgpu::util::DeviceExt;
+use std::rc::Rc;
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -9,8 +9,9 @@ use winit::{
 use crate::camera;
 use crate::map;
 use crate::sprite;
-use crate::sprite::Vertex;
+use crate::sprite_entity;
 use crate::texture;
+use crate::tileset;
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -55,22 +56,21 @@ pub struct State {
     camera: camera::Camera,
     projection: camera::Projection,
     camera_controller: camera::CameraController,
+    camera_uniforms: camera::Uniforms,
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
-    camera_uniforms: camera::Uniforms,
-    camera_uniform_buffer: wgpu::Buffer,
-    camera_uniform_bind_group: wgpu::BindGroup,
-
-    sprite_uniforms: sprite::Uniforms,
-    sprite_uniform_buffer: wgpu::Buffer,
-    sprite_uniform_bind_group: wgpu::BindGroup,
+    stage_uniforms: sprite::Uniforms,
 
     // Sprite rendering
     sprite_render_pipeline: wgpu::RenderPipeline,
     sprites: sprite::SpriteCollection,
     sprite_hit_tester: sprite::SpriteHitTester,
     map: map::Map,
+
+    // Entity rendering
+    entity_material: Rc<sprite::SpriteMaterial>,
+    firebrand: sprite_entity::SpriteEntity,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -121,18 +121,14 @@ impl State {
         // Build camera, and camera uniform storage
         let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
 
-        let camera = camera::Camera::new((62.0, 11.0, -1.0), (0.0, 0.0, 1.0));
-        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 124.0, 0.1, 100.0);
+        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0));
+        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
 
-        let mut camera_uniforms = camera::Uniforms::new();
-        camera_uniforms.update_view_proj(&camera, &projection);
-        let (camera_uniform_buffer, camera_uniform_bind_group_layout, camera_uniform_bind_group) =
-            camera_uniforms.create_resources(&device);
+        let mut camera_uniforms = camera::Uniforms::new(&device);
+        camera_uniforms.data.update_view_proj(&camera, &projection);
 
-        let sprite_uniforms = sprite::Uniforms::new();
-        let (sprite_uniform_buffer, sprite_uniform_bind_group_layout, sprite_uniform_bind_group) =
-            sprite_uniforms.create_resources(&device);
+        let stage_uniforms = sprite::Uniforms::new(&device);
 
         // Build the sprite render pipeline
 
@@ -140,8 +136,8 @@ impl State {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: &[
                     &material_bind_group_layout,
-                    &camera_uniform_bind_group_layout,
-                    &sprite_uniform_bind_group_layout,
+                    &camera_uniforms.bind_group_layout,
+                    &stage_uniforms.bind_group_layout,
                 ],
                 label: Some("Render Pipeline Layout"),
                 push_constant_ranges: &[],
@@ -151,7 +147,7 @@ impl State {
             &device,
             &sprite_render_pipeline_layout,
             sc_desc.format,
-            Some(texture::Texture::DEPTH_FORMAT)
+            Some(texture::Texture::DEPTH_FORMAT),
         );
 
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -196,6 +192,33 @@ impl State {
             )
         };
 
+        // Entities
+
+        let entity_tileset = tileset::TileSet::new_tsx("./res/entities.tsx")
+            .expect("Expected to load entities tileset");
+
+        let entity_material = Rc::new({
+            let spritesheet_path = Path::new("res").join(&entity_tileset.image_path);
+            let spritesheet =
+                texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
+
+            sprite::SpriteMaterial::new(
+                &device,
+                "Sprite Material",
+                spritesheet,
+                &material_bind_group_layout,
+            )
+        });
+
+        let firebrand = sprite_entity::SpriteEntity::load(
+            &entity_tileset,
+            entity_material.clone(),
+            &device,
+            "firebrand",
+            0.5,
+            0,
+        );
+
         // set up imgui
 
         let hidpi_factor = window.scale_factor();
@@ -238,21 +261,19 @@ impl State {
             camera,
             camera_controller,
             projection,
+            camera_uniforms,
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
 
-            camera_uniforms,
-            camera_uniform_buffer,
-            camera_uniform_bind_group,
-
-            sprite_uniforms,
-            sprite_uniform_buffer,
-            sprite_uniform_bind_group,
+            stage_uniforms,
 
             sprite_render_pipeline,
             sprites,
             sprite_hit_tester,
             map,
+
+            entity_material,
+            firebrand,
 
             winit_platform,
             imgui,
@@ -318,13 +339,10 @@ impl State {
         self.camera_controller
             .update_camera(&mut self.camera, &mut self.projection, dt);
         self.camera_uniforms
+            .data
             .update_view_proj(&self.camera, &self.projection);
 
-        self.queue.write_buffer(
-            &self.camera_uniform_buffer,
-            0,
-            bytemuck::cast_slice(&[self.camera_uniforms]),
-        );
+        self.camera_uniforms.write(&mut self.queue);
 
         self.update_ui_display_state(window, dt)
     }
@@ -347,16 +365,10 @@ impl State {
             });
 
         //
-        // Render Sprites; this is first pass so we clear color/depth
+        // Render Sprites and entities; this is first pass so we clear color/depth
         //
 
         {
-            self.queue.write_buffer(
-                &self.sprite_uniform_buffer,
-                0,
-                bytemuck::cast_slice(&[self.sprite_uniforms]),
-            );
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.output.view,
@@ -380,13 +392,44 @@ impl State {
                     stencil_ops: None,
                 }),
             });
-
             render_pass.set_pipeline(&self.sprite_render_pipeline);
+
+            // Render level
+
+            self.stage_uniforms
+                .data
+                .set_model_position(&cgmath::Point3::new(0.0, 0.0, 0.0));
+            self.stage_uniforms
+                .data
+                .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
+
+            self.stage_uniforms.write(&mut self.queue);
+
             self.sprites.draw(
                 &mut render_pass,
-                &self.camera_uniform_bind_group,
-                &self.sprite_uniform_bind_group,
+                &self.camera_uniforms.bind_group,
+                &self.stage_uniforms.bind_group,
             );
+
+            // // render entities
+
+            // self.sprite_uniforms
+            //     .set_model_position(&cgmath::Point3::new(0.0, 10.0, 0.0));
+            // self.sprite_uniforms
+            //     .set_color(&cgmath::Vector4::new(1.0, 0.0, 1.0, 1.0));
+
+            // self.queue.write_buffer(
+            //     &self.sprite_uniform_buffer,
+            //     0,
+            //     bytemuck::cast_slice(&[self.sprite_uniforms]),
+            // );
+
+            // self.firebrand.draw(
+            //     &mut render_pass,
+            //     &self.camera_uniform_bind_group,
+            //     &self.sprite_uniform_bind_group,
+            //     "default",
+            // );
         }
 
         //

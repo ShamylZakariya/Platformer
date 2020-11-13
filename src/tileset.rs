@@ -41,8 +41,8 @@ impl Tile {
         self.properties.get(name).is_some()
     }
 
-    pub fn get_property(&self, name: &str) -> Option<&String> {
-        self.properties.get(name)
+    pub fn get_property(&self, name: &str) -> Option<&str> {
+        self.properties.get(name).map(|p| p.as_str())
     }
 }
 
@@ -59,9 +59,10 @@ pub struct TileSet {
 }
 
 impl TileSet {
-    pub fn new_tsx(tsx_file: &Path) -> Result<Self> {
-        let file = File::open(tsx_file)
-            .with_context(|| format!("Unable to open {}", tsx_file.display()))?;
+    pub fn new_tsx<P: AsRef<Path>>(tsx_file: P) -> Result<Self> {
+        let path_copy = tsx_file.as_ref().to_path_buf();
+        let file =
+            File::open(tsx_file).with_context(|| format!("Unable to open {:?}", path_copy))?;
         let file = BufReader::new(file);
         let parser = EventReader::new(file);
 
@@ -215,7 +216,7 @@ impl TileSet {
             tile_width.context("Expected <image> element to have tilewidth attribute")?;
         let tile_height =
             tile_height.context("Expected <image> element to have tileheight attribute")?;
-        let spacing = spacing.context("Expected to read a 'spacing' attribute on <tileset>")?;
+        let spacing = spacing.unwrap_or(0);
         let columns = columns.context("Expected to read a 'columns' attribute on <tileset>")?;
 
         // ensure tiles are sorted
@@ -234,7 +235,7 @@ impl TileSet {
     }
 
     /// Returns the column and row of the given tile, where (0,0) is the first or top-left tile in the tileset.
-    pub fn tile_position(&self, tile: &Tile) -> cgmath::Point2<u32> {
+    pub fn get_tile_position(&self, tile: &Tile) -> cgmath::Point2<u32> {
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
         return cgmath::Point2::new(col, row);
@@ -255,7 +256,10 @@ impl TileSet {
         }
     }
 
-    pub fn tex_coords_for_tile(&self, tile: &Tile) -> (cgmath::Point2<f32>, cgmath::Vector2<f32>) {
+    pub fn get_tex_coords_for_tile(
+        &self,
+        tile: &Tile,
+    ) -> (cgmath::Point2<f32>, cgmath::Vector2<f32>) {
         // compute pixel values, and then normalize
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;

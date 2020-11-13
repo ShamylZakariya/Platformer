@@ -279,7 +279,7 @@ impl Map {
                 {
                     let tile = &self.tileset.tiles[(tile_id - self.tileset_first_gid) as usize];
                     let (tex_coord_origin, tex_coord_extent) =
-                        self.tileset.tex_coords_for_tile(tile);
+                        self.tileset.get_tex_coords_for_tile(tile);
                     let mut mask = 0;
 
                     if tile.has_property("collision_shape") {

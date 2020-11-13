@@ -16,7 +16,6 @@ pub fn create_render_pipeline(
     let vs_src = wgpu::include_spirv!("shaders/sprite.vs.spv");
     let fs_src = wgpu::include_spirv!("shaders/sprite.fs.spv");
 
-
     let vs_module = device.create_shader_module(vs_src);
     let fs_module = device.create_shader_module(fs_src);
 
@@ -75,60 +74,20 @@ pub fn create_render_pipeline(
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct Uniforms {
+pub struct UniformData {
     model_position: cgmath::Vector4<f32>,
     color: cgmath::Vector4<f32>,
 }
 
-unsafe impl bytemuck::Pod for Uniforms {}
-unsafe impl bytemuck::Zeroable for Uniforms {}
+unsafe impl bytemuck::Pod for UniformData {}
+unsafe impl bytemuck::Zeroable for UniformData {}
 
-impl Uniforms {
+impl UniformData {
     pub fn new() -> Self {
         Self {
             model_position: cgmath::Vector4::zero(),
             color: cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
         }
-    }
-
-    pub fn create_resources(
-        &self,
-        device: &wgpu::Device,
-    ) -> (wgpu::Buffer, wgpu::BindGroupLayout, wgpu::BindGroup) {
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[*self]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let uniform_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("Sprite Uniform Bind Group Layout"),
-            });
-
-        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &uniform_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(uniform_buffer.slice(..)),
-            }],
-            label: Some("Sprite Uniform Bind Group"),
-        });
-
-        (
-            uniform_buffer,
-            uniform_bind_group_layout,
-            uniform_bind_group,
-        )
     }
 
     pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) {
@@ -139,6 +98,60 @@ impl Uniforms {
         self.model_position.x = position.x;
         self.model_position.y = position.y;
         self.model_position.z = position.z;
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub struct Uniforms {
+    pub data: UniformData,
+    pub buffer: wgpu::Buffer,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
+}
+
+impl Uniforms {
+    pub fn new(device: &wgpu::Device) -> Self {
+        let data = UniformData::new();
+
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Sprite Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[data]),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                ty: wgpu::BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("Sprite Uniform Bind Group Layout"),
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
+            }],
+            label: Some("Sprite Uniform Bind Group"),
+        });
+
+        Self {
+            data,
+            buffer,
+            bind_group_layout,
+            bind_group,
+        }
+    }
+
+    pub fn write(&self, queue: &mut wgpu::Queue) {
+        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.data]));
     }
 }
 
@@ -1082,6 +1095,21 @@ impl SpriteMesh {
             material,
         }
     }
+
+    pub fn draw<'a, 'b>(
+        &'a self,
+        render_pass: &'b mut wgpu::RenderPass<'a>,
+        material: &'a wgpu::BindGroup,
+        camera_uniforms: &'a wgpu::BindGroup,
+        sprite_uniforms: &'a wgpu::BindGroup,
+    ) {
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..));
+        render_pass.set_bind_group(0, &material, &[]);
+        render_pass.set_bind_group(1, &camera_uniforms, &[]);
+        render_pass.set_bind_group(2, &sprite_uniforms, &[]);
+        render_pass.draw_indexed(0..self.num_elements, 0, 0..1);
+    }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -1104,12 +1132,12 @@ impl SpriteCollection {
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
-            render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(mesh.index_buffer.slice(..));
-            render_pass.set_bind_group(0, &material.bind_group, &[]);
-            render_pass.set_bind_group(1, &camera_uniforms, &[]);
-            render_pass.set_bind_group(2, &sprite_uniforms, &[]);
-            render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
+            mesh.draw(
+                render_pass,
+                &material.bind_group,
+                camera_uniforms,
+                sprite_uniforms,
+            );
         }
     }
 }
