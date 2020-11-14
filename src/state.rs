@@ -9,7 +9,6 @@ use winit::{
 use crate::camera;
 use crate::map;
 use crate::sprite;
-use crate::sprite_entity;
 use crate::texture;
 use crate::tileset;
 
@@ -71,7 +70,7 @@ pub struct State {
     // Entity rendering
     entity_uniforms: sprite::Uniforms,
     entity_material: Rc<sprite::SpriteMaterial>,
-    firebrand: sprite_entity::SpriteEntity,
+    firebrand: sprite::SpriteEntity,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -212,7 +211,7 @@ impl State {
             )
         });
 
-        let firebrand = sprite_entity::SpriteEntity::load(
+        let firebrand = sprite::SpriteEntity::load(
             &entity_tileset,
             entity_material.clone(),
             &device,

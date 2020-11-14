@@ -1,19 +1,9 @@
 CURRENTLY:
-    - I made sprite::Uniforms hold the camera info. I should instead have camera::Uniforms with the view/proj matrices and sprite::Uniforms hold the color/position vec4s. Then just have one be bound to slot 0 and the other to slot 1
-    - sprite vertex shader should snap position to 1/tile_size so we snap to pixels!
-    - Add parameter to Map's spritedesc generator to set the depth of the generated sprite. We need the Water sprite
-    (which needs alpha cutout, btw) to draw *atop* the Fish sprite, which draws atop the background. So
-        - foreground: depth: 0
-        - background: depth: 1
-        - fish, etc depth : 0.5
-    - expand Uniforms struct to have things like offset, alpha, etc. It's general now for all sprite rendering.
+    - add CharacterController which mutates the firebrand sprite
+    - need to have shader snap character position to nearest pixel. this should be easy, we know that 1 "unit" is one tile, so just pass in a tile size uniform (e.g., 16x16 pixels) and snap tile offset position to 1/16ths
 
 BUGS:
-    - setting position on firebrand doesn't take effect - he is just at 1 below bottom of level, or 0,0
-        - color does take effect, but it applies to both level and firebrand
-        - we know color works, so uniform data is submitted. Not certain yet why position uniform doesn't work, but it's likely related to above issues
-    - seems to only be drawing firebrand's root tile?
 
 TODO:
-    - Uniforms struct can be parameterized on the underlying data...
+    - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms.
 

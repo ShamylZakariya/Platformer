@@ -230,7 +230,7 @@ impl TileSet {
         let spacing = spacing.unwrap_or(0);
         let columns = columns.context("Expected to read a 'columns' attribute on <tileset>")?;
 
-        // ensure tiles are sorted
+        // add tiles with custom properties to the hash, adding empty ones for defaults.
         let mut tiles_map = HashMap::new();
         for tile in tiles {
             tiles_map.insert(tile.id, tile);
