@@ -15,10 +15,16 @@ layout(set = 1, binding = 0) uniform CameraUniforms {
 layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_model_position;
   vec4 u_color;
+  vec2 u_sprite_size_px;
 };
 
 void main() {
   v_tex_coords = a_tex_coords;
   v_color = a_color * u_color;
-  gl_Position = u_view_proj * vec4(a_position + u_model_position.xyz, 1.0);
+
+  vec2 position = a_position.xy + u_model_position.xy;
+  position = round(position * u_sprite_size_px) / u_sprite_size_px;
+
+  gl_Position = u_view_proj * vec4(position.x, position.y,
+                                   a_position.z + u_model_position.z, 1.0);
 }

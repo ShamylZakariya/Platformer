@@ -79,6 +79,7 @@ pub fn create_render_pipeline(
 pub struct UniformData {
     model_position: cgmath::Vector4<f32>,
     color: cgmath::Vector4<f32>,
+    sprite_size_px: cgmath::Vector2<f32>,
 }
 
 unsafe impl bytemuck::Pod for UniformData {}
@@ -89,6 +90,7 @@ impl UniformData {
         Self {
             model_position: cgmath::Vector4::zero(),
             color: cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
+            sprite_size_px: cgmath::Vector2::new(1.0, 1.0),
         }
     }
 
@@ -101,6 +103,10 @@ impl UniformData {
         self.model_position.y = position.y;
         self.model_position.z = position.z;
         self.model_position.w = 1.0;
+    }
+
+    pub fn set_sprite_size_px(&mut self, sprite_size_px: cgmath::Vector2<f32>) {
+        self.sprite_size_px = sprite_size_px
     }
 }
 

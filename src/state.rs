@@ -73,8 +73,8 @@ pub struct State {
     map: map::Map,
 
     // Entity rendering
-    entity_uniforms: sprite::Uniforms,
     entity_material: Rc<sprite::SpriteMaterial>,
+    firebrand_uniforms: sprite::Uniforms,
     firebrand: sprite::SpriteEntity,
 
     // Imgui
@@ -135,27 +135,7 @@ impl State {
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
 
-        let stage_uniforms = sprite::Uniforms::new(&device);
-
-        // Build the sprite render pipeline
-
-        let sprite_render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[
-                    &material_bind_group_layout,
-                    &camera_uniforms.bind_group_layout,
-                    &stage_uniforms.bind_group_layout,
-                ],
-                label: Some("Stage Sprite Pipeline Layout"),
-                push_constant_ranges: &[],
-            });
-
-        let sprite_render_pipeline = sprite::create_render_pipeline(
-            &device,
-            &sprite_render_pipeline_layout,
-            sc_desc.format,
-            Some(texture::Texture::DEPTH_FORMAT),
-        );
+        // Load the stage map
 
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
@@ -199,8 +179,33 @@ impl State {
             )
         };
 
+        // Build the sprite render pipeline
+
+        let mut stage_uniforms = sprite::Uniforms::new(&device);
+        stage_uniforms.data.set_sprite_size_px(cgmath::Vector2::new(
+            map.tileset.tile_width as f32,
+            map.tileset.tile_height as f32,
+        ));
+
+        let sprite_render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                bind_group_layouts: &[
+                    &material_bind_group_layout,
+                    &camera_uniforms.bind_group_layout,
+                    &stage_uniforms.bind_group_layout,
+                ],
+                label: Some("Stage Sprite Pipeline Layout"),
+                push_constant_ranges: &[],
+            });
+
+        let sprite_render_pipeline = sprite::create_render_pipeline(
+            &device,
+            &sprite_render_pipeline_layout,
+            sc_desc.format,
+            Some(texture::Texture::DEPTH_FORMAT),
+        );
+
         // Entities
-        let entity_uniforms = sprite::Uniforms::new(&device);
 
         let entity_tileset = tileset::TileSet::new_tsx("./res/entities.tsx")
             .expect("Expected to load entities tileset");
@@ -218,6 +223,13 @@ impl State {
             )
         });
 
+        let mut firebrand_uniforms = sprite::Uniforms::new(&device);
+        firebrand_uniforms
+            .data
+            .set_sprite_size_px(cgmath::Vector2::new(
+                entity_tileset.tile_width as f32,
+                entity_tileset.tile_height as f32,
+            ));
         let firebrand = sprite::SpriteEntity::load(
             &entity_tileset,
             entity_material.clone(),
@@ -281,7 +293,7 @@ impl State {
             stage_hit_tester,
             map,
 
-            entity_uniforms,
+            firebrand_uniforms: firebrand_uniforms,
             entity_material,
             firebrand,
 
@@ -371,11 +383,11 @@ impl State {
         // Update player character state
         let character_state = self.character_controller.update(dt);
 
-        self.entity_uniforms
+        self.firebrand_uniforms
             .data
             .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
 
-        self.entity_uniforms
+        self.firebrand_uniforms
             .data
             .set_model_position(&cgmath::Point3::new(
                 character_state.position.x,
@@ -383,7 +395,7 @@ impl State {
                 0.5,
             ));
 
-        self.entity_uniforms.write(&mut self.queue);
+        self.firebrand_uniforms.write(&mut self.queue);
 
         // Update UI
         self.update_ui_display_state(window, dt)
@@ -448,7 +460,7 @@ impl State {
             self.firebrand.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
-                &self.entity_uniforms.bind_group,
+                &self.firebrand_uniforms.bind_group,
                 self.character_controller.character_state.cycle,
             );
         }

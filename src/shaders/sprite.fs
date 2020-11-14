@@ -16,9 +16,11 @@ layout(set = 1, binding = 0) uniform CameraUniforms {
 layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_model_position;
   vec4 u_color;
+  vec2 u_sprite_size_px;
 };
 
 void main() {
-  vec4 object_color = v_color * texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
+  vec4 object_color =
+      v_color * texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
   f_color = object_color;
 }
