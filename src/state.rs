@@ -7,6 +7,7 @@ use winit::{
 };
 
 use crate::camera;
+use crate::character_controller;
 use crate::map;
 use crate::sprite;
 use crate::texture;
@@ -51,14 +52,18 @@ pub struct State {
     size: winit::dpi::PhysicalSize<u32>,
     depth_texture: texture::Texture,
 
-    // Camera and input state
-    camera: camera::Camera,
-    projection: camera::Projection,
+    // Input state
     camera_controller: camera::CameraController,
-    camera_uniforms: camera::Uniforms,
+    character_controller: character_controller::CharacterController,
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
+    // Camera
+    camera: camera::Camera,
+    projection: camera::Projection,
+    camera_uniforms: camera::Uniforms,
+
+    // Pipelines
     sprite_render_pipeline: wgpu::RenderPipeline,
 
     // Stage rendering
@@ -124,6 +129,8 @@ impl State {
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0));
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
+        let character_controller =
+            character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -143,7 +150,7 @@ impl State {
                 push_constant_ranges: &[],
             });
 
-        let stage_render_pipeline = sprite::create_render_pipeline(
+        let sprite_render_pipeline = sprite::create_render_pipeline(
             &device,
             &sprite_render_pipeline_layout,
             sc_desc.format,
@@ -258,16 +265,18 @@ impl State {
             depth_texture,
             size,
 
-            camera,
             camera_controller,
-            projection,
-            camera_uniforms,
+            character_controller,
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
 
-            stage_uniforms,
+            camera,
+            projection,
+            camera_uniforms,
 
-            sprite_render_pipeline: stage_render_pipeline,
+            sprite_render_pipeline,
+
+            stage_uniforms,
             stage_sprite_collection,
             stage_hit_tester,
             map,
@@ -308,7 +317,10 @@ impl State {
                         ..
                     },
                 ..
-            } => self.camera_controller.process_keyboard(*key, *state),
+            } => {
+                self.character_controller.process_keyboard(*key, *state)
+                    || self.camera_controller.process_keyboard(*key, *state)
+            }
             WindowEvent::MouseWheel { delta, .. } => {
                 self.camera_controller.process_scroll(delta);
                 true
@@ -356,14 +368,20 @@ impl State {
 
         self.stage_uniforms.write(&mut self.queue);
 
-        // Update entity state
-        self.entity_uniforms
-            .data
-            .set_color(&cgmath::Vector4::new(0.0, 1.0, 1.0, 1.0));
+        // Update player character state
+        let character_state = self.character_controller.update(dt);
 
         self.entity_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(2.0, 8.0, 0.5));
+            .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
+
+        self.entity_uniforms
+            .data
+            .set_model_position(&cgmath::Point3::new(
+                character_state.position.x,
+                character_state.position.y,
+                0.5,
+            ));
 
         self.entity_uniforms.write(&mut self.queue);
 
@@ -426,12 +444,12 @@ impl State {
                 &self.stage_uniforms.bind_group,
             );
 
-            // Render Entities
+            // Render player character
             self.firebrand.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
                 &self.entity_uniforms.bind_group,
-                "default",
+                self.character_controller.character_state.cycle,
             );
         }
 

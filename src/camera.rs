@@ -4,6 +4,8 @@ use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 // CGMath uses an OpenGL clipspace of [-1,+1] on z, where wgpu uses [0,+1] for z
 // We need to scale and translate the cgmath clipspace to wgpu's. Note we're also
 // flipping X, giving us a coordinate system with +x to right, +z into screen, and +y up.
@@ -33,6 +35,8 @@ impl Camera {
         Matrix4::look_at_dir(self.position, self.look_dir.normalize(), Vector3::unit_y())
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct Projection {
     width: f32,
@@ -87,6 +91,8 @@ impl Projection {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 #[derive(Debug)]
 struct CameraControllerInputState {
     move_left_pressed: bool,
@@ -133,27 +139,27 @@ impl CameraController {
     pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
         let pressed = state == ElementState::Pressed;
         match key {
-            VirtualKeyCode::W | VirtualKeyCode::Up => {
+            VirtualKeyCode::Up => {
                 self.input_state.move_up_pressed = pressed;
                 true
             }
-            VirtualKeyCode::S | VirtualKeyCode::Down => {
+            VirtualKeyCode::Down => {
                 self.input_state.move_down_pressed = pressed;
                 true
             }
-            VirtualKeyCode::A | VirtualKeyCode::Left => {
+            VirtualKeyCode::Left => {
                 self.input_state.move_left_pressed = pressed;
                 true
             }
-            VirtualKeyCode::D | VirtualKeyCode::Right => {
+            VirtualKeyCode::Right => {
                 self.input_state.move_right_pressed = pressed;
                 true
             }
-            VirtualKeyCode::E => {
+            VirtualKeyCode::PageUp => {
                 self.input_state.zoom_in_pressed = pressed;
                 true
             }
-            VirtualKeyCode::Q => {
+            VirtualKeyCode::PageDown => {
                 self.input_state.zoom_out_pressed = pressed;
                 true
             }
@@ -225,7 +231,7 @@ impl UniformData {
     }
 }
 
-// --------------------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct Uniforms {
     pub data: UniformData,

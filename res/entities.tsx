@@ -21,19 +21,19 @@
  </tile>
  <tile id="3">
   <properties>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="4">
   <properties>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="5">
   <properties>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
@@ -121,21 +121,21 @@
  </tile>
  <tile id="19">
   <properties>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="20">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="21">
   <properties>
-   <property name="cycle" value="shoot"/>
+   <property name="cycle" value="fire"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>

@@ -6,6 +6,7 @@ use winit::{
 };
 
 mod camera;
+mod character_controller;
 mod map;
 mod sprite;
 mod state;
