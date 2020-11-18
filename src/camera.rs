@@ -19,20 +19,40 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 
 #[derive(Debug)]
 pub struct Camera {
-    pub position: Point3<f32>,
+    position: Point3<f32>,
     pub look_dir: Vector3<f32>,
+    pixels_per_unit: f32,
 }
 
 impl Camera {
-    pub fn new<P: Into<Point3<f32>>, V: Into<Vector3<f32>>>(position: P, look_dir: V) -> Self {
+    pub fn new<P: Into<Point3<f32>>, V: Into<Vector3<f32>>>(
+        position: P,
+        look_dir: V,
+        pixels_per_unit: u32,
+    ) -> Self {
         Self {
             position: position.into(),
             look_dir: look_dir.into(),
+            pixels_per_unit: pixels_per_unit as f32,
+        }
+    }
+
+    pub fn position(&self) -> Point3<f32> {
+        if self.pixels_per_unit > 0.0 {
+            let cx = (self.position.x * self.pixels_per_unit).round() / self.pixels_per_unit;
+            let cy = (self.position.y * self.pixels_per_unit).round() / self.pixels_per_unit;
+            cgmath::Point3::new(cx, cy, self.position.z)
+        } else {
+            self.position
         }
     }
 
     pub fn calc_matrix(&self) -> Matrix4<f32> {
-        Matrix4::look_at_dir(self.position, self.look_dir.normalize(), Vector3::unit_y())
+        Matrix4::look_at_dir(
+            self.position(),
+            self.look_dir.normalize(),
+            Vector3::unit_y(),
+        )
     }
 }
 
@@ -226,7 +246,7 @@ impl UniformData {
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
-        self.view_position = camera.position.to_homogeneous(); // converts to vec4
+        self.view_position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
     }
 }

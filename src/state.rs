@@ -123,23 +123,11 @@ impl State {
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
-        // Build camera, and camera uniform storage
-        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
-
-        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0));
-        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
-        let camera_controller = camera::CameraController::new(4.0);
-        let character_controller =
-            character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
-
-        let mut camera_uniforms = camera::Uniforms::new(&device);
-        camera_uniforms.data.update_view_proj(&camera, &projection);
-
         // Load the stage map
-
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
 
+        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
         let (stage_sprite_collection, stage_hit_tester) = {
             let mat = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
@@ -179,8 +167,17 @@ impl State {
             )
         };
 
-        // Build the sprite render pipeline
+        // Build camera, and camera uniform storage
+        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
+        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
+        let camera_controller = camera::CameraController::new(4.0);
+        let character_controller =
+            character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
+        let mut camera_uniforms = camera::Uniforms::new(&device);
+        camera_uniforms.data.update_view_proj(&camera, &projection);
+
+        // Build the sprite render pipeline
         let mut stage_uniforms = sprite::Uniforms::new(&device);
         stage_uniforms.data.set_sprite_size_px(cgmath::Vector2::new(
             map.tileset.tile_width as f32,
@@ -402,7 +399,7 @@ impl State {
     }
 
     fn update_ui_display_state(&mut self, _window: &Window, _dt: std::time::Duration) {
-        self.ui_display_state.camera_position = self.camera.position;
+        self.ui_display_state.camera_position = self.camera.position();
         self.ui_display_state.zoom = self.projection.scale();
     }
 
