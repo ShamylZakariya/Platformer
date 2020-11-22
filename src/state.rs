@@ -149,7 +149,7 @@ impl State {
                 .expect("Expected layer named 'Level'");
 
             let bg_sprites = map.generate_sprites(bg_layer, 1.0);
-            let level_sprites = map.generate_sprites(level_layer, 0.0);
+            let level_sprites = map.generate_sprites(level_layer, 0.9);
             let mut all_sprites = vec![];
 
             for s in &bg_sprites {
