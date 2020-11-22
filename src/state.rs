@@ -378,7 +378,7 @@ impl State {
         self.stage_uniforms.write(&mut self.queue);
 
         // Update player character state
-        let character_state = self.character_controller.update(dt);
+        let character_state = self.character_controller.update(dt, &self.stage_hit_tester);
 
         self.firebrand_uniforms
             .data

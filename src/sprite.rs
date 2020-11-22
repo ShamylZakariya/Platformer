@@ -710,13 +710,13 @@ impl SpriteHitTester {
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, there is no guarantee which will be returned,
     /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn test_point(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
         // first test the unit sprites
         if let Some(sprite) = self
             .unit_sprites
             .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
         {
-            if sprite.mask & mask != 0 {
+            if sprite.mask & mask != 0 && sprite.contains(point) {
                 return Some(*sprite);
             }
         }
@@ -879,21 +879,25 @@ mod sprite_hit_tester {
         let hit_tester = SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test(&Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
-        assert!(hit_tester.test(&Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
-        assert!(hit_tester.test(&Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
-        assert!(hit_tester.test(&Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
+        assert!(hit_tester.test_point(&Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
+        assert!(hit_tester.test_point(&Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
+        assert!(hit_tester.test_point(&Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
+        assert!(hit_tester.test_point(&Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
         assert!(hit_tester
-            .test(&Point2::new(0.1, 4.1), square_mask)
+            .test_point(&Point2::new(0.1, 4.1), square_mask)
             .is_none());
-        assert!(hit_tester.test(&Point2::new(0.1, 3.9), all_mask).is_some());
+        assert!(hit_tester
+            .test_point(&Point2::new(0.1, 3.9), all_mask)
+            .is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test(&Point2::new(0.5, 0.5), square_mask) == Some(sb1));
+        assert!(hit_tester.test_point(&Point2::new(0.5, 0.5), square_mask) == Some(sb1));
         assert!(hit_tester
-            .test(&Point2::new(0.5, 0.5), triangle_mask)
+            .test_point(&Point2::new(0.5, 0.5), triangle_mask)
             .is_none());
-        assert!(hit_tester.test(&Point2::new(0.5, 0.5), all_mask).is_some());
+        assert!(hit_tester
+            .test_point(&Point2::new(0.5, 0.5), all_mask)
+            .is_some());
     }
 
     #[test]
@@ -943,11 +947,11 @@ mod sprite_hit_tester {
         // this point is in all three boxes
         let p = Point2::new(3.5, -0.5);
 
-        assert_eq!(hit_tester.test(&p, mask0), Some(b0));
-        assert_eq!(hit_tester.test(&p, mask1), Some(b1));
-        assert_eq!(hit_tester.test(&p, mask2), Some(b2));
-        assert_eq!(hit_tester.test(&p, unused_mask), None);
-        assert!(hit_tester.test(&p, all_mask).is_some());
+        assert_eq!(hit_tester.test_point(&p, mask0), Some(b0));
+        assert_eq!(hit_tester.test_point(&p, mask1), Some(b1));
+        assert_eq!(hit_tester.test_point(&p, mask2), Some(b2));
+        assert_eq!(hit_tester.test_point(&p, unused_mask), None);
+        assert!(hit_tester.test_point(&p, all_mask).is_some());
     }
 }
 
