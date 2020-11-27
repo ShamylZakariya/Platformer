@@ -8,6 +8,7 @@ use crate::sprite;
 // ---------------------------------------------------------------------------------------------------------------------
 
 const CHARACTER_CYCLE_DEFAULT: &str = "default";
+const CHARACTER_CYCLE_DEBUG: &str = "debug";
 const CHARACTER_CYCLE_SHOOT: &str = "shoot";
 const CHARACTER_CYCLE_WALK_0: &str = "walk_0";
 const CHARACTER_CYCLE_WALK_1: &str = "walk_1";
@@ -30,7 +31,7 @@ impl CharacterState {
     fn new(position: &Point2<f32>) -> Self {
         CharacterState {
             position: *position,
-            cycle: CHARACTER_CYCLE_DEFAULT,
+            cycle: CHARACTER_CYCLE_DEBUG,
         }
     }
 }

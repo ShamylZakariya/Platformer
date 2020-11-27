@@ -261,16 +261,22 @@
  <tile id="41">
   <properties>
    <property name="collision_shape" value="none"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="42">
   <properties>
    <property name="collision_shape" value="none"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="43">
   <properties>
    <property name="collision_shape" value="none"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="44">
@@ -356,16 +362,23 @@
  <tile id="57">
   <properties>
    <property name="collision_shape" value="none"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="58">
   <properties>
-   <property name="collision_shape" value="none"/>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="59">
   <properties>
    <property name="collision_shape" value="none"/>
+   <property name="cycle" value="debug"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="60">
