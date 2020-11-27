@@ -384,7 +384,7 @@ impl State {
 
         self.stage_debug_draw_overlap_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.25)); // bring closer
+            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.1)); // bring closer
         self.stage_debug_draw_overlap_uniforms
             .data
             .set_color(&cgmath::Vector4::new(0.25, 1.0, 0.25, 0.5));
@@ -393,7 +393,7 @@ impl State {
 
         self.stage_debug_draw_contact_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.5)); // bring closer
+            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.2)); // bring closer
         self.stage_debug_draw_contact_uniforms
             .data
             .set_color(&cgmath::Vector4::new(1.0, 0.25, 0.25, 0.5));
@@ -476,14 +476,6 @@ impl State {
                 &self.stage_uniforms.bind_group,
             );
 
-            // Render player character
-            self.firebrand.draw(
-                &mut render_pass,
-                &self.camera_uniforms.bind_group,
-                &self.firebrand_uniforms.bind_group,
-                self.character_controller.character_state.cycle,
-            );
-
             if !self.character_controller.overlapping_sprites.is_empty() {
                 self.stage_sprite_collection.draw_sprites(
                     &self.character_controller.overlapping_sprites,
@@ -501,6 +493,14 @@ impl State {
                     &self.stage_debug_draw_contact_uniforms.bind_group,
                 );
             }
+
+            // Render player character
+            self.firebrand.draw(
+                &mut render_pass,
+                &self.camera_uniforms.bind_group,
+                &self.firebrand_uniforms.bind_group,
+                self.character_controller.character_state.cycle,
+            );
         }
 
         //
