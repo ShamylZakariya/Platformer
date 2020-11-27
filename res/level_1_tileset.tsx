@@ -50,16 +50,19 @@
  <tile id="9">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="ratchet" value="true"/>
   </properties>
  </tile>
  <tile id="10">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="ratchet" value="true"/>
   </properties>
  </tile>
  <tile id="11">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="ratchet" value="true"/>
   </properties>
  </tile>
  <tile id="12">
@@ -76,6 +79,7 @@
   <properties>
    <property name="collision_shape" value="square"/>
    <property name="falls" value="true"/>
+   <property name="ratchet" value="true"/>
   </properties>
  </tile>
  <tile id="35">

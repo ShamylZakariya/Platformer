@@ -68,6 +68,8 @@ pub struct State {
 
     // Stage rendering
     stage_uniforms: sprite::Uniforms,
+    stage_debug_draw_overlap_uniforms: sprite::Uniforms,
+    stage_debug_draw_contact_uniforms: sprite::Uniforms,
     stage_sprite_collection: sprite::SpriteCollection,
     stage_hit_tester: sprite::SpriteHitTester,
     map: map::Map,
@@ -171,18 +173,25 @@ impl State {
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
-        let character_controller =
+        let mut character_controller =
             character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
+
+        // place charatcer near first tree to help debug RATCHET collisions
+        // character_controller.character_state.position.x = 23.0;
+        // character_controller.character_state.position.y = 12.0;
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
 
         // Build the sprite render pipeline
-        let mut stage_uniforms = sprite::Uniforms::new(&device);
-        stage_uniforms.data.set_sprite_size_px(cgmath::Vector2::new(
+        let sprite_size_px = cgmath::Vector2::new(
             map.tileset.tile_width as f32,
             map.tileset.tile_height as f32,
-        ));
+        );
+
+        let stage_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_overlap_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_contact_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -220,13 +229,7 @@ impl State {
             )
         });
 
-        let mut firebrand_uniforms = sprite::Uniforms::new(&device);
-        firebrand_uniforms
-            .data
-            .set_sprite_size_px(cgmath::Vector2::new(
-                entity_tileset.tile_width as f32,
-                entity_tileset.tile_height as f32,
-            ));
+        let firebrand_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
         let firebrand = sprite::SpriteEntity::load(
             &entity_tileset,
             entity_material.clone(),
@@ -286,6 +289,8 @@ impl State {
             sprite_render_pipeline,
 
             stage_uniforms,
+            stage_debug_draw_overlap_uniforms,
+            stage_debug_draw_contact_uniforms,
             stage_sprite_collection,
             stage_hit_tester,
             map,
@@ -377,6 +382,24 @@ impl State {
 
         self.stage_uniforms.write(&mut self.queue);
 
+        self.stage_debug_draw_overlap_uniforms
+            .data
+            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.25)); // bring closer
+        self.stage_debug_draw_overlap_uniforms
+            .data
+            .set_color(&cgmath::Vector4::new(0.25, 1.0, 0.25, 0.5));
+        self.stage_debug_draw_overlap_uniforms
+            .write(&mut self.queue);
+
+        self.stage_debug_draw_contact_uniforms
+            .data
+            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.5)); // bring closer
+        self.stage_debug_draw_contact_uniforms
+            .data
+            .set_color(&cgmath::Vector4::new(1.0, 0.25, 0.25, 0.5));
+        self.stage_debug_draw_contact_uniforms
+            .write(&mut self.queue);
+
         // Update player character state
         let character_state = self.character_controller.update(dt, &self.stage_hit_tester);
 
@@ -460,6 +483,24 @@ impl State {
                 &self.firebrand_uniforms.bind_group,
                 self.character_controller.character_state.cycle,
             );
+
+            if !self.character_controller.overlapping_sprites.is_empty() {
+                self.stage_sprite_collection.draw_sprites(
+                    &self.character_controller.overlapping_sprites,
+                    &mut render_pass,
+                    &self.camera_uniforms.bind_group,
+                    &self.stage_debug_draw_overlap_uniforms.bind_group,
+                );
+            }
+
+            if !self.character_controller.contact_sprites.is_empty() {
+                self.stage_sprite_collection.draw_sprites(
+                    &self.character_controller.contact_sprites,
+                    &mut render_pass,
+                    &self.camera_uniforms.bind_group,
+                    &self.stage_debug_draw_contact_uniforms.bind_group,
+                );
+            }
         }
 
         //

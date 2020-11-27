@@ -2,7 +2,7 @@ use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vecto
 use std::time::Duration;
 use winit::event::*;
 
-use crate::map::FLAG_MAP_TILE_IS_COLLIDER;
+use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
 use crate::sprite;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -87,6 +87,8 @@ fn input_accumulator(negative: bool, positive: bool) -> f32 {
 pub struct CharacterController {
     input_state: InputState,
     pub character_state: CharacterState,
+    pub overlapping_sprites: Vec<sprite::SpriteDesc>,
+    pub contact_sprites: Vec<sprite::SpriteDesc>,
 }
 
 impl CharacterController {
@@ -94,6 +96,8 @@ impl CharacterController {
         Self {
             input_state: Default::default(),
             character_state: CharacterState::new(position),
+            overlapping_sprites: vec![],
+            contact_sprites: vec![],
         }
     }
 
@@ -127,101 +131,132 @@ impl CharacterController {
     ) -> &CharacterState {
         let dt = dt.as_secs_f32();
 
-        let mut center_bottom = self.character_state.position + vec2(0.5, 0.0);
+        self.overlapping_sprites.clear();
+        self.contact_sprites.clear();
 
-        // apply gravity
-        {
-            let (pos, floor) = self.apply_gravity(collision_space, &center_bottom, dt);
-            center_bottom = pos;
+        let center_bottom = self.character_state.position + vec2(0.5, 0.0);
+        let (center_bottom, gravity_motion) = self.apply_gravity(&center_bottom, dt);
+        let (center_bottom, user_motion) = self.apply_character_movement(&center_bottom, dt);
+        let motion = gravity_motion + user_motion;
 
-            // check if character landed on something - his is where we'll handle landing on lava, etc
-            if let Some(floor) = floor {
-                println!("[CharacterController::update] - floor: {:#?}", floor);
-            }
-        }
-
-        // apply user input
-        {
-            let delta_position = dt
-                * WALK_SPEED
-                * Vector2::new(
-                    input_accumulator(
-                        self.input_state.move_left_pressed,
-                        self.input_state.move_right_pressed,
-                    ),
-                    input_accumulator(false, self.input_state.jump_pressed),
-                );
-
-            let (pos, obstruction) =
-                self.apply_character_movement(collision_space, &center_bottom, &delta_position);
-
-            center_bottom = pos;
-
-            // determine if character walked into something, e.g. wall spikes etc
-            if let Some(obstruction) = obstruction {
-                println!(
-                    "[CharacterController::update] - movement obstruction: {:#?}",
-                    obstruction
-                );
-            }
-        }
+        let center_bottom =
+            self.sanitize_character_position(collision_space, &center_bottom, &motion);
 
         self.character_state.position = center_bottom - vec2(0.5, 0.0);
         &self.character_state
     }
 
-    /// Given unit-sized character and center/bottom position, applies gravity, and returns tuple of new center/bottom
-    /// position and any floor sprite which prevented further application of gravity
-    fn apply_gravity(
-        &self,
+    fn sanitize_character_position(
+        &mut self,
         collision_space: &sprite::SpriteHitTester,
         center_bottom: &Point2<f32>,
-        dt: f32,
-    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
-        let new_position = center_bottom + vec2(0.0, dt * GRAVITY_SPEED);
-        println!(
-            "[CharacterController::apply_gravity] new_position: {:?}",
-            center_bottom
-        );
-        if let Some(sprite) = collision_space.test_point(&new_position, FLAG_MAP_TILE_IS_COLLIDER) {
-            println!("\tCollided with: {:#?}", sprite);
+        motion: &Vector2<f32>,
+    ) -> Point2<f32> {
+        let mut center_bottom = *center_bottom;
 
-            // adjust the new position to the collision edge of the sprite
-            match sprite.collision_shape {
-                sprite::SpriteCollisionShape::Square => {
-                    let new_position =
-                        Point2::new(new_position.x, sprite.origin.y + sprite.extent.y);
-                    (new_position, Some(sprite))
-                }
-                sprite::SpriteCollisionShape::NorthEast => {
-                    // slope is -1, so y is how far across intersection is
-                    let across = 1.0 - (new_position.x - sprite.origin.x);
-                    let new_position = Point2::new(new_position.x, sprite.origin.y + across);
-                    (new_position, Some(sprite))
-                }
-                sprite::SpriteCollisionShape::NorthWest => {
-                    // slope is 1, so y is how far across intersection is
-                    let across = new_position.x - sprite.origin.x;
-                    let new_position = Point2::new(new_position.x, sprite.origin.y + across);
-                    (new_position, Some(sprite))
-                }
-                _ => (new_position, None),
+        // Get the four sprites
+        let (top_left, top_right, bottom_right, bottom_left) = collision_space
+            .get_overlapping_sprites(
+                &Point2::new(center_bottom.x - 0.5, center_bottom.y),
+                FLAG_MAP_TILE_IS_COLLIDER,
+            );
+
+        for s in vec![top_left, top_right, bottom_right, bottom_left] {
+            if let Some(s) = s {
+                self.overlapping_sprites.push(s);
             }
-        } else {
-            println!("\tNo collision");
-            (new_position, None)
         }
+
+        // Perform downward ray cast
+        if let Some(bottom_left) = bottom_left {
+            if let Some(intersection) =
+                bottom_left.line_intersection(&(center_bottom + vec2(0.0, 1.0)), &center_bottom)
+            {
+                center_bottom = intersection;
+            }
+        }
+        if let Some(bottom_right) = bottom_right {
+            if let Some(intersection) =
+                bottom_right.line_intersection(&(center_bottom + vec2(0.0, 1.0)), &center_bottom)
+            {
+                center_bottom = intersection;
+            }
+        }
+
+        if motion.y < 0.0 {
+        } else {
+            // Perform upwards motion testing using a rectangle test
+            if let Some(top_left) = top_left {
+                if top_left.rect_intersection(&(center_bottom + vec2(-0.5, 0.0)), &vec2(1.0, 1.0)) {
+                    center_bottom.y = top_left.origin.y - 1.0;
+                }
+            }
+        }
+
+        // // this almost but doesn't quite work
+        // // do I need to do the four sprite check?
+        // // I think that the center_bottom foot check is only valid for when character is on a slope,
+        // // otherwise I should be using square/square collision?
+
+        // {
+        //     let foot_collisision = collision_space.test_point(&center_bottom, FLAG_MAP_TILE_IS_COLLIDER);
+        //     let head_collision = collision_space.test_point(&center_top, FLAG_MAP_TILE_IS_COLLIDER);
+
+        //     if let Some(foot_collision) = foot_collisision
+        //     {
+        //         if foot_collision.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
+        //             // in the case of a ratchet, collision can only happen when foot is traveling downwards and
+        //             // transitioned from above to below
+        //             let previous_foot_collision = collision_space.test_point(&(center_bottom - motion), FLAG_MAP_TILE_IS_COLLIDER);
+        //             if moving_downwards && head_collision != Some(foot_collision) {
+        //                 return center_bottom;
+        //             }
+        //         }
+
+        //         //println!("[{:?}] center_bottom collision", motion);
+        //         center_bottom = foot_collision.line_intersection(&center_top, &center_bottom).unwrap();
+        //         center_top.y = center_bottom.y + 1.0;
+        //     }
+
+        //     // test if character's head position in collider
+        //     if let Some(head_collision) = head_collision
+        //     {
+        //         if head_collision.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
+        //             //println!("[{:?}] center_top RATCHET collision", motion);
+        //             return center_bottom;
+        //         } else {
+        //             //println!("[{:?}] center_top collision", motion);
+        //             center_top = head_collision.line_intersection(&center_bottom, &center_top).unwrap();
+        //             center_bottom.y = center_top.y - 1.0;
+        //         }
+        //     }
+        // }
+
+        center_bottom
     }
 
-    /// Given a unit-sized character, with position at center/bottom, and given a proposed movement, returns a
-    /// tuple of the new character center/bottom position and any obstruction that prevented movement (if any)
+    fn apply_gravity(&self, center_bottom: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
+        let motion = vec2(0.0, dt * GRAVITY_SPEED);
+        (center_bottom + motion, motion)
+    }
+
     fn apply_character_movement(
         &self,
-        collision_space: &sprite::SpriteHitTester,
         center_bottom: &Point2<f32>,
-        proposed_movement: &Vector2<f32>,
-    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
-        let proposed_position = center_bottom + proposed_movement;
-        (proposed_position, None)
+        dt: f32,
+    ) -> (Point2<f32>, Vector2<f32>) {
+        let delta_position = dt
+            * WALK_SPEED
+            * Vector2::new(
+                input_accumulator(
+                    self.input_state.move_left_pressed,
+                    self.input_state.move_right_pressed,
+                ),
+                input_accumulator(false, self.input_state.jump_pressed),
+            );
+
+        (center_bottom + delta_position, delta_position)
     }
+
+    fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {}
 }

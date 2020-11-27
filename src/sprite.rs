@@ -1,10 +1,40 @@
 use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
-use std::collections::HashMap;
-use std::rc::Rc;
+use std::{collections::HashMap, unimplemented};
+use std::{hash::Hash, rc::Rc};
 
+use crate::geom;
 use crate::texture;
 use crate::tileset;
 use wgpu::util::DeviceExt;
+
+fn hash_point2<H: std::hash::Hasher>(point: &Point2<f32>, state: &mut H) {
+    ((point.x * 1000.0) as i32).hash(state);
+    ((point.y * 1000.0) as i32).hash(state);
+}
+
+fn hash_point3<H: std::hash::Hasher>(point: &Point3<f32>, state: &mut H) {
+    ((point.x * 1000.0) as i32).hash(state);
+    ((point.y * 1000.0) as i32).hash(state);
+    ((point.z * 1000.0) as i32).hash(state);
+}
+
+fn hash_vec2<H: std::hash::Hasher>(v: &Vector2<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+}
+
+fn hash_vec3<H: std::hash::Hasher>(v: &Vector3<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+    ((v.z * 1000.0) as i32).hash(state);
+}
+
+fn hash_vec4<H: std::hash::Hasher>(v: &Vector4<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+    ((v.z * 1000.0) as i32).hash(state);
+    ((v.w * 1000.0) as i32).hash(state);
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -120,8 +150,9 @@ pub struct Uniforms {
 }
 
 impl Uniforms {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let data = UniformData::new();
+    pub fn new(device: &wgpu::Device, sprite_size_px: cgmath::Vector2<f32>) -> Self {
+        let mut data = UniformData::new();
+        data.set_sprite_size_px(sprite_size_px);
 
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Sprite Uniform Buffer"),
@@ -221,7 +252,7 @@ impl Vertex for SpriteVertex {
 /// Represents the shape of a sprite, where Square represents a standard, square, sprite and the remainder
 /// are triangles, with the surface normal facing in the specqified direction. E.g., NorthEast would be a triangle
 /// with the edge normal facing up and to the right.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum SpriteCollisionShape {
     None,
     Square,
@@ -295,6 +326,21 @@ impl PartialEq for SpriteDesc {
             && self.flipped_diagonally == other.flipped_diagonally
             && self.flipped_horizontally == other.flipped_horizontally
             && self.flipped_vertically == other.flipped_vertically
+    }
+}
+
+impl Hash for SpriteDesc {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.collision_shape.hash(state);
+        hash_point3(&self.origin, state);
+        hash_vec2(&self.extent, state);
+        hash_point2(&self.tex_coord_origin, state);
+        hash_vec2(&self.tex_coord_extent, state);
+        hash_vec4(&self.color, state);
+        self.mask.hash(state);
+        self.flipped_diagonally.hash(state);
+        self.flipped_horizontally.hash(state);
+        self.flipped_vertically.hash(state);
     }
 }
 
@@ -406,6 +452,93 @@ impl SpriteDesc {
         }
 
         false
+    }
+
+    /// if the line described by a->b intersects this SpriteDesc, returns the point on it where the line
+    /// segment intersects, otherwise, returns None
+    pub fn line_intersection(&self, a: &Point2<f32>, b: &Point2<f32>) -> Option<Point2<f32>> {
+        match self.collision_shape {
+            SpriteCollisionShape::None => None,
+            SpriteCollisionShape::Square => geom::intersection::line_convex_poly_closest(
+                a,
+                b,
+                &vec![
+                    Point2::new(self.origin.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                ],
+            ),
+            SpriteCollisionShape::NorthEast => geom::intersection::line_convex_poly_closest(
+                a,
+                b,
+                &vec![
+                    Point2::new(self.origin.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
+                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                ],
+            ),
+            SpriteCollisionShape::SouthEast => geom::intersection::line_convex_poly_closest(
+                a,
+                b,
+                &vec![
+                    Point2::new(self.origin.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                ],
+            ),
+            SpriteCollisionShape::SouthWest => geom::intersection::line_convex_poly_closest(
+                a,
+                b,
+                &vec![
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                ],
+            ),
+            SpriteCollisionShape::NorthWest => geom::intersection::line_convex_poly_closest(
+                a,
+                b,
+                &vec![
+                    Point2::new(self.origin.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
+                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                ],
+            ),
+        }
+    }
+
+    /// Returns true if this SpriteDesc overlaps the described rect with lower/left origin and extent.
+    pub fn rect_intersection(&self, origin: &Point2<f32>, extent: &Vector2<f32>) -> bool {
+        let x_overlap =
+            self.origin.x < origin.x + extent.x && self.origin.x + self.extent.x > origin.x;
+        let y_overlap =
+            self.origin.y < origin.y + extent.y && self.origin.y + self.extent.y > origin.y;
+        if x_overlap && y_overlap {
+            match self.collision_shape {
+                SpriteCollisionShape::None => false,
+                SpriteCollisionShape::Square => true,
+                SpriteCollisionShape::NorthEast => {
+                    todo!();
+                }
+                SpriteCollisionShape::SouthEast => {
+                    todo!();
+                }
+                SpriteCollisionShape::SouthWest => {
+                    todo!();
+                }
+                SpriteCollisionShape::NorthWest => {
+                    todo!();
+                }
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if this SpriteDesc overlaps the described unit square with lower/left origin and extent of (1,1).
+    pub fn unit_rect_intersection(&self, origin: &Point2<f32>) -> bool {
+        self.rect_intersection(origin, &vec2(1.0, 1.0))
     }
 
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
@@ -649,6 +782,123 @@ mod sprite_desc_tests {
     }
 
     #[test]
+    fn line_intersection_with_square_works() {
+        let sprite = SpriteDesc::new(
+            SpriteCollisionShape::Square,
+            Point3::new(0.0, 0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Point2::new(0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Vector4::new(0.0, 0.0, 0.0, 0.0),
+            0,
+        );
+
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(0.5, 0.5)),
+            Some(Point2::new(0.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, 0.5)),
+            Some(Point2::new(0.5, 1.0))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(0.5, 0.5)),
+            Some(Point2::new(1.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 0.5)),
+            Some(Point2::new(0.5, 0.0))
+        );
+    }
+
+    #[test]
+    fn line_intersection_with_slopes_works() {
+        let mut sprite = SpriteDesc::new(
+            SpriteCollisionShape::NorthEast,
+            Point3::new(0.0, 0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Point2::new(0.0, 0.0),
+            Vector2::new(1.0, 1.0),
+            Vector4::new(0.0, 0.0, 0.0, 0.0),
+            0,
+        );
+
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
+            Some(Point2::new(0.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
+            Some(Point2::new(0.5, 0.0))
+        );
+
+        sprite.collision_shape = SpriteCollisionShape::SouthEast;
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
+            Some(Point2::new(0.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
+            Some(Point2::new(0.5, 1.0))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+
+        sprite.collision_shape = SpriteCollisionShape::SouthWest;
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
+            Some(Point2::new(0.5, 1.0))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
+            Some(Point2::new(1.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+
+        sprite.collision_shape = SpriteCollisionShape::NorthWest;
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
+            Some(Point2::new(0.5, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
+            Some(Point2::new(1.0, 0.5))
+        );
+        assert_eq!(
+            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
+            Some(Point2::new(0.5, 0.0))
+        );
+    }
+
+    #[test]
+    fn rect_intersection_works() {}
+
+    #[test]
     fn double_flip_is_identity() {
         let mut sprite = SpriteDesc::unit(
             SpriteCollisionShape::Square,
@@ -670,13 +920,11 @@ mod sprite_desc_tests {
 
 pub struct SpriteHitTester {
     unit_sprites: HashMap<Point2<i32>, SpriteDesc>,
-    non_unit_sprites: Vec<SpriteDesc>,
 }
 
 impl SpriteHitTester {
     pub fn new(sprite_descs: &[SpriteDesc]) -> Self {
         let mut unit_sprites = HashMap::new();
-        let mut non_unit_sprites = vec![];
 
         for sprite in sprite_descs {
             // copy sprites into appropriate storage
@@ -686,24 +934,18 @@ impl SpriteHitTester {
                     *sprite,
                 );
             } else {
-                non_unit_sprites.push(*sprite);
+                unimplemented!("SpriteHitTester does not support non-unit sprites.")
             }
         }
 
-        // sort non-unit sprites along x and (secondarily) y
-        non_unit_sprites.sort_by(|a, b| {
-            let ord_0 = a.origin.x.partial_cmp(&b.origin.x).unwrap();
-            if ord_0 == std::cmp::Ordering::Equal {
-                a.origin.y.partial_cmp(&b.origin.y).unwrap()
-            } else {
-                ord_0
-            }
-        });
+        Self { unit_sprites }
+    }
 
-        Self {
-            unit_sprites,
-            non_unit_sprites,
-        }
+    pub fn get_sprite_at(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+        self.unit_sprites
+            .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
+            .filter(|s| s.mask & mask != 0)
+            .map(|s| *s)
     }
 
     /// tests if a point in the sprites' coordinate system intersects with a sprite.
@@ -715,25 +957,114 @@ impl SpriteHitTester {
         if let Some(sprite) = self
             .unit_sprites
             .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
+            .filter(|s| s.mask & mask != 0 && s.contains(point))
         {
-            if sprite.mask & mask != 0 && sprite.contains(point) {
-                return Some(*sprite);
-            }
+            return Some(*sprite);
+        } else {
+            None
         }
+    }
 
-        // non_unit sprites are stored sorted along x, so we can early exit
-        // TODO: Some kind of partitioning/binary search?
+    /// Gets the up to four sprites which might overlap the unit sprite. Does not perform intersection testing (e.g.,
+    /// testing of the unit actually intersects a triangular sprite).
+    /// Returns tuple of four sprites, ordered [top-left, top-right, bottom-right, bottom-left]
+    pub fn get_overlapping_sprites(
+        &self,
+        origin: &Point2<f32>,
+        mask: u32,
+    ) -> (
+        Option<SpriteDesc>,
+        Option<SpriteDesc>,
+        Option<SpriteDesc>,
+        Option<SpriteDesc>,
+    ) {
+        (
+            self.get_sprite_at(&Point2::new(origin.x, origin.y + 1.0), mask),
+            self.get_sprite_at(&Point2::new(origin.x + 1.0, origin.y + 1.0), mask),
+            self.get_sprite_at(&Point2::new(origin.x + 1.0, origin.y), mask),
+            self.get_sprite_at(&Point2::new(origin.x, origin.y), mask),
+        )
+    }
 
-        for sprite in &self.non_unit_sprites {
-            if sprite.origin.x > point.x {
-                break;
-            }
-            if sprite.contains(point) && sprite.mask & mask != 0 {
-                return Some(*sprite);
-            }
+    pub fn test_line(
+        &self,
+        a: &Point2<f32>,
+        b: &Point2<f32>,
+        mask: u32,
+    ) -> Option<(Point2<f32>, SpriteDesc)> {
+        // find the sprite the line segment intersects with
+        let mut p: Option<Point2<f32>> = None;
+        let mut s: Option<SpriteDesc> = None;
+        self.visit_line(a, b, mask, |point, sprite| {
+            p = Some(point);
+            s = Some(*sprite);
+            return false;
+        });
+
+        if let (Some(p), Some(s)) = (p, s) {
+            Some((p, s))
+        } else {
+            None
         }
+    }
 
-        None
+    /// Visits all sprites that could intersect the line a->b, in order from a to b, calling the visitor function
+    /// for each that intersects and has matching mask. The visitor receives the point where the line intersected
+    /// the sprite's edge, and the sprite. The visitor should return true to keep searching, false to terminate.
+    pub fn visit_line<F>(&self, a: &Point2<f32>, b: &Point2<f32>, mask: u32, mut visitor: F)
+    where
+        F: FnMut(Point2<f32>, &SpriteDesc) -> bool,
+    {
+        // http://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
+        let x0 = a.x as i32;
+        let y0 = a.y as i32;
+        let x1 = b.x as i32;
+        let y1 = b.y as i32;
+
+        let dx = (x1 - x0) as i32;
+        let dy = (y1 - y0) as i32;
+        let mut x = x0;
+        let mut y = y0;
+        let mut n = 1 + dx + dy;
+        let x_inc = if x1 > x0 { 1 } else { -1 };
+        let y_inc = if y1 > y0 { 1 } else { -1 };
+        let mut error = dx - dy;
+        let dx = dx * 2;
+        let dy = dy * 2;
+        let mut last_x = x;
+        let mut last_y = y;
+
+        while n > 0 {
+            // test (x,y)
+            let p = Point2::new(x as f32, y as f32);
+            if let Some(sprite) = self.test_point(&p, mask) {
+                if last_x == x && last_y == y {
+                    if !visitor(p, &sprite) {
+                        return;
+                    }
+                } else {
+                    let last_p = Point2::new(last_x as f32, last_y as f32);
+                    let i = sprite.line_intersection(&last_p, &p);
+                    if let Some(i) = i {
+                        if !visitor(i, &sprite) {
+                            return;
+                        }
+                    }
+                }
+            }
+
+            last_x = x;
+            last_y = y;
+            if error > 0 {
+                x += x_inc;
+                error -= dy;
+            } else {
+                y += y_inc;
+                error += dx;
+            }
+
+            n = n - 1;
+        }
     }
 }
 
@@ -742,7 +1073,7 @@ mod sprite_hit_tester {
     use super::*;
 
     #[test]
-    fn new_produces_expected_unit_and_non_unit_sprite_storage() {
+    fn new_produces_expected_storage() {
         let tco = Point2::new(0.0, 0.0);
         let tce = Vector2::new(1.0, 1.0);
         let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
@@ -765,27 +1096,8 @@ mod sprite_hit_tester {
             color,
             0,
         );
-        let non_unit_0 = SpriteDesc::new(
-            SpriteCollisionShape::Square,
-            Point3::new(10.0, 5.0, 0.0),
-            Vector2::new(5.0, 1.0),
-            tco,
-            tce,
-            color,
-            0,
-        );
 
-        let non_unit_1 = SpriteDesc::new(
-            SpriteCollisionShape::Square,
-            Point3::new(-1.0, -10.0, 0.0),
-            Vector2::new(50.0, 5.0),
-            tco,
-            tce,
-            color,
-            0,
-        );
-
-        let hit_tester = SpriteHitTester::new(&[unit_0, unit_1, non_unit_0, non_unit_1]);
+        let hit_tester = SpriteHitTester::new(&[unit_0, unit_1]);
         assert_eq!(
             hit_tester
                 .unit_sprites
@@ -800,10 +1112,6 @@ mod sprite_hit_tester {
                 .unwrap(),
             &unit_1
         );
-
-        // non-unit sprites are sorted along X
-        assert_eq!(hit_tester.non_unit_sprites[0], non_unit_1);
-        assert_eq!(hit_tester.non_unit_sprites[1], non_unit_0);
     }
 
     #[test]
@@ -1026,6 +1334,7 @@ pub struct SpriteMesh {
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
     pub material: usize,
+    pub sprite_element_indices: HashMap<SpriteDesc, u32>,
 }
 
 impl SpriteMesh {
@@ -1037,6 +1346,7 @@ impl SpriteMesh {
     ) -> Self {
         let mut vertices = vec![];
         let mut indices = vec![];
+        let mut sprite_element_indices: HashMap<SpriteDesc, u32> = HashMap::new();
         for sprite in sprites {
             let p_a = vec3(sprite.origin.x, sprite.origin.y, sprite.origin.z);
             let p_b = vec3(
@@ -1094,6 +1404,7 @@ impl SpriteMesh {
             vertices.push(sv_c);
             vertices.push(sv_d);
 
+            sprite_element_indices.insert(*sprite, indices.len() as u32);
             indices.push((idx + 0) as u32);
             indices.push((idx + 1) as u32);
             indices.push((idx + 2) as u32);
@@ -1122,6 +1433,7 @@ impl SpriteMesh {
             index_buffer,
             num_elements,
             material,
+            sprite_element_indices,
         }
     }
 
@@ -1138,6 +1450,27 @@ impl SpriteMesh {
         render_pass.set_bind_group(1, &camera_uniforms, &[]);
         render_pass.set_bind_group(2, &sprite_uniforms, &[]);
         render_pass.draw_indexed(0..self.num_elements, 0, 0..1);
+    }
+
+    pub fn draw_sprites<'a, 'b>(
+        &'a self,
+        sprites: &[SpriteDesc],
+        render_pass: &'b mut wgpu::RenderPass<'a>,
+        material: &'a wgpu::BindGroup,
+        camera_uniforms: &'a wgpu::BindGroup,
+        sprite_uniforms: &'a wgpu::BindGroup,
+    ) {
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..));
+        render_pass.set_bind_group(0, &material, &[]);
+        render_pass.set_bind_group(1, &camera_uniforms, &[]);
+        render_pass.set_bind_group(2, &sprite_uniforms, &[]);
+
+        for sprite in sprites {
+            if let Some(index) = self.sprite_element_indices.get(sprite) {
+                render_pass.draw_indexed(*index..*index + 6, 0, 0..1);
+            }
+        }
     }
 }
 
@@ -1162,6 +1495,25 @@ impl SpriteCollection {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
             mesh.draw(
+                render_pass,
+                &material.bind_group,
+                camera_uniforms,
+                sprite_uniforms,
+            );
+        }
+    }
+
+    pub fn draw_sprites<'a, 'b>(
+        &'a self,
+        sprites: &[SpriteDesc],
+        render_pass: &'b mut wgpu::RenderPass<'a>,
+        camera_uniforms: &'a wgpu::BindGroup,
+        sprite_uniforms: &'a wgpu::BindGroup,
+    ) {
+        for mesh in &self.meshes {
+            let material = &self.materials[mesh.material];
+            mesh.draw_sprites(
+                sprites,
                 render_pass,
                 &material.bind_group,
                 camera_uniforms,
@@ -1250,7 +1602,7 @@ impl SpriteEntity {
         }
 
         // now convert spritedescs into sprite meshes
-        Self::new(&sprite_descs_by_cycle, material, device)
+        Self::new(&mut sprite_descs_by_cycle, material, device)
     }
 
     pub fn new(

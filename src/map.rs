@@ -10,6 +10,7 @@ use crate::tileset;
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
 pub const FLAG_MAP_TILE_FALLS: u32 = 1 << 29;
+pub const FLAG_MAP_TILE_IS_RATCHET: u32 = 1 << 28;
 
 #[derive(Clone, Debug)]
 pub struct Layer {
@@ -293,6 +294,9 @@ impl Map {
                     }
                     if tile.has_property("falls") {
                         mask |= FLAG_MAP_TILE_FALLS;
+                    }
+                    if tile.has_property("ratchet") {
+                        mask |= FLAG_MAP_TILE_IS_RATCHET;
                     }
 
                     let mut sd = sprite::SpriteDesc::unit(
