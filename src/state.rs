@@ -19,6 +19,8 @@ use crate::tileset;
 struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
     zoom: f32,
+    character_position: cgmath::Point2<f32>,
+    character_cycle: &'static str,
     draw_stage_collision_info: bool,
     draw_entity_debug: bool,
 }
@@ -28,6 +30,8 @@ impl Default for UiDisplayState {
         UiDisplayState {
             camera_position: [0.0, 0.0, 0.0].into(),
             zoom: 1.0,
+            character_position: [0.0, 0.0].into(),
+            character_cycle: "",
             draw_stage_collision_info: true,
             draw_entity_debug: true,
         }
@@ -423,6 +427,8 @@ impl State {
 
     fn update_ui_display_state(&mut self, _window: &Window, _dt: std::time::Duration) {
         self.ui_display_state.camera_position = self.camera.position();
+        self.ui_display_state.character_position = self.character_controller.character_state.position;
+        self.ui_display_state.character_cycle = self.character_controller.character_state.cycle;
         self.ui_display_state.zoom = self.projection.scale();
     }
 
@@ -550,6 +556,13 @@ impl State {
                     ui_display_state.camera_position.x,
                     ui_display_state.camera_position.y,
                     ui_display_state.zoom,
+                ));
+
+                ui.text(imgui::im_str!(
+                    "character: ({:.2},{:.2}) cycle: {}",
+                    ui_display_state.character_position.x,
+                    ui_display_state.character_position.y,
+                    ui_display_state.character_cycle,
                 ));
 
                 let mut zoom = ui_display_state.zoom;

@@ -1,8 +1,12 @@
 CURRENTLY:
-    - add CharacterController which mutates the firebrand sprite
-    - need to have shader snap character position to nearest pixel. this should be easy, we know that 1 "unit" is one tile, so just pass in a tile size uniform (e.g., 16x16 pixels) and snap tile offset position to 1/16ths
+    Character Controller
+        - doesn't collide with ceilings
+        - doesn't handle ratchet collisions
+
 
 BUGS:
+    - At character position 14,8, walking backwards to the NW slope, firebrand jumps forward and up one tile. I suspect firebrand collides with the tile he just stepped off of and since moving backwards he's pushed to that tile's right() - see src/character_controller.rs:239
+
 
 TODO:
     - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms.
