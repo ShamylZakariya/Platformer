@@ -953,7 +953,10 @@ impl SpriteHitTester {
             // copy sprites into appropriate storage
             if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
                 unit_sprites.insert(
-                    Point2::new(sprite.origin.x as i32, sprite.origin.y as i32),
+                    Point2::new(
+                        sprite.origin.x.floor() as i32,
+                        sprite.origin.y.floor() as i32,
+                    ),
                     *sprite,
                 );
             } else {
@@ -964,9 +967,9 @@ impl SpriteHitTester {
         Self { unit_sprites }
     }
 
-    pub fn get_sprite_at(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn get_sprite_at(&self, point: &Point2<i32>, mask: u32) -> Option<SpriteDesc> {
         self.unit_sprites
-            .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
+            .get(&point)
             .filter(|s| s.mask & mask != 0)
             .map(|s| *s)
     }

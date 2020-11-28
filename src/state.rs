@@ -19,6 +19,8 @@ use crate::tileset;
 struct UiDisplayState {
     camera_position: cgmath::Point3<f32>,
     zoom: f32,
+    draw_stage_collision_info: bool,
+    draw_entity_debug: bool,
 }
 
 impl Default for UiDisplayState {
@@ -26,18 +28,17 @@ impl Default for UiDisplayState {
         UiDisplayState {
             camera_position: [0.0, 0.0, 0.0].into(),
             zoom: 1.0,
+            draw_stage_collision_info: true,
+            draw_entity_debug: true,
         }
     }
 }
 
+#[derive(Default)]
 struct UiInputState {
     zoom: Option<f32>,
-}
-
-impl Default for UiInputState {
-    fn default() -> Self {
-        UiInputState { zoom: None }
-    }
+    draw_stage_collision_info: Option<bool>,
+    draw_entity_debug: Option<bool>,
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -475,30 +476,37 @@ impl State {
                 &self.stage_uniforms.bind_group,
             );
 
-            if !self.character_controller.overlapping_sprites.is_empty() {
-                self.stage_sprite_collection.draw_sprites(
-                    &self.character_controller.overlapping_sprites,
-                    &mut render_pass,
-                    &self.camera_uniforms.bind_group,
-                    &self.stage_debug_draw_overlap_uniforms.bind_group,
-                );
-            }
+            if self.ui_display_state.draw_stage_collision_info {
+                if !self.character_controller.overlapping_sprites.is_empty() {
+                    self.stage_sprite_collection.draw_sprites(
+                        &self.character_controller.overlapping_sprites,
+                        &mut render_pass,
+                        &self.camera_uniforms.bind_group,
+                        &self.stage_debug_draw_overlap_uniforms.bind_group,
+                    );
+                }
 
-            if !self.character_controller.contacting_sprites.is_empty() {
-                self.stage_sprite_collection.draw_sprites(
-                    &self.character_controller.contacting_sprites,
-                    &mut render_pass,
-                    &self.camera_uniforms.bind_group,
-                    &self.stage_debug_draw_contact_uniforms.bind_group,
-                );
+                if !self.character_controller.contacting_sprites.is_empty() {
+                    self.stage_sprite_collection.draw_sprites(
+                        &self.character_controller.contacting_sprites,
+                        &mut render_pass,
+                        &self.camera_uniforms.bind_group,
+                        &self.stage_debug_draw_contact_uniforms.bind_group,
+                    );
+                }
             }
 
             // Render player character
+            let cycle = if self.ui_display_state.draw_entity_debug {
+                character_controller::CHARACTER_CYCLE_DEBUG
+            } else {
+                self.character_controller.character_state.cycle
+            };
             self.firebrand.draw(
                 &mut render_pass,
                 &self.camera_uniforms.bind_group,
                 &self.firebrand_uniforms.bind_group,
-                self.character_controller.character_state.cycle,
+                cycle,
             );
         }
 
@@ -534,7 +542,7 @@ impl State {
         // Build the UI, mutating ui_input_state to indicate user interaction.
         //
 
-        imgui::Window::new(imgui::im_str!("Hello"))
+        imgui::Window::new(imgui::im_str!("Debug"))
             .size([280.0, 128.0], imgui::Condition::FirstUseEver)
             .build(&ui, || {
                 ui.text(imgui::im_str!(
@@ -550,6 +558,22 @@ impl State {
                     .build(&ui, &mut zoom)
                 {
                     ui_input_state.zoom = Some(zoom);
+                }
+
+                let mut draw_stage_collision_info = ui_display_state.draw_stage_collision_info;
+                if ui.checkbox(
+                    imgui::im_str!("Stage Collision Visible"),
+                    &mut draw_stage_collision_info,
+                ) {
+                    ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
+                }
+
+                let mut draw_entity_debug = ui_display_state.draw_entity_debug;
+                if ui.checkbox(
+                    imgui::im_str!("Debug Draw Entities"),
+                    &mut draw_entity_debug,
+                ) {
+                    ui_input_state.draw_entity_debug = Some(draw_entity_debug);
                 }
             });
 
@@ -581,6 +605,12 @@ impl State {
     fn process_ui_input(&mut self, ui_input_state: UiInputState) {
         if let Some(z) = ui_input_state.zoom {
             self.projection.set_scale(z);
+        }
+        if let Some(d) = ui_input_state.draw_stage_collision_info {
+            self.ui_display_state.draw_stage_collision_info = d;
+        }
+        if let Some(d) = ui_input_state.draw_entity_debug {
+            self.ui_display_state.draw_entity_debug = d;
         }
     }
 }

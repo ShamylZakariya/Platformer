@@ -8,7 +8,7 @@ use crate::sprite;
 // ---------------------------------------------------------------------------------------------------------------------
 
 const CHARACTER_CYCLE_DEFAULT: &str = "default";
-const CHARACTER_CYCLE_DEBUG: &str = "debug";
+pub const CHARACTER_CYCLE_DEBUG: &str = "debug";
 const CHARACTER_CYCLE_SHOOT: &str = "shoot";
 const CHARACTER_CYCLE_WALK_0: &str = "walk_0";
 const CHARACTER_CYCLE_WALK_1: &str = "walk_1";
@@ -31,30 +31,7 @@ impl CharacterState {
     fn new(position: &Point2<f32>) -> Self {
         CharacterState {
             position: *position,
-            cycle: CHARACTER_CYCLE_DEBUG,
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-/// Response value for requests to move the character.
-pub struct CharacterMovementRequestResult {
-    // the new position of the character after applying the requested movement
-    pub position: Point2<f32>,
-    // if the character is standing on a tile, this is it
-    pub floor: Option<sprite::SpriteDesc>,
-    // if the character's requested movement was blocked (wall, etc) this is the blocker.
-    // in the case of applying downward gravity force, floor and obstruction will be same thing.
-    pub obstruction: Option<sprite::SpriteDesc>,
-}
-
-impl Default for CharacterMovementRequestResult {
-    fn default() -> Self {
-        CharacterMovementRequestResult {
-            position: Point2::new(0.0, 0.0),
-            floor: None,
-            obstruction: None,
+            cycle: CHARACTER_CYCLE_DEFAULT,
         }
     }
 }
@@ -89,6 +66,9 @@ pub struct CharacterController {
     input_state: InputState,
     pub character_state: CharacterState,
 
+    // if set, this is the current floor supporting the character
+    pub floor: Option<sprite::SpriteDesc>,
+
     // sprites the character is overlapping and might collide with
     pub overlapping_sprites: Vec<sprite::SpriteDesc>,
 
@@ -101,6 +81,7 @@ impl CharacterController {
         Self {
             input_state: Default::default(),
             character_state: CharacterState::new(position),
+            floor: None,
             overlapping_sprites: vec![],
             contacting_sprites: vec![],
         }
@@ -139,64 +120,130 @@ impl CharacterController {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
-        let center = self.character_state.position + vec2(0.5, 0.5);
-        let (center, gravity_motion) = self.apply_gravity(&center, dt);
-        let (center, user_motion) = self.apply_character_movement(&center, dt);
+        let position = self.character_state.position;
+        let (position, gravity_motion) = self.apply_gravity(&position, dt);
+        let (position, user_motion) = self.apply_character_movement(&position, dt);
         let motion = gravity_motion + user_motion;
 
-        let center = self.sanitize_character_position(collision_space, &center, &motion);
+        let position = self.sanitize_character_position(collision_space, &position, &motion);
 
-        self.character_state.position = center - vec2(0.5, 0.5);
+        self.character_state.position = position;
         &self.character_state
     }
 
     fn sanitize_character_position(
         &mut self,
         collision_space: &sprite::SpriteHitTester,
-        center: &Point2<f32>,
+        position: &Point2<f32>,
         _motion: &Vector2<f32>,
     ) -> Point2<f32> {
-        let mut center = *center;
+        let mut position = *position;
+        let mut did_contact = false;
 
         {
-            let sprite = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER);
-            if let Some(sprite) = sprite {
-                self.overlapping_sprites.push(sprite);
-                if let Some(intersection) = sprite
-                    .line_intersection(&(center + vec2(0.0, 0.5)), &(center + vec2(0.0, -0.5)))
+            let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32);
+            let center = Point2::new(position.x.round() as i32, position.y.round() as i32);
+            let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32);
+
+            if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
+            {
+                let r = self.sanitize_character_footing(&center, &position);
+                position = r.0;
+                did_contact = r.1;
+            }
+            if !did_contact && left != center {
+                if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    self.handle_collision_with(&sprite);
-                    center.y = intersection.y + 0.5;
+                    let r = self.sanitize_character_footing(&left, &position);
+                    position = r.0;
+                    did_contact = r.1;
                 }
             }
-
-            // check sprite beneath
-            let sprite = collision_space
-                .get_sprite_at(&(center + vec2(0.0, -1.0)), FLAG_MAP_TILE_IS_COLLIDER);
-            if let Some(sprite) = sprite {
-                self.overlapping_sprites.push(sprite);
-                if let Some(intersection) = sprite
-                    .line_intersection(&(center + vec2(0.0, 0.5)), &(center + vec2(0.0, -0.5)))
+            if !did_contact && right != center {
+                if let Some(right) =
+                    collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    self.handle_collision_with(&sprite);
-                    center.y = intersection.y + 0.5;
+                    let r = self.sanitize_character_footing(&right, &position);
+                    position = r.0;
+                    did_contact = r.1;
+                }
+            }
+        }
+
+        if !did_contact {
+            let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32 - 1);
+            let center = Point2::new(position.x.round() as i32, position.y.round() as i32 - 1);
+            let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32 - 1);
+
+            if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
+            {
+                let r = self.sanitize_character_footing(&center, &position);
+                position = r.0;
+                did_contact = r.1;
+            }
+            if !did_contact && left != center {
+                if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
+                {
+                    let r = self.sanitize_character_footing(&left, &position);
+                    position = r.0;
+                    did_contact = r.1;
+                }
+            }
+            if !did_contact && right != center {
+                if let Some(right) =
+                    collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
+                {
+                    let r = self.sanitize_character_footing(&right, &position);
+                    position = r.0;
                 }
             }
         }
 
         self.overlapping_sprites.dedup();
         self.contacting_sprites.dedup();
-        center
+        position
     }
 
-    fn apply_gravity(&self, center_bottom: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
+    fn sanitize_character_footing(
+        &mut self,
+        sprite: &sprite::SpriteDesc,
+        position: &Point2<f32>,
+    ) -> (Point2<f32>, bool) {
+        let mut position = *position;
+        let mut did_contact = false;
+
+        self.overlapping_sprites.push(*sprite);
+        match sprite.collision_shape {
+            sprite::SpriteCollisionShape::Square => {
+                if sprite.unit_rect_intersection(&position, 0.0) {
+                    self.handle_collision_with(&sprite);
+                    position.y = sprite.top();
+                    did_contact = true;
+                }
+            }
+            sprite::SpriteCollisionShape::NorthEast | sprite::SpriteCollisionShape::NorthWest => {
+                if let Some(intersection) = sprite
+                    .line_intersection(&(position + vec2(0.5, 1.0)), &(position + vec2(0.5, 0.0)))
+                {
+                    self.handle_collision_with(&sprite);
+                    position.y = intersection.y;
+                    did_contact = true;
+                }
+            }
+            _ => (),
+        }
+
+        (position, did_contact)
+    }
+
+    fn apply_gravity(&self, position: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
         let motion = vec2(0.0, dt * GRAVITY_SPEED);
-        (center_bottom + motion, motion)
+        (position + motion, motion)
     }
 
     fn apply_character_movement(
         &self,
-        center_bottom: &Point2<f32>,
+        position: &Point2<f32>,
         dt: f32,
     ) -> (Point2<f32>, Vector2<f32>) {
         let delta_position = dt
@@ -209,7 +256,7 @@ impl CharacterController {
                 input_accumulator(false, self.input_state.jump_pressed),
             );
 
-        (center_bottom + delta_position, delta_position)
+        (position + delta_position, delta_position)
     }
 
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
