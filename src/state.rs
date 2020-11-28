@@ -173,7 +173,7 @@ impl State {
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
-        let mut character_controller =
+        let character_controller =
             character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
         // place charatcer near first tree to help debug RATCHET collisions
@@ -379,7 +379,6 @@ impl State {
         self.stage_uniforms
             .data
             .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
-
         self.stage_uniforms.write(&mut self.queue);
 
         self.stage_debug_draw_overlap_uniforms
@@ -387,7 +386,7 @@ impl State {
             .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.1)); // bring closer
         self.stage_debug_draw_overlap_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(0.25, 1.0, 0.25, 0.5));
+            .set_color(&cgmath::Vector4::new(0.0, 1.0, 0.0, 0.75));
         self.stage_debug_draw_overlap_uniforms
             .write(&mut self.queue);
 
@@ -396,7 +395,7 @@ impl State {
             .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.2)); // bring closer
         self.stage_debug_draw_contact_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(1.0, 0.25, 0.25, 0.5));
+            .set_color(&cgmath::Vector4::new(1.0, 0.0, 0.0, 0.75));
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
@@ -485,9 +484,9 @@ impl State {
                 );
             }
 
-            if !self.character_controller.contact_sprites.is_empty() {
+            if !self.character_controller.contacting_sprites.is_empty() {
                 self.stage_sprite_collection.draw_sprites(
-                    &self.character_controller.contact_sprites,
+                    &self.character_controller.contacting_sprites,
                     &mut render_pass,
                     &self.camera_uniforms.bind_group,
                     &self.stage_debug_draw_contact_uniforms.bind_group,

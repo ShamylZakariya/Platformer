@@ -1,8 +1,8 @@
-use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::{vec2, Point2, Vector2};
 use std::time::Duration;
 use winit::event::*;
 
-use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
+use crate::map::FLAG_MAP_TILE_IS_COLLIDER;
 use crate::sprite;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -88,8 +88,12 @@ fn input_accumulator(negative: bool, positive: bool) -> f32 {
 pub struct CharacterController {
     input_state: InputState,
     pub character_state: CharacterState,
+
+    // sprites the character is overlapping and might collide with
     pub overlapping_sprites: Vec<sprite::SpriteDesc>,
-    pub contact_sprites: Vec<sprite::SpriteDesc>,
+
+    // sprites the character is contacting
+    pub contacting_sprites: Vec<sprite::SpriteDesc>,
 }
 
 impl CharacterController {
@@ -98,7 +102,7 @@ impl CharacterController {
             input_state: Default::default(),
             character_state: CharacterState::new(position),
             overlapping_sprites: vec![],
-            contact_sprites: vec![],
+            contacting_sprites: vec![],
         }
     }
 
@@ -133,107 +137,56 @@ impl CharacterController {
         let dt = dt.as_secs_f32();
 
         self.overlapping_sprites.clear();
-        self.contact_sprites.clear();
+        self.contacting_sprites.clear();
 
-        let center_bottom = self.character_state.position + vec2(0.5, 0.0);
-        let (center_bottom, gravity_motion) = self.apply_gravity(&center_bottom, dt);
-        let (center_bottom, user_motion) = self.apply_character_movement(&center_bottom, dt);
+        let center = self.character_state.position + vec2(0.5, 0.5);
+        let (center, gravity_motion) = self.apply_gravity(&center, dt);
+        let (center, user_motion) = self.apply_character_movement(&center, dt);
         let motion = gravity_motion + user_motion;
 
-        let center_bottom =
-            self.sanitize_character_position(collision_space, &center_bottom, &motion);
+        let center = self.sanitize_character_position(collision_space, &center, &motion);
 
-        self.character_state.position = center_bottom - vec2(0.5, 0.0);
+        self.character_state.position = center - vec2(0.5, 0.5);
         &self.character_state
     }
 
     fn sanitize_character_position(
         &mut self,
         collision_space: &sprite::SpriteHitTester,
-        center_bottom: &Point2<f32>,
-        motion: &Vector2<f32>,
+        center: &Point2<f32>,
+        _motion: &Vector2<f32>,
     ) -> Point2<f32> {
-        let mut center_bottom = *center_bottom;
+        let mut center = *center;
 
-        // Get the four sprites
-        let (top_left, top_right, bottom_right, bottom_left) = collision_space
-            .get_overlapping_sprites(
-                &Point2::new(center_bottom.x - 0.5, center_bottom.y),
-                FLAG_MAP_TILE_IS_COLLIDER,
-            );
-
-        for s in vec![top_left, top_right, bottom_right, bottom_left] {
-            if let Some(s) = s {
-                self.overlapping_sprites.push(s);
+        {
+            let sprite = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER);
+            if let Some(sprite) = sprite {
+                self.overlapping_sprites.push(sprite);
+                if let Some(intersection) = sprite
+                    .line_intersection(&(center + vec2(0.0, 0.5)), &(center + vec2(0.0, -0.5)))
+                {
+                    self.handle_collision_with(&sprite);
+                    center.y = intersection.y + 0.5;
+                }
             }
-        }
 
-        // Perform downward ray cast
-        if let Some(bottom_left) = bottom_left {
-            if let Some(intersection) =
-                bottom_left.line_intersection(&(center_bottom + vec2(0.0, 1.0)), &center_bottom)
-            {
-                center_bottom = intersection;
-            }
-        }
-        if let Some(bottom_right) = bottom_right {
-            if let Some(intersection) =
-                bottom_right.line_intersection(&(center_bottom + vec2(0.0, 1.0)), &center_bottom)
-            {
-                center_bottom = intersection;
-            }
-        }
-
-        if motion.y < 0.0 {
-        } else {
-            // Perform upwards motion testing using a rectangle test
-            if let Some(top_left) = top_left {
-                if top_left.rect_intersection(&(center_bottom + vec2(-0.5, 0.0)), &vec2(1.0, 1.0)) {
-                    center_bottom.y = top_left.origin.y - 1.0;
+            // check sprite beneath
+            let sprite = collision_space
+                .get_sprite_at(&(center + vec2(0.0, -1.0)), FLAG_MAP_TILE_IS_COLLIDER);
+            if let Some(sprite) = sprite {
+                self.overlapping_sprites.push(sprite);
+                if let Some(intersection) = sprite
+                    .line_intersection(&(center + vec2(0.0, 0.5)), &(center + vec2(0.0, -0.5)))
+                {
+                    self.handle_collision_with(&sprite);
+                    center.y = intersection.y + 0.5;
                 }
             }
         }
 
-        // // this almost but doesn't quite work
-        // // do I need to do the four sprite check?
-        // // I think that the center_bottom foot check is only valid for when character is on a slope,
-        // // otherwise I should be using square/square collision?
-
-        // {
-        //     let foot_collisision = collision_space.test_point(&center_bottom, FLAG_MAP_TILE_IS_COLLIDER);
-        //     let head_collision = collision_space.test_point(&center_top, FLAG_MAP_TILE_IS_COLLIDER);
-
-        //     if let Some(foot_collision) = foot_collisision
-        //     {
-        //         if foot_collision.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
-        //             // in the case of a ratchet, collision can only happen when foot is traveling downwards and
-        //             // transitioned from above to below
-        //             let previous_foot_collision = collision_space.test_point(&(center_bottom - motion), FLAG_MAP_TILE_IS_COLLIDER);
-        //             if moving_downwards && head_collision != Some(foot_collision) {
-        //                 return center_bottom;
-        //             }
-        //         }
-
-        //         //println!("[{:?}] center_bottom collision", motion);
-        //         center_bottom = foot_collision.line_intersection(&center_top, &center_bottom).unwrap();
-        //         center_top.y = center_bottom.y + 1.0;
-        //     }
-
-        //     // test if character's head position in collider
-        //     if let Some(head_collision) = head_collision
-        //     {
-        //         if head_collision.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
-        //             //println!("[{:?}] center_top RATCHET collision", motion);
-        //             return center_bottom;
-        //         } else {
-        //             //println!("[{:?}] center_top collision", motion);
-        //             center_top = head_collision.line_intersection(&center_bottom, &center_top).unwrap();
-        //             center_bottom.y = center_top.y - 1.0;
-        //         }
-        //     }
-        // }
-
-        center_bottom
+        self.overlapping_sprites.dedup();
+        self.contacting_sprites.dedup();
+        center
     }
 
     fn apply_gravity(&self, center_bottom: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
@@ -259,5 +212,7 @@ impl CharacterController {
         (center_bottom + delta_position, delta_position)
     }
 
-    fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {}
+    fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
+        self.contacting_sprites.push(*sprite);
+    }
 }

@@ -1,10 +1,11 @@
+#![allow(dead_code)]
+
 use futures::executor::block_on;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
-
 mod camera;
 mod character_controller;
 mod geom;

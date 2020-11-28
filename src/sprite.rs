@@ -508,8 +508,15 @@ impl SpriteDesc {
         }
     }
 
-    /// Returns true if this SpriteDesc overlaps the described rect with lower/left origin and extent.
-    pub fn rect_intersection(&self, origin: &Point2<f32>, extent: &Vector2<f32>) -> bool {
+    /// Returns true if this SpriteDesc overlaps the described rect with lower/left origin and extent and inset.
+    pub fn rect_intersection(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        inset: f32,
+    ) -> bool {
+        let origin = Point2::new(origin.x + inset, origin.y + inset);
+        let extent = Vector2::new(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
         let x_overlap =
             self.origin.x < origin.x + extent.x && self.origin.x + self.extent.x > origin.x;
         let y_overlap =
@@ -537,8 +544,24 @@ impl SpriteDesc {
     }
 
     /// Returns true if this SpriteDesc overlaps the described unit square with lower/left origin and extent of (1,1).
-    pub fn unit_rect_intersection(&self, origin: &Point2<f32>) -> bool {
-        self.rect_intersection(origin, &vec2(1.0, 1.0))
+    pub fn unit_rect_intersection(&self, origin: &Point2<f32>, inset: f32) -> bool {
+        self.rect_intersection(origin, &vec2(1.0, 1.0), inset)
+    }
+
+    pub fn left(&self) -> f32 {
+        self.origin.x
+    }
+
+    pub fn right(&self) -> f32 {
+        self.origin.x + self.extent.x
+    }
+
+    pub fn bottom(&self) -> f32 {
+        self.origin.y
+    }
+
+    pub fn top(&self) -> f32 {
+        self.origin.y + self.extent.y
     }
 
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
@@ -900,7 +923,7 @@ mod sprite_desc_tests {
 
     #[test]
     fn double_flip_is_identity() {
-        let mut sprite = SpriteDesc::unit(
+        let sprite = SpriteDesc::unit(
             SpriteCollisionShape::Square,
             Point2::new(0, 0),
             0.0,
@@ -963,27 +986,6 @@ impl SpriteHitTester {
         } else {
             None
         }
-    }
-
-    /// Gets the up to four sprites which might overlap the unit sprite. Does not perform intersection testing (e.g.,
-    /// testing of the unit actually intersects a triangular sprite).
-    /// Returns tuple of four sprites, ordered [top-left, top-right, bottom-right, bottom-left]
-    pub fn get_overlapping_sprites(
-        &self,
-        origin: &Point2<f32>,
-        mask: u32,
-    ) -> (
-        Option<SpriteDesc>,
-        Option<SpriteDesc>,
-        Option<SpriteDesc>,
-        Option<SpriteDesc>,
-    ) {
-        (
-            self.get_sprite_at(&Point2::new(origin.x, origin.y + 1.0), mask),
-            self.get_sprite_at(&Point2::new(origin.x + 1.0, origin.y + 1.0), mask),
-            self.get_sprite_at(&Point2::new(origin.x + 1.0, origin.y), mask),
-            self.get_sprite_at(&Point2::new(origin.x, origin.y), mask),
-        )
     }
 
     pub fn test_line(
