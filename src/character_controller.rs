@@ -120,12 +120,21 @@ impl CharacterController {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
-        let position = self.character_state.position;
-        let (position, gravity_motion) = self.apply_gravity(&position, dt);
-        let (position, user_motion) = self.apply_character_movement(&position, dt);
-        let motion = gravity_motion + user_motion;
+        // let position = self.character_state.position;
+        // let (position, gravity_motion) = self.apply_gravity(&position, dt);
+        // let (position, user_motion) = self.apply_character_movement(&position, dt);
+        // let motion = gravity_motion + user_motion;
 
-        let position = self.sanitize_character_position(collision_space, &position, &motion);
+        // let position = self.sanitize_character_position(collision_space, &position, &motion);
+
+        let position = self.character_state.position;
+
+        let (position, user_motion) = self.apply_character_movement(&position, dt);
+        let position = self.sanitize_character_position(collision_space, &position, &user_motion);
+
+        let (position, gravity_motion) = self.apply_gravity(&position, dt);
+        let position =
+            self.sanitize_character_position(collision_space, &position, &gravity_motion);
 
         self.character_state.position = position;
         &self.character_state
@@ -135,26 +144,27 @@ impl CharacterController {
         &mut self,
         collision_space: &sprite::SpriteHitTester,
         position: &Point2<f32>,
-        _motion: &Vector2<f32>,
+        motion: &Vector2<f32>,
     ) -> Point2<f32> {
         let mut position = *position;
         let mut did_contact = false;
 
         {
+            // scan tiles left, center and right of character
             let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32);
             let center = Point2::new(position.x.round() as i32, position.y.round() as i32);
             let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32);
 
             if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
             {
-                let r = self.sanitize_character_footing(&center, &position);
+                let r = self.sanitize_character_footing(&center, &position, &motion);
                 position = r.0;
                 did_contact = r.1;
             }
             if !did_contact && left != center {
                 if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    let r = self.sanitize_character_footing(&left, &position);
+                    let r = self.sanitize_character_footing(&left, &position, &motion);
                     position = r.0;
                     did_contact = r.1;
                 }
@@ -163,7 +173,7 @@ impl CharacterController {
                 if let Some(right) =
                     collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    let r = self.sanitize_character_footing(&right, &position);
+                    let r = self.sanitize_character_footing(&right, &position, &motion);
                     position = r.0;
                     did_contact = r.1;
                 }
@@ -171,20 +181,22 @@ impl CharacterController {
         }
 
         if !did_contact {
+            // scan tiles left, center and right, but one step below character
+
             let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32 - 1);
             let center = Point2::new(position.x.round() as i32, position.y.round() as i32 - 1);
             let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32 - 1);
 
             if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
             {
-                let r = self.sanitize_character_footing(&center, &position);
+                let r = self.sanitize_character_footing(&center, &position, &motion);
                 position = r.0;
                 did_contact = r.1;
             }
             if !did_contact && left != center {
                 if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    let r = self.sanitize_character_footing(&left, &position);
+                    let r = self.sanitize_character_footing(&left, &position, &motion);
                     position = r.0;
                     did_contact = r.1;
                 }
@@ -193,7 +205,7 @@ impl CharacterController {
                 if let Some(right) =
                     collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
                 {
-                    let r = self.sanitize_character_footing(&right, &position);
+                    let r = self.sanitize_character_footing(&right, &position, &motion);
                     position = r.0;
                 }
             }
@@ -208,6 +220,7 @@ impl CharacterController {
         &mut self,
         sprite: &sprite::SpriteDesc,
         position: &Point2<f32>,
+        motion: &Vector2<f32>,
     ) -> (Point2<f32>, bool) {
         let mut position = *position;
         let mut did_contact = false;
@@ -217,7 +230,15 @@ impl CharacterController {
             sprite::SpriteCollisionShape::Square => {
                 if sprite.unit_rect_intersection(&position, 0.0) {
                     self.handle_collision_with(&sprite);
-                    position.y = sprite.top();
+
+                    if motion.y < 0.0 {
+                        position.y = sprite.top();
+                    } else if motion.x > 0.0 {
+                        position.x = sprite.left() - 1.0;
+                    } else if motion.x < 0.0 {
+                        position.x = sprite.right();
+                    }
+
                     did_contact = true;
                 }
             }
