@@ -21,19 +21,19 @@ impl Tile {
         }
     }
 
-    pub fn shape(&self) -> sprite::SpriteCollisionShape {
+    pub fn shape(&self) -> sprite::CollisionShape {
         let collision_shape = self.properties.get("collision_shape");
         if let Some(collision_shape) = collision_shape {
             match collision_shape.as_str() {
-                "square" => sprite::SpriteCollisionShape::Square,
-                "triangle_ne" => sprite::SpriteCollisionShape::NorthEast,
-                "triangle_se" => sprite::SpriteCollisionShape::SouthEast,
-                "triangle_sw" => sprite::SpriteCollisionShape::SouthWest,
-                "triangle_nw" => sprite::SpriteCollisionShape::NorthWest,
-                _ => sprite::SpriteCollisionShape::None,
+                "square" => sprite::CollisionShape::Square,
+                "triangle_ne" => sprite::CollisionShape::NorthEast,
+                "triangle_se" => sprite::CollisionShape::SouthEast,
+                "triangle_sw" => sprite::CollisionShape::SouthWest,
+                "triangle_nw" => sprite::CollisionShape::NorthWest,
+                _ => sprite::CollisionShape::None,
             }
         } else {
-            sprite::SpriteCollisionShape::None
+            sprite::CollisionShape::None
         }
     }
 

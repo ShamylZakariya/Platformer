@@ -1,11 +1,11 @@
 CURRENTLY:
     Character Controller
-        - doesn't collide with ceilings
-        - doesn't handle ratchet collisions
+        - needs ceiling collisions
+        - needs ceiling ratchet collisions
+            - the only tiles with ratchet collisions are half-height, with collider geometry being top-half.
 
 
 BUGS:
-    - At character position 14,8, walking backwards to the NW slope, firebrand jumps forward and up one tile. I suspect firebrand collides with the tile he just stepped off of and since moving backwards he's pushed to that tile's right() - see src/character_controller.rs:239
 
 
 TODO:

@@ -1,5 +1,5 @@
-use cgmath::{vec2, Point2, Vector2};
-use std::time::Duration;
+use cgmath::{vec2, Point2, Vector2, Zero};
+use std::{collections::HashSet, time::Duration};
 use winit::event::*;
 
 use crate::map::FLAG_MAP_TILE_IS_COLLIDER;
@@ -70,10 +70,10 @@ pub struct CharacterController {
     pub floor: Option<sprite::SpriteDesc>,
 
     // sprites the character is overlapping and might collide with
-    pub overlapping_sprites: Vec<sprite::SpriteDesc>,
+    pub overlapping_sprites: HashSet<sprite::SpriteDesc>,
 
     // sprites the character is contacting
-    pub contacting_sprites: Vec<sprite::SpriteDesc>,
+    pub contacting_sprites: HashSet<sprite::SpriteDesc>,
 }
 
 impl CharacterController {
@@ -82,8 +82,8 @@ impl CharacterController {
             input_state: Default::default(),
             character_state: CharacterState::new(position),
             floor: None,
-            overlapping_sprites: vec![],
-            contacting_sprites: vec![],
+            overlapping_sprites: HashSet::new(),
+            contacting_sprites: HashSet::new(),
         }
     }
 
@@ -120,146 +120,121 @@ impl CharacterController {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
-        // let position = self.character_state.position;
-        // let (position, gravity_motion) = self.apply_gravity(&position, dt);
-        // let (position, user_motion) = self.apply_character_movement(&position, dt);
-        // let motion = gravity_motion + user_motion;
+        let mut position = self.character_state.position;
 
-        // let position = self.sanitize_character_position(collision_space, &position, &motion);
+        position = self.apply_gravity(&position, dt).0;
 
-        let position = self.character_state.position;
+        let r = self.find_character_footing(collision_space, &position, &Zero::zero());
+        position = r.0;
+        let mut footing = r.1;
 
-        let (position, user_motion) = self.apply_character_movement(&position, dt);
-        let position = self.sanitize_character_position(collision_space, &position, &user_motion);
+        if let Some(t) = footing {
+            self.overlapping_sprites.insert(t);
+        } else {
+            let r = self.find_character_footing(collision_space, &position, &vec2(1.0, 0.0));
+            position = r.0;
+            footing = r.1;
+            if let Some(t) = footing {
+                self.overlapping_sprites.insert(t);
+            } else {
+                let r = self.find_character_footing(collision_space, &position, &vec2(-1.0, 0.0));
+                position = r.0;
+                footing = r.1;
+                if let Some(t) = footing {
+                    self.overlapping_sprites.insert(t);
+                }
+            }
+        }
 
-        let (position, gravity_motion) = self.apply_gravity(&position, dt);
-        let position =
-            self.sanitize_character_position(collision_space, &position, &gravity_motion);
+        let r = self.apply_character_movement(&position, dt);
+        position = r.0;
+        let motion = r.1;
+
+        let r = self.find_character_collisions(collision_space, &position, &motion, &footing);
+        position = r.0;
+        footing = r.1;
+
+        if let Some(t) = footing {
+            self.overlapping_sprites.insert(t);
+        }
+
+        for s in &self.contacting_sprites {
+            self.overlapping_sprites.remove(s);
+        }
 
         self.character_state.position = position;
         &self.character_state
     }
 
-    fn sanitize_character_position(
-        &mut self,
-        collision_space: &sprite::SpriteHitTester,
-        position: &Point2<f32>,
-        motion: &Vector2<f32>,
-    ) -> Point2<f32> {
-        let mut position = *position;
-        let mut did_contact = false;
-
-        {
-            // scan tiles left, center and right of character
-            let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32);
-            let center = Point2::new(position.x.round() as i32, position.y.round() as i32);
-            let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32);
-
-            if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
-            {
-                let r = self.sanitize_character_footing(&center, &position, &motion);
-                position = r.0;
-                did_contact = r.1;
-            }
-            if !did_contact && left != center {
-                if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
-                {
-                    let r = self.sanitize_character_footing(&left, &position, &motion);
-                    position = r.0;
-                    did_contact = r.1;
-                }
-            }
-            if !did_contact && right != center {
-                if let Some(right) =
-                    collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
-                {
-                    let r = self.sanitize_character_footing(&right, &position, &motion);
-                    position = r.0;
-                    did_contact = r.1;
-                }
-            }
-        }
-
-        if !did_contact {
-            // scan tiles left, center and right, but one step below character
-
-            let left = Point2::new(position.x.round() as i32 - 1, position.y.round() as i32 - 1);
-            let center = Point2::new(position.x.round() as i32, position.y.round() as i32 - 1);
-            let right = Point2::new(position.x.round() as i32 + 1, position.y.round() as i32 - 1);
-
-            if let Some(center) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER)
-            {
-                let r = self.sanitize_character_footing(&center, &position, &motion);
-                position = r.0;
-                did_contact = r.1;
-            }
-            if !did_contact && left != center {
-                if let Some(left) = collision_space.get_sprite_at(&left, FLAG_MAP_TILE_IS_COLLIDER)
-                {
-                    let r = self.sanitize_character_footing(&left, &position, &motion);
-                    position = r.0;
-                    did_contact = r.1;
-                }
-            }
-            if !did_contact && right != center {
-                if let Some(right) =
-                    collision_space.get_sprite_at(&right, FLAG_MAP_TILE_IS_COLLIDER)
-                {
-                    let r = self.sanitize_character_footing(&right, &position, &motion);
-                    position = r.0;
-                }
-            }
-        }
-
-        self.overlapping_sprites.dedup();
-        self.contacting_sprites.dedup();
-        position
-    }
-
-    fn sanitize_character_footing(
-        &mut self,
-        sprite: &sprite::SpriteDesc,
-        position: &Point2<f32>,
-        motion: &Vector2<f32>,
-    ) -> (Point2<f32>, bool) {
-        let mut position = *position;
-        let mut did_contact = false;
-
-        self.overlapping_sprites.push(*sprite);
-        match sprite.collision_shape {
-            sprite::SpriteCollisionShape::Square => {
-                if sprite.unit_rect_intersection(&position, 0.0) {
-                    self.handle_collision_with(&sprite);
-
-                    if motion.y < 0.0 {
-                        position.y = sprite.top();
-                    } else if motion.x > 0.0 {
-                        position.x = sprite.left() - 1.0;
-                    } else if motion.x < 0.0 {
-                        position.x = sprite.right();
-                    }
-
-                    did_contact = true;
-                }
-            }
-            sprite::SpriteCollisionShape::NorthEast | sprite::SpriteCollisionShape::NorthWest => {
-                if let Some(intersection) = sprite
-                    .line_intersection(&(position + vec2(0.5, 1.0)), &(position + vec2(0.5, 0.0)))
-                {
-                    self.handle_collision_with(&sprite);
-                    position.y = intersection.y;
-                    did_contact = true;
-                }
-            }
-            _ => (),
-        }
-
-        (position, did_contact)
-    }
-
     fn apply_gravity(&self, position: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
         let motion = vec2(0.0, dt * GRAVITY_SPEED);
         (position + motion, motion)
+    }
+
+    // assumes character motion vector is (0.0, -N) -- e.g. falling. Finds the sprite which is best suitable for use in
+    // collision detection to act as footing.
+    fn find_character_footing(
+        &mut self,
+        collision_space: &sprite::SpriteHitTester,
+        position: &Point2<f32>,
+        test_offset: &Vector2<f32>,
+    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+        let mut position = *position;
+        let mut tracking = None;
+
+        // scan sprites beneath character
+        let center = Point2::new(
+            (position.x + test_offset.x).round() as i32,
+            (position.y + test_offset.y).round() as i32,
+        );
+
+        let below_center = Point2::new(center.x, center.y - 1);
+
+        if let Some(s) = collision_space.get_sprite_at(&below_center, FLAG_MAP_TILE_IS_COLLIDER) {
+            match s.collision_shape {
+                sprite::CollisionShape::Square => {
+                    if s.unit_rect_intersection(&position, 0.0) {
+                        self.handle_collision_with(&s);
+                        position.y = s.origin.y + s.extent.y
+                    }
+                }
+                sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                    if let Some(intersection) = s.line_intersection(
+                        &(position + vec2(0.5, 1.0)),
+                        &(position + vec2(0.5, 0.0)),
+                    ) {
+                        self.handle_collision_with(&s);
+                        position.y = intersection.y;
+                    }
+                }
+                _ => (),
+            }
+            tracking = Some(s);
+        }
+
+        if let Some(s) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER) {
+            match s.collision_shape {
+                sprite::CollisionShape::Square => {
+                    if s.unit_rect_intersection(&position, 0.0) {
+                        self.handle_collision_with(&s);
+                        position.y = s.origin.y + s.extent.y
+                    }
+                }
+                sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                    if let Some(intersection) = s.line_intersection(
+                        &(position + vec2(0.5, 1.0)),
+                        &(position + vec2(0.5, 0.0)),
+                    ) {
+                        self.handle_collision_with(&s);
+                        position.y = intersection.y;
+                    }
+                }
+                _ => (),
+            }
+            tracking = Some(s);
+        }
+
+        (position, tracking)
     }
 
     fn apply_character_movement(
@@ -280,7 +255,63 @@ impl CharacterController {
         (position + delta_position, delta_position)
     }
 
+    fn find_character_collisions(
+        &mut self,
+        collision_space: &sprite::SpriteHitTester,
+        position: &Point2<f32>,
+        motion: &Vector2<f32>,
+        footing: &Option<sprite::SpriteDesc>,
+    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+        let is_on_slope = if let Some(s) = footing {
+            match s.collision_shape {
+                sprite::CollisionShape::None => false,
+                sprite::CollisionShape::Square => false,
+                // if the character is actually standing atop a slope, we need to disredard
+                // sideward collisions. This allows character to not collide with the square shapes
+                // beneath the slope tiles.
+                _ => s.origin.y <= position.y,
+            }
+        } else {
+            false
+        };
+
+        // scan to right or left, depending on motion vector
+        let tests = if motion.x > 0.0 {
+            let right = Point2::new((position.x + 1.0).round() as i32, position.y.round() as i32);
+            [right, right + vec2(0, -1), right + vec2(0, 1)]
+        } else {
+            let left = Point2::new((position.x - 1.0).round() as i32, position.y.round() as i32);
+            [left, left + vec2(0, -1), left + vec2(0, 1)]
+        };
+
+        if motion.x.abs() > 0.0 {
+            for t in tests.iter() {
+                if let Some(s) = collision_space.get_sprite_at(t, FLAG_MAP_TILE_IS_COLLIDER) {
+                    if s.collision_shape == sprite::CollisionShape::Square
+                        && s.unit_rect_intersection(position, 0.0)
+                    {
+                        if motion.x > 0.0 {
+                            if s.origin.x > position.x {
+                                return (Point2::new(s.origin.x - 1.0, position.y), Some(s));
+                            }
+                        } else {
+                            if s.origin.x < position.x {
+                                return (Point2::new(s.origin.x + s.extent.x, position.y), Some(s));
+                            }
+                        }
+                    }
+                }
+                // we only test the sprites directly in front or behind when on a slope
+                if is_on_slope {
+                    break;
+                }
+            }
+        }
+
+        (*position, None)
+    }
+
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
-        self.contacting_sprites.push(*sprite);
+        self.contacting_sprites.insert(*sprite);
     }
 }
