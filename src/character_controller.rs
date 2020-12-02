@@ -262,6 +262,9 @@ impl CharacterController {
         motion: &Vector2<f32>,
         footing: &Option<sprite::SpriteDesc>,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+        let mut position = *position;
+        let mut obstruction = None;
+
         let is_on_slope = if let Some(s) = footing {
             match s.collision_shape {
                 sprite::CollisionShape::None => false,
@@ -275,40 +278,73 @@ impl CharacterController {
             false
         };
 
-        // scan to right or left, depending on motion vector
-        let tests = if motion.x > 0.0 {
-            let right = Point2::new((position.x + 1.0).round() as i32, position.y.round() as i32);
-            [right, right + vec2(0, -1), right + vec2(0, 1)]
-        } else {
-            let left = Point2::new((position.x - 1.0).round() as i32, position.y.round() as i32);
-            [left, left + vec2(0, -1), left + vec2(0, 1)]
-        };
+        if motion.y > 0.0 {
+            let above = Point2::new(position.x.round() as i32, position.y.round() as i32 + 1);
+            let above_left = above + vec2(-1, 0);
+            let above_right = above + vec2(1, 0);
 
-        if motion.x.abs() > 0.0 {
-            for t in tests.iter() {
-                if let Some(s) = collision_space.get_sprite_at(t, FLAG_MAP_TILE_IS_COLLIDER) {
+            for test in [above_left, above, above_right].iter() {
+                if let Some(s) = collision_space.get_sprite_at(test, FLAG_MAP_TILE_IS_COLLIDER) {
                     if s.collision_shape == sprite::CollisionShape::Square
-                        && s.unit_rect_intersection(position, 0.0)
+                    && s.unit_rect_intersection(&position, 0.0)
                     {
-                        if motion.x > 0.0 {
-                            if s.origin.x > position.x {
-                                return (Point2::new(s.origin.x - 1.0, position.y), Some(s));
-                            }
-                        } else {
-                            if s.origin.x < position.x {
-                                return (Point2::new(s.origin.x + s.extent.x, position.y), Some(s));
-                            }
+                        self.overlapping_sprites.insert(s);
+                        if s.origin.y > position.y {
+                            self.handle_collision_with(&s);
+                            position.y = s.origin.y - 1.0;
+                            obstruction = Some(s);
+                            break;
                         }
                     }
-                }
-                // we only test the sprites directly in front or behind when on a slope
-                if is_on_slope {
-                    break;
                 }
             }
         }
 
-        (*position, None)
+        {
+            // Perform left/right collision testing
+            // scan to right or left, depending on motion vector
+            let tests = if motion.x > 0.0 {
+                let right =
+                    Point2::new((position.x + 1.0).round() as i32, position.y.round() as i32);
+                [right, right + vec2(0, -1), right + vec2(0, 1)]
+            } else {
+                let left =
+                    Point2::new((position.x - 1.0).round() as i32, position.y.round() as i32);
+                [left, left + vec2(0, -1), left + vec2(0, 1)]
+            };
+
+            if motion.x.abs() > 0.0 {
+                for t in tests.iter() {
+                    if let Some(s) = collision_space.get_sprite_at(t, FLAG_MAP_TILE_IS_COLLIDER) {
+                        if s.collision_shape == sprite::CollisionShape::Square
+                        && s.unit_rect_intersection(&position, 0.0)
+                        {
+                            self.overlapping_sprites.insert(s);
+                            if motion.x > 0.0 {
+                                if s.origin.x > position.x {
+                                    self.handle_collision_with(&s);
+                                    position = Point2::new(s.origin.x - 1.0, position.y);
+                                    obstruction = Some(s);
+                                }
+                            } else {
+                                if s.origin.x < position.x {
+                                    self.handle_collision_with(&s);
+                                    position = Point2::new(s.origin.x + s.extent.x, position.y);
+                                    obstruction = Some(s);
+                                }
+                            }
+                        }
+                    }
+                    // we only test the sprites directly in front or behind when on a slope
+                    // which are the first in the tests array.
+                    if is_on_slope {
+                        break;
+                    }
+                }
+            }
+        }
+
+        (position, obstruction)
     }
 
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {

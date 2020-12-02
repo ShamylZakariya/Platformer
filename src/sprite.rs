@@ -1500,12 +1500,7 @@ impl SpriteCollection {
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
-            mesh.draw(
-                render_pass,
-                &material,
-                camera_uniforms,
-                sprite_uniforms,
-            );
+            mesh.draw(render_pass, &material, camera_uniforms, sprite_uniforms);
         }
     }
 
