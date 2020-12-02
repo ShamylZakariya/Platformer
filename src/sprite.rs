@@ -2,6 +2,7 @@ use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vecto
 use std::{collections::HashMap, unimplemented};
 use std::{hash::Hash, rc::Rc};
 
+use crate::camera;
 use crate::geom;
 use crate::texture;
 use crate::tileset;
@@ -1445,15 +1446,15 @@ impl SpriteMesh {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        material: &'a wgpu::BindGroup,
-        camera_uniforms: &'a wgpu::BindGroup,
-        sprite_uniforms: &'a wgpu::BindGroup,
+        material: &'a SpriteMaterial,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..));
-        render_pass.set_bind_group(0, &material, &[]);
-        render_pass.set_bind_group(1, &camera_uniforms, &[]);
-        render_pass.set_bind_group(2, &sprite_uniforms, &[]);
+        render_pass.set_bind_group(0, &material.bind_group, &[]);
+        render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
+        render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
         render_pass.draw_indexed(0..self.num_elements, 0, 0..1);
     }
 
@@ -1461,15 +1462,15 @@ impl SpriteMesh {
         &'a self,
         sprites: &[SpriteDesc],
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        material: &'a wgpu::BindGroup,
-        camera_uniforms: &'a wgpu::BindGroup,
-        sprite_uniforms: &'a wgpu::BindGroup,
+        material: &'a SpriteMaterial,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..));
-        render_pass.set_bind_group(0, &material, &[]);
-        render_pass.set_bind_group(1, &camera_uniforms, &[]);
-        render_pass.set_bind_group(2, &sprite_uniforms, &[]);
+        render_pass.set_bind_group(0, &material.bind_group, &[]);
+        render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
+        render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
 
         for sprite in sprites {
             if let Some(index) = self.sprite_element_indices.get(sprite) {
@@ -1494,14 +1495,14 @@ impl SpriteCollection {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a wgpu::BindGroup,
-        sprite_uniforms: &'a wgpu::BindGroup,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
             mesh.draw(
                 render_pass,
-                &material.bind_group,
+                &material,
                 camera_uniforms,
                 sprite_uniforms,
             );
@@ -1512,15 +1513,15 @@ impl SpriteCollection {
         &'a self,
         sprites: &[SpriteDesc],
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a wgpu::BindGroup,
-        sprite_uniforms: &'a wgpu::BindGroup,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
             mesh.draw_sprites(
                 sprites,
                 render_pass,
-                &material.bind_group,
+                &material,
                 camera_uniforms,
                 sprite_uniforms,
             );
@@ -1633,8 +1634,8 @@ impl SpriteEntity {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a wgpu::BindGroup,
-        sprite_uniforms: &'a wgpu::BindGroup,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
         cycle: &str,
     ) where
         'a: 'b,
@@ -1643,8 +1644,8 @@ impl SpriteEntity {
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
             render_pass.set_index_buffer(mesh.index_buffer.slice(..));
             render_pass.set_bind_group(0, &self.material.bind_group, &[]);
-            render_pass.set_bind_group(1, &camera_uniforms, &[]);
-            render_pass.set_bind_group(2, &sprite_uniforms, &[]);
+            render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
+            render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
     }

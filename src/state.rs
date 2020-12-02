@@ -175,15 +175,16 @@ impl State {
         };
 
         // Build camera, and camera uniform storage
-        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
+        let mut camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
         let mut character_controller =
             character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
         // place charatcer near first tree to help debug RATCHET collisions
-        character_controller.character_state.position.x = 11.0;
-        character_controller.character_state.position.y = 4.0;
+        character_controller.character_state.position.x = 23.0;
+        character_controller.character_state.position.y = 12.0;
+        camera.set_position(&cgmath::Point3::new(23.0, 12.0, camera.position().z));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -479,8 +480,8 @@ impl State {
             // Render stage
             self.stage_sprite_collection.draw(
                 &mut render_pass,
-                &self.camera_uniforms.bind_group,
-                &self.stage_uniforms.bind_group,
+                &self.camera_uniforms,
+                &self.stage_uniforms,
             );
 
             if self.ui_display_state.draw_stage_collision_info {
@@ -496,8 +497,8 @@ impl State {
                     self.stage_sprite_collection.draw_sprites(
                         &sprite_storage,
                         &mut render_pass,
-                        &self.camera_uniforms.bind_group,
-                        &self.stage_debug_draw_overlap_uniforms.bind_group,
+                        &self.camera_uniforms,
+                        &self.stage_debug_draw_overlap_uniforms,
                     );
                 }
 
@@ -510,8 +511,8 @@ impl State {
                     self.stage_sprite_collection.draw_sprites(
                         &sprite_storage,
                         &mut render_pass,
-                        &self.camera_uniforms.bind_group,
-                        &self.stage_debug_draw_contact_uniforms.bind_group,
+                        &self.camera_uniforms,
+                        &self.stage_debug_draw_contact_uniforms,
                     );
                 }
             }
@@ -524,8 +525,8 @@ impl State {
             };
             self.firebrand.draw(
                 &mut render_pass,
-                &self.camera_uniforms.bind_group,
-                &self.firebrand_uniforms.bind_group,
+                &self.camera_uniforms,
+                &self.firebrand_uniforms,
                 cycle,
             );
         }

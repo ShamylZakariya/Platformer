@@ -47,6 +47,10 @@ impl Camera {
         }
     }
 
+    pub fn set_position(&mut self, position: &Point3<f32>) {
+        self.position = *position;
+    }
+
     pub fn calc_matrix(&self) -> Matrix4<f32> {
         Matrix4::look_at_dir(
             self.position(),
