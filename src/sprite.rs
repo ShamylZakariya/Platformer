@@ -1458,21 +1458,23 @@ impl SpriteMesh {
         render_pass.draw_indexed(0..self.num_elements, 0, 0..1);
     }
 
-    pub fn draw_sprites<'a, 'b>(
+    pub fn draw_sprites<'a, 'b, I>(
         &'a self,
-        sprites: &[SpriteDesc],
+        sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a SpriteMaterial,
         camera_uniforms: &'a camera::Uniforms,
         sprite_uniforms: &'a Uniforms,
-    ) {
+    ) where
+        I: IntoIterator<Item = &'a SpriteDesc>,
+    {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..));
         render_pass.set_bind_group(0, &material.bind_group, &[]);
         render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
         render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
 
-        for sprite in sprites {
+        for sprite in sprites.into_iter() {
             if let Some(index) = self.sprite_element_indices.get(sprite) {
                 render_pass.draw_indexed(*index..*index + 6, 0, 0..1);
             }
@@ -1504,13 +1506,16 @@ impl SpriteCollection {
         }
     }
 
-    pub fn draw_sprites<'a, 'b>(
+    pub fn draw_sprites<'a, 'b, I>(
         &'a self,
-        sprites: &[SpriteDesc],
+        sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         camera_uniforms: &'a camera::Uniforms,
         sprite_uniforms: &'a Uniforms,
-    ) {
+    ) where
+        // TODO: Not happy about this +Copy here, the sprites array is being copied for each pass of the loop?
+        I: IntoIterator<Item = &'a SpriteDesc> + Copy,
+    {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
             mesh.draw_sprites(

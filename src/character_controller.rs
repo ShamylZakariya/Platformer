@@ -21,6 +21,14 @@ const CHARACTER_CYCLE_WALL: &str = "wall";
 const GRAVITY_SPEED: f32 = -1.0;
 const WALK_SPEED: f32 = 2.0;
 
+#[derive(Clone, Copy, Debug)]
+enum ProbeDir {
+    North,
+    East,
+    South,
+    West,
+}
+
 #[derive(Debug)]
 pub struct CharacterState {
     pub position: Point2<f32>,
@@ -124,20 +132,20 @@ impl CharacterController {
 
         position = self.apply_gravity(&position, dt).0;
 
-        let r = self.find_character_footing(collision_space, &position, &Zero::zero());
+        let r = self.find_character_footing(collision_space, position, Zero::zero());
         position = r.0;
         let mut footing = r.1;
 
         if let Some(t) = footing {
             self.overlapping_sprites.insert(t);
         } else {
-            let r = self.find_character_footing(collision_space, &position, &vec2(1.0, 0.0));
+            let r = self.find_character_footing(collision_space, position, vec2(1.0, 0.0));
             position = r.0;
             footing = r.1;
             if let Some(t) = footing {
                 self.overlapping_sprites.insert(t);
             } else {
-                let r = self.find_character_footing(collision_space, &position, &vec2(-1.0, 0.0));
+                let r = self.find_character_footing(collision_space, position, vec2(-1.0, 0.0));
                 position = r.0;
                 footing = r.1;
                 if let Some(t) = footing {
@@ -146,17 +154,13 @@ impl CharacterController {
             }
         }
 
-        let r = self.apply_character_movement(&position, dt);
-        position = r.0;
-        let motion = r.1;
-
-        let r = self.find_character_collisions(collision_space, &position, &motion, &footing);
-        position = r.0;
-        footing = r.1;
-
         if let Some(t) = footing {
             self.overlapping_sprites.insert(t);
         }
+
+        position = self
+            .apply_character_movement(collision_space, position, dt)
+            .0;
 
         for s in &self.contacting_sprites {
             self.overlapping_sprites.remove(s);
@@ -176,10 +180,10 @@ impl CharacterController {
     fn find_character_footing(
         &mut self,
         collision_space: &sprite::SpriteHitTester,
-        position: &Point2<f32>,
-        test_offset: &Vector2<f32>,
+        position: Point2<f32>,
+        test_offset: Vector2<f32>,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
-        let mut position = *position;
+        let mut position = position;
         let mut tracking = None;
 
         // scan sprites beneath character
@@ -238,62 +242,52 @@ impl CharacterController {
     }
 
     fn apply_character_movement(
-        &self,
-        position: &Point2<f32>,
-        dt: f32,
-    ) -> (Point2<f32>, Vector2<f32>) {
-        let delta_position = dt
-            * WALK_SPEED
-            * Vector2::new(
-                input_accumulator(
-                    self.input_state.move_left_pressed,
-                    self.input_state.move_right_pressed,
-                ),
-                input_accumulator(false, self.input_state.jump_pressed),
-            );
-
-        (position + delta_position, delta_position)
-    }
-
-    fn find_character_collisions(
         &mut self,
         collision_space: &sprite::SpriteHitTester,
-        position: &Point2<f32>,
-        motion: &Vector2<f32>,
-        footing: &Option<sprite::SpriteDesc>,
-    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
-        let mut position = *position;
-        let mut obstruction = None;
+        position: Point2<f32>,
+        dt: f32,
+    ) -> (Point2<f32>, Vector2<f32>) {
+        let mut delta_x = dt
+            * WALK_SPEED
+            * input_accumulator(
+                self.input_state.move_left_pressed,
+                self.input_state.move_right_pressed,
+            );
 
-        let is_on_slope = if let Some(s) = footing {
-            match s.collision_shape {
-                sprite::CollisionShape::None => false,
-                sprite::CollisionShape::Square => false,
-                // if the character is actually standing atop a slope, we need to disredard
-                // sideward collisions. This allows character to not collide with the square shapes
-                // beneath the slope tiles.
-                _ => s.origin.y <= position.y,
-            }
-        } else {
-            false
-        };
+        let mut delta_y = dt * WALK_SPEED * input_accumulator(false, self.input_state.jump_pressed);
 
-        if motion.y > 0.0 {
-            let above = Point2::new(position.x.round() as i32, position.y.round() as i32 + 1);
-            let above_left = above + vec2(-1, 0);
-            let above_right = above + vec2(1, 0);
+        {
+            let mut possibly_collided_with = Vec::with_capacity(2);
 
-            for test in [above_left, above, above_right].iter() {
-                if let Some(s) = collision_space.get_sprite_at(test, FLAG_MAP_TILE_IS_COLLIDER) {
-                    if s.collision_shape == sprite::CollisionShape::Square
-                    && s.unit_rect_intersection(&position, 0.0)
-                    {
-                        self.overlapping_sprites.insert(s);
-                        if s.origin.y > position.y {
+            if delta_x > 0.0 {
+                if let Some(result) = self.probe(
+                    collision_space,
+                    position,
+                    ProbeDir::East,
+                    4,
+                    FLAG_MAP_TILE_IS_COLLIDER,
+                    &mut possibly_collided_with,
+                ) {
+                    if result < delta_x {
+                        delta_x = result;
+                        for s in possibly_collided_with {
                             self.handle_collision_with(&s);
-                            position.y = s.origin.y - 1.0;
-                            obstruction = Some(s);
-                            break;
+                        }
+                    }
+                }
+            } else if delta_x < 0.0 {
+                if let Some(result) = self.probe(
+                    collision_space,
+                    position,
+                    ProbeDir::West,
+                    4,
+                    FLAG_MAP_TILE_IS_COLLIDER,
+                    &mut possibly_collided_with,
+                ) {
+                    if result < -delta_x {
+                        delta_x = -result;
+                        for s in possibly_collided_with {
+                            self.handle_collision_with(&s);
                         }
                     }
                 }
@@ -301,53 +295,152 @@ impl CharacterController {
         }
 
         {
-            // Perform left/right collision testing
-            // scan to right or left, depending on motion vector
-            let tests = if motion.x > 0.0 {
-                let right =
-                    Point2::new((position.x + 1.0).round() as i32, position.y.round() as i32);
-                [right, right + vec2(0, -1), right + vec2(0, 1)]
-            } else {
-                let left =
-                    Point2::new((position.x - 1.0).round() as i32, position.y.round() as i32);
-                [left, left + vec2(0, -1), left + vec2(0, 1)]
-            };
-
-            if motion.x.abs() > 0.0 {
-                for t in tests.iter() {
-                    if let Some(s) = collision_space.get_sprite_at(t, FLAG_MAP_TILE_IS_COLLIDER) {
-                        if s.collision_shape == sprite::CollisionShape::Square
-                        && s.unit_rect_intersection(&position, 0.0)
-                        {
-                            self.overlapping_sprites.insert(s);
-                            if motion.x > 0.0 {
-                                if s.origin.x > position.x {
-                                    self.handle_collision_with(&s);
-                                    position = Point2::new(s.origin.x - 1.0, position.y);
-                                    obstruction = Some(s);
-                                }
-                            } else {
-                                if s.origin.x < position.x {
-                                    self.handle_collision_with(&s);
-                                    position = Point2::new(s.origin.x + s.extent.x, position.y);
-                                    obstruction = Some(s);
-                                }
-                            }
+            let mut possibly_collided_with = Vec::with_capacity(2);
+            if delta_y > 0.0 {
+                if let Some(result) = self.probe(
+                    collision_space,
+                    position,
+                    ProbeDir::North,
+                    4,
+                    FLAG_MAP_TILE_IS_COLLIDER,
+                    &mut possibly_collided_with,
+                ) {
+                    if result < delta_y {
+                        delta_y = result;
+                        for s in possibly_collided_with {
+                            self.handle_collision_with(&s);
                         }
-                    }
-                    // we only test the sprites directly in front or behind when on a slope
-                    // which are the first in the tests array.
-                    if is_on_slope {
-                        break;
                     }
                 }
             }
         }
 
-        (position, obstruction)
+        let delta_position = vec2(delta_x, delta_y);
+        (position + delta_position, delta_position)
     }
 
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
         self.contacting_sprites.insert(*sprite);
+    }
+
+    fn probe(
+        &mut self,
+        collision_space: &sprite::SpriteHitTester,
+        position: Point2<f32>,
+        dir: ProbeDir,
+        max_steps: i32,
+        mask: u32,
+        possibly_collided_with: &mut Vec<sprite::SpriteDesc>,
+    ) -> Option<f32> {
+        possibly_collided_with.clear();
+
+        // The problem here is that if the character is on an integerial boundary (e.g., x == 22, not 22.2) we're still probing the offset position
+
+        let (offset, should_probe_offset) = match dir {
+            ProbeDir::North | ProbeDir::South => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
+            ProbeDir::East | ProbeDir::West => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
+        };
+
+        let mut dist = None;
+        let r0 = self._probe(collision_space, position, dir, max_steps, mask);
+        if let Some(r0) = r0 {
+            dist = Some(r0.0);
+            possibly_collided_with.push(r0.1);
+        }
+
+        let r1 = if should_probe_offset {
+            let r1 = self._probe(collision_space, position + offset, dir, max_steps, mask);
+            if let Some(r1) = r1 {
+                dist = Some(r1.0);
+                possibly_collided_with.push(r1.1);
+            }
+            r1
+        } else {
+            None
+        };
+
+        dist
+
+        // if let Some(result) = self._probe(collision_space, position, dir, max_steps, mask) {
+        //     Some(result)
+        // } else if should_probe_offset {
+        //     if let Some(result) =
+        //         self._probe(collision_space, position + offset, dir, max_steps, mask)
+        //     {
+        //         Some(result)
+        //     } else {
+        //         None
+        //     }
+        // } else {
+        //     None
+        // }
+    }
+
+    fn _probe(
+        &self,
+        collision_space: &sprite::SpriteHitTester,
+        position: Point2<f32>,
+        dir: ProbeDir,
+        max_steps: i32,
+        mask: u32,
+    ) -> Option<(f32, sprite::SpriteDesc)> {
+        let position_snapped = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
+        let mut result = None;
+        match dir {
+            ProbeDir::East => {
+                for i in 0..max_steps {
+                    let x = position_snapped.x + i;
+                    if let Some(s) =
+                        collision_space.get_sprite_at(&Point2::new(x, position_snapped.y), mask)
+                    {
+                        result = Some((s.origin.x - (position.x + 1.0), s));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::North => {
+                for i in 0..max_steps {
+                    let y = position_snapped.y + i;
+                    if let Some(s) =
+                        collision_space.get_sprite_at(&Point2::new(position_snapped.x, y), mask)
+                    {
+                        result = Some((s.origin.y - (position.y + 1.0), s));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::South => {
+                for i in 0..max_steps {
+                    let y = position_snapped.y - i;
+                    if let Some(s) =
+                        collision_space.get_sprite_at(&Point2::new(position_snapped.x, y), mask)
+                    {
+                        result = Some((position.y - s.top(), s));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::West => {
+                for i in 0..max_steps {
+                    let x = position_snapped.x - i;
+                    if let Some(s) =
+                        collision_space.get_sprite_at(&Point2::new(x, position_snapped.y), mask)
+                    {
+                        result = Some((position.x - s.right(), s));
+                        break;
+                    }
+                }
+            }
+        };
+
+        // we only accept collisions with square shapes - because slopes are special cases handled by
+        // find_character_footing only (note, the ganme only has northeast, and northwest slopes)
+        if let Some(result) = result {
+            if result.0 >= 0.0 && result.1.collision_shape == sprite::CollisionShape::Square {
+                return Some(result);
+            }
+        }
+
+        None
     }
 }

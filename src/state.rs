@@ -182,10 +182,13 @@ impl State {
         let mut character_controller =
             character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
-        // place charatcer near first tree to help debug RATCHET collisions
-        character_controller.character_state.position.x = 23.0;
-        character_controller.character_state.position.y = 12.0;
-        camera.set_position(&cgmath::Point3::new(23.0, 12.0, camera.position().z));
+        character_controller.character_state.position.x = 27.1;
+        character_controller.character_state.position.y = 11.0;
+        camera.set_position(&cgmath::Point3::new(
+            character_controller.character_state.position.x,
+            character_controller.character_state.position.y,
+            camera.position().z,
+        ));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -486,31 +489,18 @@ impl State {
             );
 
             if self.ui_display_state.draw_stage_collision_info {
-                // TODO: Rewrite draw_sprites to take an iterator.
-                // https://stackoverflow.com/questions/34969902/how-to-write-a-rust-function-that-takes-an-iterator
-
-                let mut sprite_storage = vec![];
-                for s in &self.character_controller.overlapping_sprites {
-                    sprite_storage.push(*s);
-                }
-
                 if !self.character_controller.overlapping_sprites.is_empty() {
                     self.stage_sprite_collection.draw_sprites(
-                        &sprite_storage,
+                        &self.character_controller.overlapping_sprites,
                         &mut render_pass,
                         &self.camera_uniforms,
                         &self.stage_debug_draw_overlap_uniforms,
                     );
                 }
 
-                sprite_storage.clear();
-                for s in &self.character_controller.contacting_sprites {
-                    sprite_storage.push(*s);
-                }
-
                 if !self.character_controller.contacting_sprites.is_empty() {
                     self.stage_sprite_collection.draw_sprites(
-                        &sprite_storage,
+                        &self.character_controller.contacting_sprites,
                         &mut render_pass,
                         &self.camera_uniforms,
                         &self.stage_debug_draw_contact_uniforms,
