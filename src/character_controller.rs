@@ -23,11 +23,27 @@ const WALK_SPEED: f32 = 2.0;
 
 #[derive(Clone, Copy, Debug)]
 enum ProbeDir {
-    North,
-    East,
-    South,
-    West,
+    Up,
+    Right,
+    Down,
+    Left,
 }
+
+#[derive(Clone, Copy, Debug)]
+enum ProbeResult {
+    None,
+    OneHit {
+        dist: f32,
+        sprite: sprite::SpriteDesc,
+    },
+    TwoHits {
+        dist: f32,
+        sprite_0: sprite::SpriteDesc,
+        sprite_1: sprite::SpriteDesc,
+    },
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
 pub struct CharacterState {
@@ -247,6 +263,8 @@ impl CharacterController {
         position: Point2<f32>,
         dt: f32,
     ) -> (Point2<f32>, Vector2<f32>) {
+        let steps = 4;
+        let mask = FLAG_MAP_TILE_IS_COLLIDER;
         let mut delta_x = dt
             * WALK_SPEED
             * input_accumulator(
@@ -255,61 +273,68 @@ impl CharacterController {
             );
 
         let mut delta_y = dt * WALK_SPEED * input_accumulator(false, self.input_state.jump_pressed);
-
-        {
-            let mut possibly_collided_with = Vec::with_capacity(2);
-
-            if delta_x > 0.0 {
-                if let Some(result) = self.probe(
-                    collision_space,
-                    position,
-                    ProbeDir::East,
-                    4,
-                    FLAG_MAP_TILE_IS_COLLIDER,
-                    &mut possibly_collided_with,
-                ) {
-                    if result < delta_x {
-                        delta_x = result;
-                        for s in possibly_collided_with {
-                            self.handle_collision_with(&s);
-                        }
+        if delta_x > 0.0 {
+            match self.probe(collision_space, position, ProbeDir::Right, steps, mask) {
+                ProbeResult::None => {}
+                ProbeResult::OneHit { dist, sprite } => {
+                    if dist < delta_x {
+                        delta_x = dist;
+                        self.handle_collision_with(&sprite);
                     }
                 }
-            } else if delta_x < 0.0 {
-                if let Some(result) = self.probe(
-                    collision_space,
-                    position,
-                    ProbeDir::West,
-                    4,
-                    FLAG_MAP_TILE_IS_COLLIDER,
-                    &mut possibly_collided_with,
-                ) {
-                    if result < -delta_x {
-                        delta_x = -result;
-                        for s in possibly_collided_with {
-                            self.handle_collision_with(&s);
-                        }
+                ProbeResult::TwoHits {
+                    dist,
+                    sprite_0,
+                    sprite_1,
+                } => {
+                    if dist < delta_x {
+                        delta_x = dist;
+                        self.handle_collision_with(&sprite_0);
+                        self.handle_collision_with(&sprite_1);
+                    }
+                }
+            }
+        } else if delta_x < 0.0 {
+            match self.probe(collision_space, position, ProbeDir::Left, steps, mask) {
+                ProbeResult::None => {}
+                ProbeResult::OneHit { dist, sprite } => {
+                    if dist < -delta_x {
+                        delta_x = -dist;
+                        self.handle_collision_with(&sprite);
+                    }
+                }
+                ProbeResult::TwoHits {
+                    dist,
+                    sprite_0,
+                    sprite_1,
+                } => {
+                    if dist < -delta_x {
+                        delta_x = -dist;
+                        self.handle_collision_with(&sprite_0);
+                        self.handle_collision_with(&sprite_1);
                     }
                 }
             }
         }
 
-        {
-            let mut possibly_collided_with = Vec::with_capacity(2);
-            if delta_y > 0.0 {
-                if let Some(result) = self.probe(
-                    collision_space,
-                    position,
-                    ProbeDir::North,
-                    4,
-                    FLAG_MAP_TILE_IS_COLLIDER,
-                    &mut possibly_collided_with,
-                ) {
-                    if result < delta_y {
-                        delta_y = result;
-                        for s in possibly_collided_with {
-                            self.handle_collision_with(&s);
-                        }
+        if delta_y > 0.0 {
+            match self.probe(collision_space, position, ProbeDir::Up, steps, mask) {
+                ProbeResult::None => {}
+                ProbeResult::OneHit { dist, sprite } => {
+                    if dist < delta_y {
+                        delta_y = dist;
+                        self.handle_collision_with(&sprite);
+                    }
+                }
+                ProbeResult::TwoHits {
+                    dist,
+                    sprite_0,
+                    sprite_1,
+                } => {
+                    if dist < delta_y {
+                        delta_y = dist;
+                        self.handle_collision_with(&sprite_0);
+                        self.handle_collision_with(&sprite_1);
                     }
                 }
             }
@@ -330,50 +355,43 @@ impl CharacterController {
         dir: ProbeDir,
         max_steps: i32,
         mask: u32,
-        possibly_collided_with: &mut Vec<sprite::SpriteDesc>,
-    ) -> Option<f32> {
-        possibly_collided_with.clear();
-
-        // The problem here is that if the character is on an integerial boundary (e.g., x == 22, not 22.2) we're still probing the offset position
-
+    ) -> ProbeResult {
         let (offset, should_probe_offset) = match dir {
-            ProbeDir::North | ProbeDir::South => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
-            ProbeDir::East | ProbeDir::West => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
+            ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
+            ProbeDir::Right | ProbeDir::Left => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
         };
 
         let mut dist = None;
-        let r0 = self._probe(collision_space, position, dir, max_steps, mask);
-        if let Some(r0) = r0 {
-            dist = Some(r0.0);
-            possibly_collided_with.push(r0.1);
+        let mut sprite_0 = None;
+        let mut sprite_1 = None;
+        if let Some(r) = self._probe(collision_space, position, dir, max_steps, mask) {
+            dist = Some(r.0);
+            sprite_0 = Some(r.1);
         }
 
-        let r1 = if should_probe_offset {
-            let r1 = self._probe(collision_space, position + offset, dir, max_steps, mask);
-            if let Some(r1) = r1 {
-                dist = Some(r1.0);
-                possibly_collided_with.push(r1.1);
+        if should_probe_offset {
+            if let Some(r) = self._probe(collision_space, position + offset, dir, max_steps, mask) {
+                dist = Some(r.0);
+                sprite_1 = Some(r.1);
             }
-            r1
-        } else {
-            None
-        };
+        }
 
-        dist
-
-        // if let Some(result) = self._probe(collision_space, position, dir, max_steps, mask) {
-        //     Some(result)
-        // } else if should_probe_offset {
-        //     if let Some(result) =
-        //         self._probe(collision_space, position + offset, dir, max_steps, mask)
-        //     {
-        //         Some(result)
-        //     } else {
-        //         None
-        //     }
-        // } else {
-        //     None
-        // }
+        match (sprite_0, sprite_1) {
+            (None, None) => ProbeResult::None,
+            (None, Some(s)) => ProbeResult::OneHit {
+                dist: dist.unwrap(),
+                sprite: s,
+            },
+            (Some(s), None) => ProbeResult::OneHit {
+                dist: dist.unwrap(),
+                sprite: s,
+            },
+            (Some(s0), Some(s1)) => ProbeResult::TwoHits {
+                dist: dist.unwrap(),
+                sprite_0: s0,
+                sprite_1: s1,
+            },
+        }
     }
 
     fn _probe(
@@ -387,7 +405,7 @@ impl CharacterController {
         let position_snapped = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
         let mut result = None;
         match dir {
-            ProbeDir::East => {
+            ProbeDir::Right => {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
                     if let Some(s) =
@@ -398,7 +416,7 @@ impl CharacterController {
                     }
                 }
             }
-            ProbeDir::North => {
+            ProbeDir::Up => {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
                     if let Some(s) =
@@ -409,7 +427,7 @@ impl CharacterController {
                     }
                 }
             }
-            ProbeDir::South => {
+            ProbeDir::Down => {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
                     if let Some(s) =
@@ -420,7 +438,7 @@ impl CharacterController {
                     }
                 }
             }
-            ProbeDir::West => {
+            ProbeDir::Left => {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
                     if let Some(s) =
