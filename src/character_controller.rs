@@ -263,7 +263,7 @@ impl CharacterController {
         position: Point2<f32>,
         dt: f32,
     ) -> (Point2<f32>, Vector2<f32>) {
-        let steps = 4;
+        let steps = 3;
         let mask = FLAG_MAP_TILE_IS_COLLIDER;
         let mut delta_x = dt
             * WALK_SPEED
@@ -371,7 +371,10 @@ impl CharacterController {
 
         if should_probe_offset {
             if let Some(r) = self._probe(collision_space, position + offset, dir, max_steps, mask) {
-                dist = Some(r.0);
+                dist = match dist {
+                    Some(d) => Some(d.min(r.0)),
+                    None => Some(r.0),
+                };
                 sprite_1 = Some(r.1);
             }
         }

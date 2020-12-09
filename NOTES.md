@@ -1,12 +1,11 @@
 CURRENTLY:
     Character Controller
-        - needs to mark all colliders; we often miss spikes inset into walls because the wall immediately above or below triggers response. We can do this by calling collision callback without performing movement adjustment if that's already been applied
         - needs ceiling ratchet collisions
             - the only tiles with ratchet collisions are half-height, with collider geometry being top-half.
 
 
 BUGS:
-    - 27.1,11 - fall left off ledge; while falling push right, when character y == occluder y, eventually weird jump occurs
+    - find_character_footing only registers collision with tile directly under character, whereas probe() approach collides with up to two tiles left/up/right
 
 
 TODO:
