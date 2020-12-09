@@ -148,31 +148,25 @@ impl CharacterController {
 
         position = self.apply_gravity(&position, dt).0;
 
-        let r = self.find_character_footing(collision_space, position, Zero::zero());
-        position = r.0;
-        let mut footing = r.1;
+        let footing_center =
+            self.find_character_footing(collision_space, position, Zero::zero(), true);
+        position = footing_center.0;
 
-        if let Some(t) = footing {
-            self.overlapping_sprites.insert(t);
-        } else {
-            let r = self.find_character_footing(collision_space, position, vec2(1.0, 0.0));
-            position = r.0;
-            footing = r.1;
-            if let Some(t) = footing {
-                self.overlapping_sprites.insert(t);
-            } else {
-                let r = self.find_character_footing(collision_space, position, vec2(-1.0, 0.0));
-                position = r.0;
-                footing = r.1;
-                if let Some(t) = footing {
-                    self.overlapping_sprites.insert(t);
-                }
-            }
-        }
+        let footing_right = self.find_character_footing(
+            collision_space,
+            position,
+            vec2(1.0, 0.0),
+            footing_center.1.is_none(),
+        );
+        position = footing_right.0;
 
-        if let Some(t) = footing {
-            self.overlapping_sprites.insert(t);
-        }
+        let footing_left = self.find_character_footing(
+            collision_space,
+            position,
+            vec2(-1.0, 0.0),
+            footing_center.1.is_none() && footing_right.1.is_none(),
+        );
+        position = footing_left.0;
 
         position = self
             .apply_character_movement(collision_space, position, dt)
@@ -198,6 +192,7 @@ impl CharacterController {
         collision_space: &sprite::SpriteHitTester,
         position: Point2<f32>,
         test_offset: Vector2<f32>,
+        may_apply_correction: bool,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
         let mut position = position;
         let mut tracking = None;
@@ -209,13 +204,17 @@ impl CharacterController {
         );
 
         let below_center = Point2::new(center.x, center.y - 1);
+        let inset = 0.0 as f32;
+        let contacts_are_collision = !may_apply_correction;
 
         if let Some(s) = collision_space.get_sprite_at(&below_center, FLAG_MAP_TILE_IS_COLLIDER) {
             match s.collision_shape {
                 sprite::CollisionShape::Square => {
-                    if s.unit_rect_intersection(&position, 0.0) {
+                    if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
                         self.handle_collision_with(&s);
-                        position.y = s.origin.y + s.extent.y
+                        if may_apply_correction {
+                            position.y = s.origin.y + s.extent.y
+                        }
                     }
                 }
                 sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
@@ -224,20 +223,25 @@ impl CharacterController {
                         &(position + vec2(0.5, 0.0)),
                     ) {
                         self.handle_collision_with(&s);
-                        position.y = intersection.y;
+                        if may_apply_correction {
+                            position.y = intersection.y;
+                        }
                     }
                 }
                 _ => (),
             }
+            self.overlapping_sprites.insert(s);
             tracking = Some(s);
         }
 
         if let Some(s) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER) {
             match s.collision_shape {
                 sprite::CollisionShape::Square => {
-                    if s.unit_rect_intersection(&position, 0.0) {
+                    if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
                         self.handle_collision_with(&s);
-                        position.y = s.origin.y + s.extent.y
+                        if may_apply_correction {
+                            position.y = s.origin.y + s.extent.y
+                        }
                     }
                 }
                 sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
@@ -246,11 +250,14 @@ impl CharacterController {
                         &(position + vec2(0.5, 0.0)),
                     ) {
                         self.handle_collision_with(&s);
-                        position.y = intersection.y;
+                        if may_apply_correction {
+                            position.y = intersection.y;
+                        }
                     }
                 }
                 _ => (),
             }
+            self.overlapping_sprites.insert(s);
             tracking = Some(s);
         }
 
@@ -348,6 +355,8 @@ impl CharacterController {
         self.contacting_sprites.insert(*sprite);
     }
 
+    /// Probes `max_steps` sprites in the collision space from `position` in `dir`, returning a ProbeResult
+    /// Ignores any sprites which don't match the provided `mask`
     fn probe(
         &mut self,
         collision_space: &sprite::SpriteHitTester,

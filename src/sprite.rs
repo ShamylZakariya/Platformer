@@ -510,18 +510,30 @@ impl SpriteDesc {
     }
 
     /// Returns true if this SpriteDesc overlaps the described rect with lower/left origin and extent and inset.
+    /// Inset: The amount to inset the test rect
+    /// contact: If true, contacts will also count as an intersection, not just overlap. In this case rects with touching edges will be treated as intersections.
     pub fn rect_intersection(
         &self,
         origin: &Point2<f32>,
         extent: &Vector2<f32>,
         inset: f32,
+        contact: bool,
     ) -> bool {
         let origin = Point2::new(origin.x + inset, origin.y + inset);
         let extent = Vector2::new(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
-        let x_overlap =
-            self.origin.x < origin.x + extent.x && self.origin.x + self.extent.x > origin.x;
-        let y_overlap =
-            self.origin.y < origin.y + extent.y && self.origin.y + self.extent.y > origin.y;
+
+        let (x_overlap, y_overlap) = if contact {
+            (
+                self.origin.x <= origin.x + extent.x && self.origin.x + self.extent.x >= origin.x,
+                self.origin.y <= origin.y + extent.y && self.origin.y + self.extent.y >= origin.y,
+            )
+        } else {
+            (
+                self.origin.x < origin.x + extent.x && self.origin.x + self.extent.x > origin.x,
+                self.origin.y < origin.y + extent.y && self.origin.y + self.extent.y > origin.y,
+            )
+        };
+
         if x_overlap && y_overlap {
             match self.collision_shape {
                 CollisionShape::None => false,
@@ -545,8 +557,8 @@ impl SpriteDesc {
     }
 
     /// Returns true if this SpriteDesc overlaps the described unit square with lower/left origin and extent of (1,1).
-    pub fn unit_rect_intersection(&self, origin: &Point2<f32>, inset: f32) -> bool {
-        self.rect_intersection(origin, &vec2(1.0, 1.0), inset)
+    pub fn unit_rect_intersection(&self, origin: &Point2<f32>, inset: f32, contact: bool) -> bool {
+        self.rect_intersection(origin, &vec2(1.0, 1.0), inset, contact)
     }
 
     pub fn left(&self) -> f32 {
@@ -989,87 +1001,6 @@ impl SpriteHitTester {
             return Some(*sprite);
         } else {
             None
-        }
-    }
-
-    pub fn test_line(
-        &self,
-        a: &Point2<f32>,
-        b: &Point2<f32>,
-        mask: u32,
-    ) -> Option<(Point2<f32>, SpriteDesc)> {
-        // find the sprite the line segment intersects with
-        let mut p: Option<Point2<f32>> = None;
-        let mut s: Option<SpriteDesc> = None;
-        self.visit_line(a, b, mask, |point, sprite| {
-            p = Some(point);
-            s = Some(*sprite);
-            return false;
-        });
-
-        if let (Some(p), Some(s)) = (p, s) {
-            Some((p, s))
-        } else {
-            None
-        }
-    }
-
-    /// Visits all sprites that could intersect the line a->b, in order from a to b, calling the visitor function
-    /// for each that intersects and has matching mask. The visitor receives the point where the line intersected
-    /// the sprite's edge, and the sprite. The visitor should return true to keep searching, false to terminate.
-    pub fn visit_line<F>(&self, a: &Point2<f32>, b: &Point2<f32>, mask: u32, mut visitor: F)
-    where
-        F: FnMut(Point2<f32>, &SpriteDesc) -> bool,
-    {
-        // http://playtechs.blogspot.com/2007/03/raytracing-on-grid.html
-        let x0 = a.x as i32;
-        let y0 = a.y as i32;
-        let x1 = b.x as i32;
-        let y1 = b.y as i32;
-
-        let dx = (x1 - x0) as i32;
-        let dy = (y1 - y0) as i32;
-        let mut x = x0;
-        let mut y = y0;
-        let mut n = 1 + dx + dy;
-        let x_inc = if x1 > x0 { 1 } else { -1 };
-        let y_inc = if y1 > y0 { 1 } else { -1 };
-        let mut error = dx - dy;
-        let dx = dx * 2;
-        let dy = dy * 2;
-        let mut last_x = x;
-        let mut last_y = y;
-
-        while n > 0 {
-            // test (x,y)
-            let p = Point2::new(x as f32, y as f32);
-            if let Some(sprite) = self.test_point(&p, mask) {
-                if last_x == x && last_y == y {
-                    if !visitor(p, &sprite) {
-                        return;
-                    }
-                } else {
-                    let last_p = Point2::new(last_x as f32, last_y as f32);
-                    let i = sprite.line_intersection(&last_p, &p);
-                    if let Some(i) = i {
-                        if !visitor(i, &sprite) {
-                            return;
-                        }
-                    }
-                }
-            }
-
-            last_x = x;
-            last_y = y;
-            if error > 0 {
-                x += x_inc;
-                error -= dy;
-            } else {
-                y += y_inc;
-                error += dx;
-            }
-
-            n = n - 1;
         }
     }
 }
