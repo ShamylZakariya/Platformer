@@ -305,7 +305,7 @@ impl Map {
                         z_depth,
                         tex_coord_origin,
                         tex_coord_extent,
-                        cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
+                        cgmath::vec4(1.0, 1.0, 1.0, 1.0),
                         mask,
                     );
 

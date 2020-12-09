@@ -1,5 +1,5 @@
 use cgmath::{prelude::*, relative_eq, vec2, vec3, Point2, Point3, Vector2, Vector3, Vector4};
-use std::{collections::HashMap, unimplemented};
+use std::collections::HashMap;
 use std::{hash::Hash, rc::Rc};
 
 use crate::camera;
@@ -120,8 +120,8 @@ impl UniformData {
     pub fn new() -> Self {
         Self {
             model_position: cgmath::Vector4::zero(),
-            color: cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0),
-            sprite_size_px: cgmath::Vector2::new(1.0, 1.0),
+            color: cgmath::vec4(1.0, 1.0, 1.0, 1.0),
+            sprite_size_px: cgmath::vec2(1.0, 1.0),
         }
     }
 
@@ -391,7 +391,7 @@ impl SpriteDesc {
         Self {
             collision_shape,
             origin: Point3::new(origin.x as f32, origin.y as f32, z),
-            extent: Vector2::new(1.0, 1.0),
+            extent: vec2(1.0, 1.0),
             tex_coord_origin,
             tex_coord_extent,
             color,
@@ -408,32 +408,31 @@ impl SpriteDesc {
             && point.y >= self.origin.y
             && point.y <= self.origin.y + self.extent.y
         {
-            let p = Vector2::new(point.x, point.y);
+            let p = vec2(point.x, point.y);
             return match self.collision_shape {
                 CollisionShape::None => false,
 
                 CollisionShape::Square => true,
 
                 CollisionShape::NorthEast => {
-                    let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
-                    let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
+                    let a = vec2(self.origin.x, self.origin.y + self.extent.y);
+                    let b = vec2(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     cross(&ba, &pa) <= 0.0
                 }
 
                 CollisionShape::SouthEast => {
-                    let a = Vector2::new(self.origin.x, self.origin.y);
-                    let b =
-                        Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
+                    let a = vec2(self.origin.x, self.origin.y);
+                    let b = vec2(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
                     let ba = b - a;
                     let pa = p - a;
                     cross(&ba, &pa) >= 0.0
                 }
 
                 CollisionShape::SouthWest => {
-                    let a = Vector2::new(self.origin.x, self.origin.y + self.extent.y);
-                    let b = Vector2::new(self.origin.x + self.extent.x, self.origin.y);
+                    let a = vec2(self.origin.x, self.origin.y + self.extent.y);
+                    let b = vec2(self.origin.x + self.extent.x, self.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     // opposite winding of northeast
@@ -441,9 +440,8 @@ impl SpriteDesc {
                 }
 
                 CollisionShape::NorthWest => {
-                    let a = Vector2::new(self.origin.x, self.origin.y);
-                    let b =
-                        Vector2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
+                    let a = vec2(self.origin.x, self.origin.y);
+                    let b = vec2(self.origin.x + self.extent.x, self.origin.y + self.extent.y);
                     let ba = b - a;
                     let pa = p - a;
                     // opposite winding of southeast
@@ -520,7 +518,7 @@ impl SpriteDesc {
         contact: bool,
     ) -> bool {
         let origin = Point2::new(origin.x + inset, origin.y + inset);
-        let extent = Vector2::new(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
+        let extent = vec2(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
 
         let (x_overlap, y_overlap) = if contact {
             (
@@ -631,6 +629,7 @@ impl SpriteDesc {
 #[cfg(test)]
 mod sprite_desc_tests {
     use super::*;
+    use cgmath::vec4;
 
     fn test_points(
         sprite: &SpriteDesc,
@@ -751,10 +750,10 @@ mod sprite_desc_tests {
         let mut sprite = SpriteDesc::new(
             CollisionShape::Square,
             Point3::new(0.0, 0.0, 0.0),
-            Vector2::new(1.0, 1.0),
+            vec2(1.0, 1.0),
             Point2::new(0.0, 0.0),
-            Vector2::new(1.0, 1.0),
-            Vector4::new(0.0, 0.0, 0.0, 0.0),
+            vec2(1.0, 1.0),
+            vec4(0.0, 0.0, 0.0, 0.0),
             0,
         );
 
@@ -822,10 +821,10 @@ mod sprite_desc_tests {
         let sprite = SpriteDesc::new(
             CollisionShape::Square,
             Point3::new(0.0, 0.0, 0.0),
-            Vector2::new(1.0, 1.0),
+            vec2(1.0, 1.0),
             Point2::new(0.0, 0.0),
-            Vector2::new(1.0, 1.0),
-            Vector4::new(0.0, 0.0, 0.0, 0.0),
+            vec2(1.0, 1.0),
+            vec4(0.0, 0.0, 0.0, 0.0),
             0,
         );
 
@@ -852,10 +851,10 @@ mod sprite_desc_tests {
         let mut sprite = SpriteDesc::new(
             CollisionShape::NorthEast,
             Point3::new(0.0, 0.0, 0.0),
-            Vector2::new(1.0, 1.0),
+            vec2(1.0, 1.0),
             Point2::new(0.0, 0.0),
-            Vector2::new(1.0, 1.0),
-            Vector4::new(0.0, 0.0, 0.0, 0.0),
+            vec2(1.0, 1.0),
+            vec4(0.0, 0.0, 0.0, 0.0),
             0,
         );
 
@@ -941,8 +940,8 @@ mod sprite_desc_tests {
             Point2::new(0, 0),
             0.0,
             Point2::new(0.1, 0.1),
-            Vector2::new(0.2, 0.2),
-            Vector4::new(1.0, 1.0, 1.0, 1.0),
+            vec2(0.2, 0.2),
+            vec4(1.0, 1.0, 1.0, 1.0),
             0,
         );
 
@@ -953,252 +952,6 @@ mod sprite_desc_tests {
 }
 
 // --------------------------------------------------------------------------------------------------------------------
-
-pub struct SpriteHitTester {
-    unit_sprites: HashMap<Point2<i32>, SpriteDesc>,
-}
-
-impl SpriteHitTester {
-    pub fn new(sprite_descs: &[SpriteDesc]) -> Self {
-        let mut unit_sprites = HashMap::new();
-
-        for sprite in sprite_descs {
-            // copy sprites into appropriate storage
-            if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
-                unit_sprites.insert(
-                    Point2::new(
-                        sprite.origin.x.floor() as i32,
-                        sprite.origin.y.floor() as i32,
-                    ),
-                    *sprite,
-                );
-            } else {
-                unimplemented!("SpriteHitTester does not support non-unit sprites.")
-            }
-        }
-
-        Self { unit_sprites }
-    }
-
-    pub fn get_sprite_at(&self, point: &Point2<i32>, mask: u32) -> Option<SpriteDesc> {
-        self.unit_sprites
-            .get(&point)
-            .filter(|s| s.mask & mask != 0)
-            .map(|s| *s)
-    }
-
-    /// tests if a point in the sprites' coordinate system intersects with a sprite.
-    /// Filters by mask, such that only sprites with matching mask bits will be matched.
-    /// In the case of overlapping sprites, there is no guarantee which will be returned,
-    /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test_point(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
-        // first test the unit sprites
-        if let Some(sprite) = self
-            .unit_sprites
-            .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
-            .filter(|s| s.mask & mask != 0 && s.contains(point))
-        {
-            return Some(*sprite);
-        } else {
-            None
-        }
-    }
-}
-
-#[cfg(test)]
-mod sprite_hit_tester {
-    use super::*;
-
-    #[test]
-    fn new_produces_expected_storage() {
-        let tco = Point2::new(0.0, 0.0);
-        let tce = Vector2::new(1.0, 1.0);
-        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
-
-        let unit_0 = SpriteDesc::unit(
-            CollisionShape::Square,
-            Point2::new(0, 0),
-            0.0,
-            tco,
-            tce,
-            color,
-            0,
-        );
-        let unit_1 = SpriteDesc::unit(
-            CollisionShape::Square,
-            Point2::new(11, -33),
-            0.0,
-            tco,
-            tce,
-            color,
-            0,
-        );
-
-        let hit_tester = SpriteHitTester::new(&[unit_0, unit_1]);
-        assert_eq!(
-            hit_tester
-                .unit_sprites
-                .get(&Point2::new(unit_0.origin.x as i32, unit_0.origin.y as i32))
-                .unwrap(),
-            &unit_0
-        );
-        assert_eq!(
-            hit_tester
-                .unit_sprites
-                .get(&Point2::new(unit_1.origin.x as i32, unit_1.origin.y as i32))
-                .unwrap(),
-            &unit_1
-        );
-    }
-
-    #[test]
-    fn unit_sprite_hit_test_works() {
-        let square_mask = 1 << 0;
-        let triangle_mask = 1 << 1;
-        let all_mask = square_mask | triangle_mask;
-
-        let tco = Point2::new(0.0, 0.0);
-        let tce = Vector2::new(1.0, 1.0);
-        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
-
-        let sb1 = SpriteDesc::unit(
-            CollisionShape::Square,
-            Point2::new(0, 0),
-            10.0,
-            tco,
-            tce,
-            color,
-            square_mask,
-        );
-
-        let sb2 = SpriteDesc::unit(
-            CollisionShape::Square,
-            Point2::new(-1, -1),
-            10.0,
-            tco,
-            tce,
-            color,
-            square_mask,
-        );
-
-        let tr0 = SpriteDesc::unit(
-            CollisionShape::NorthEast,
-            Point2::new(0, 4),
-            10.0,
-            tco,
-            tce,
-            color,
-            triangle_mask,
-        );
-
-        let tr1 = SpriteDesc::unit(
-            CollisionShape::NorthWest,
-            Point2::new(-1, 4),
-            10.0,
-            tco,
-            tce,
-            color,
-            triangle_mask,
-        );
-
-        let tr2 = SpriteDesc::unit(
-            CollisionShape::SouthWest,
-            Point2::new(-1, 3),
-            10.0,
-            tco,
-            tce,
-            color,
-            triangle_mask,
-        );
-
-        let tr3 = SpriteDesc::unit(
-            CollisionShape::SouthEast,
-            Point2::new(0, 3),
-            10.0,
-            tco,
-            tce,
-            color,
-            triangle_mask,
-        );
-
-        let hit_tester = SpriteHitTester::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
-
-        // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test_point(&Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
-        assert!(hit_tester.test_point(&Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
-        assert!(hit_tester.test_point(&Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
-        assert!(hit_tester.test_point(&Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
-        assert!(hit_tester
-            .test_point(&Point2::new(0.1, 4.1), square_mask)
-            .is_none());
-        assert!(hit_tester
-            .test_point(&Point2::new(0.1, 3.9), all_mask)
-            .is_some());
-
-        // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test_point(&Point2::new(0.5, 0.5), square_mask) == Some(sb1));
-        assert!(hit_tester
-            .test_point(&Point2::new(0.5, 0.5), triangle_mask)
-            .is_none());
-        assert!(hit_tester
-            .test_point(&Point2::new(0.5, 0.5), all_mask)
-            .is_some());
-    }
-
-    #[test]
-    fn non_unit_hit_test_works() {
-        let tco = Point2::new(0.0, 0.0);
-        let tce = Vector2::new(1.0, 1.0);
-        let color = Vector4::new(1.0, 1.0, 1.0, 1.0);
-
-        let mask0 = 1 << 0;
-        let mask1 = 1 << 1;
-        let mask2 = 1 << 2;
-        let unused_mask = 1 << 16;
-        let all_mask = mask0 | mask1 | mask2 | unused_mask;
-
-        let b0 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(-4.0, -4.0, 0.0),
-            Vector2::new(8.0, 4.0),
-            tco,
-            tce,
-            color,
-            mask0,
-        );
-
-        let b1 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(3.0, -1.0, 0.0),
-            Vector2::new(3.0, 1.0),
-            tco,
-            tce,
-            color,
-            mask1,
-        );
-
-        let b2 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(3.0, -2.0, 0.0),
-            Vector2::new(2.0, 5.0),
-            tco,
-            tce,
-            color,
-            mask2,
-        );
-
-        let hit_tester = SpriteHitTester::new(&[b0, b1, b2]);
-
-        // this point is in all three boxes
-        let p = Point2::new(3.5, -0.5);
-
-        assert_eq!(hit_tester.test_point(&p, mask0), Some(b0));
-        assert_eq!(hit_tester.test_point(&p, mask1), Some(b1));
-        assert_eq!(hit_tester.test_point(&p, mask2), Some(b2));
-        assert_eq!(hit_tester.test_point(&p, unused_mask), None);
-        assert!(hit_tester.test_point(&p, all_mask).is_some());
-    }
-}
 
 // --------------------------------------------------------------------------------------------------------------------
 

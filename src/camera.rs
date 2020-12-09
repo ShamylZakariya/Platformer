@@ -207,7 +207,7 @@ impl CameraController {
         dt: Duration,
     ) {
         let dt = dt.as_secs_f32();
-        let delta_position = cgmath::Vector3::new(
+        let delta_position = cgmath::vec3(
             input_accumulator(
                 self.input_state.move_left_pressed,
                 self.input_state.move_right_pressed,

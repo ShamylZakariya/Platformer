@@ -300,7 +300,7 @@ impl TileSet {
                 px_x as f32 / self.image_width as f32,
                 px_y as f32 / self.image_height as f32,
             ),
-            cgmath::Vector2::new(
+            cgmath::vec2(
                 self.tile_width as f32 / self.image_width as f32,
                 self.tile_height as f32 / self.image_height as f32,
             ),

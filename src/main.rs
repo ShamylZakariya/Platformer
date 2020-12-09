@@ -11,6 +11,7 @@ mod character_controller;
 mod geom;
 mod map;
 mod sprite;
+mod sprite_collision;
 mod state;
 mod texture;
 mod tileset;

@@ -10,6 +10,7 @@ use crate::camera;
 use crate::character_controller;
 use crate::map;
 use crate::sprite;
+use crate::sprite_collision;
 use crate::texture;
 use crate::tileset;
 
@@ -76,7 +77,7 @@ pub struct State {
     stage_debug_draw_overlap_uniforms: sprite::Uniforms,
     stage_debug_draw_contact_uniforms: sprite::Uniforms,
     stage_sprite_collection: sprite::SpriteCollection,
-    stage_hit_tester: sprite::SpriteHitTester,
+    stage_hit_tester: sprite_collision::CollisionSpace,
     map: map::Map,
 
     // Entity rendering
@@ -170,7 +171,7 @@ impl State {
             let sm = sprite::SpriteMesh::new(&all_sprites, 0, &device, "Sprite Mesh");
             (
                 sprite::SpriteCollection::new(vec![sm], vec![mat]),
-                sprite::SpriteHitTester::new(&level_sprites),
+                sprite_collision::CollisionSpace::new(&level_sprites),
             )
         };
 
@@ -194,7 +195,7 @@ impl State {
         camera_uniforms.data.update_view_proj(&camera, &projection);
 
         // Build the sprite render pipeline
-        let sprite_size_px = cgmath::Vector2::new(
+        let sprite_size_px = cgmath::vec2(
             map.tileset.tile_width as f32,
             map.tileset.tile_height as f32,
         );
@@ -388,7 +389,7 @@ impl State {
             .set_model_position(&cgmath::Point3::new(0.0, 0.0, 0.0));
         self.stage_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
+            .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0));
         self.stage_uniforms.write(&mut self.queue);
 
         self.stage_debug_draw_overlap_uniforms
@@ -396,7 +397,7 @@ impl State {
             .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.1)); // bring closer
         self.stage_debug_draw_overlap_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(0.0, 1.0, 0.0, 0.75));
+            .set_color(&cgmath::vec4(0.0, 1.0, 0.0, 0.75));
         self.stage_debug_draw_overlap_uniforms
             .write(&mut self.queue);
 
@@ -405,7 +406,7 @@ impl State {
             .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.2)); // bring closer
         self.stage_debug_draw_contact_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(1.0, 0.0, 0.0, 0.75));
+            .set_color(&cgmath::vec4(1.0, 0.0, 0.0, 0.75));
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
@@ -414,7 +415,7 @@ impl State {
 
         self.firebrand_uniforms
             .data
-            .set_color(&cgmath::Vector4::new(1.0, 1.0, 1.0, 1.0));
+            .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0));
 
         self.firebrand_uniforms
             .data
