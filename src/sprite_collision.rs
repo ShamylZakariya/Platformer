@@ -79,13 +79,17 @@ impl CollisionSpace {
     /// Ignores any sprites which don't match the provided `mask`
     /// NOTE: Probe only tests for sprites with Square collision shape, because, well, that's what's needed here
     /// and I'm not writing a library.
-    pub fn probe(
+    pub fn probe<F>(
         &self,
         position: Point2<f32>,
         dir: ProbeDir,
         max_steps: i32,
         mask: u32,
-    ) -> ProbeResult {
+        test: F,
+    ) -> ProbeResult
+    where
+        F: Fn(f32, &SpriteDesc) -> bool,
+    {
         let (offset, should_probe_offset) = match dir {
             ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
             ProbeDir::Right | ProbeDir::Left => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
@@ -95,17 +99,21 @@ impl CollisionSpace {
         let mut sprite_0 = None;
         let mut sprite_1 = None;
         if let Some(r) = self._probe_line(position, dir, max_steps, mask) {
-            dist = Some(r.0);
-            sprite_0 = Some(r.1);
+            if test(r.0, &r.1) {
+                dist = Some(r.0);
+                sprite_0 = Some(r.1);
+            }
         }
 
         if should_probe_offset {
             if let Some(r) = self._probe_line(position + offset, dir, max_steps, mask) {
-                dist = match dist {
-                    Some(d) => Some(d.min(r.0)),
-                    None => Some(r.0),
-                };
-                sprite_1 = Some(r.1);
+                if test(r.0, &r.1) {
+                    dist = match dist {
+                        Some(d) => Some(d.min(r.0)),
+                        None => Some(r.0),
+                    };
+                    sprite_1 = Some(r.1);
+                }
             }
         }
 

@@ -2,9 +2,9 @@ use cgmath::{vec2, Point2, Vector2, Zero};
 use std::{collections::HashSet, time::Duration};
 use winit::event::*;
 
-use crate::map::FLAG_MAP_TILE_IS_COLLIDER;
+use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
 use crate::sprite;
-use crate::sprite_collision::{ProbeDir, ProbeResult, CollisionSpace};
+use crate::sprite_collision::{CollisionSpace, ProbeDir, ProbeResult};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -119,17 +119,39 @@ impl CharacterController {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
-        let mut position = self.character_state.position;
+        let movement = vec2(
+            input_accumulator(
+                self.input_state.move_left_pressed,
+                self.input_state.move_right_pressed,
+            ),
+            input_accumulator(false, self.input_state.jump_pressed),
+        ) * WALK_SPEED
+            * dt;
 
-        position = self.apply_gravity(&position, dt).0;
+        //
+        //  Apply gravity
+        //
 
-        let footing_center =
-            self.find_character_footing(collision_space, position, Zero::zero(), true);
+        let (mut position, gravity_delta_position) =
+            self.apply_gravity(self.character_state.position, dt);
+
+        //
+        //  Find the footing (if any) for character
+        //
+
+        let footing_center = self.find_character_footing(
+            collision_space,
+            position,
+            gravity_delta_position,
+            Zero::zero(),
+            true,
+        );
         position = footing_center.0;
 
         let footing_right = self.find_character_footing(
             collision_space,
             position,
+            gravity_delta_position,
             vec2(1.0, 0.0),
             footing_center.1.is_none(),
         );
@@ -138,13 +160,18 @@ impl CharacterController {
         let footing_left = self.find_character_footing(
             collision_space,
             position,
+            gravity_delta_position,
             vec2(-1.0, 0.0),
             footing_center.1.is_none() && footing_right.1.is_none(),
         );
         position = footing_left.0;
 
+        //
+        //  Move character left/right/up
+        //
+
         position = self
-            .apply_character_movement(collision_space, position, dt)
+            .apply_character_movement(collision_space, position, movement)
             .0;
 
         for s in &self.contacting_sprites {
@@ -155,7 +182,7 @@ impl CharacterController {
         &self.character_state
     }
 
-    fn apply_gravity(&self, position: &Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
+    fn apply_gravity(&self, position: Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
         let motion = vec2(0.0, dt * GRAVITY_SPEED);
         (position + motion, motion)
     }
@@ -166,6 +193,7 @@ impl CharacterController {
         &mut self,
         collision_space: &CollisionSpace,
         position: Point2<f32>,
+        gravity_delta_position: Vector2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
@@ -182,58 +210,71 @@ impl CharacterController {
         let inset = 0.0 as f32;
         let contacts_are_collision = !may_apply_correction;
 
-        if let Some(s) = collision_space.get_sprite_at(&below_center, FLAG_MAP_TILE_IS_COLLIDER) {
-            match s.collision_shape {
-                sprite::CollisionShape::Square => {
-                    if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
-                        self.handle_collision_with(&s);
-                        if may_apply_correction {
-                            position.y = s.origin.y + s.extent.y
-                        }
-                    }
-                }
-                sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
-                    if let Some(intersection) = s.line_intersection(
-                        &(position + vec2(0.5, 1.0)),
-                        &(position + vec2(0.5, 0.0)),
-                    ) {
-                        self.handle_collision_with(&s);
-                        if may_apply_correction {
-                            position.y = intersection.y;
-                        }
-                    }
-                }
-                _ => (),
+        let can_collide_width = |p: &Point2<f32>, s: &sprite::SpriteDesc| -> bool {
+            if s.mask & FLAG_MAP_TILE_IS_RATCHET != 0 && p.y < (s.top() + gravity_delta_position.y)
+            {
+                false
+            } else {
+                true
             }
-            self.overlapping_sprites.insert(s);
-            tracking = Some(s);
+        };
+
+        if let Some(s) = collision_space.get_sprite_at(&below_center, FLAG_MAP_TILE_IS_COLLIDER) {
+            if can_collide_width(&position, &s) {
+                match s.collision_shape {
+                    sprite::CollisionShape::Square => {
+                        if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
+                            self.handle_collision_with(&s);
+                            if may_apply_correction {
+                                position.y = s.origin.y + s.extent.y
+                            }
+                        }
+                    }
+                    sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                        if let Some(intersection) = s.line_intersection(
+                            &(position + vec2(0.5, 1.0)),
+                            &(position + vec2(0.5, 0.0)),
+                        ) {
+                            self.handle_collision_with(&s);
+                            if may_apply_correction {
+                                position.y = intersection.y;
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+                self.overlapping_sprites.insert(s);
+                tracking = Some(s);
+            }
         }
 
         if let Some(s) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER) {
-            match s.collision_shape {
-                sprite::CollisionShape::Square => {
-                    if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
-                        self.handle_collision_with(&s);
-                        if may_apply_correction {
-                            position.y = s.origin.y + s.extent.y
+            if can_collide_width(&position, &s) {
+                match s.collision_shape {
+                    sprite::CollisionShape::Square => {
+                        if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
+                            self.handle_collision_with(&s);
+                            if may_apply_correction {
+                                position.y = s.origin.y + s.extent.y
+                            }
                         }
                     }
-                }
-                sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
-                    if let Some(intersection) = s.line_intersection(
-                        &(position + vec2(0.5, 1.0)),
-                        &(position + vec2(0.5, 0.0)),
-                    ) {
-                        self.handle_collision_with(&s);
-                        if may_apply_correction {
-                            position.y = intersection.y;
+                    sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                        if let Some(intersection) = s.line_intersection(
+                            &(position + vec2(0.5, 1.0)),
+                            &(position + vec2(0.5, 0.0)),
+                        ) {
+                            self.handle_collision_with(&s);
+                            if may_apply_correction {
+                                position.y = intersection.y;
+                            }
                         }
                     }
+                    _ => (),
                 }
-                _ => (),
+                self.overlapping_sprites.insert(s);
+                tracking = Some(s);
             }
-            self.overlapping_sprites.insert(s);
-            tracking = Some(s);
         }
 
         (position, tracking)
@@ -243,20 +284,24 @@ impl CharacterController {
         &mut self,
         collision_space: &CollisionSpace,
         position: Point2<f32>,
-        dt: f32,
+        movement: Vector2<f32>,
     ) -> (Point2<f32>, Vector2<f32>) {
         let steps = 3;
         let mask = FLAG_MAP_TILE_IS_COLLIDER;
-        let mut delta_x = dt
-            * WALK_SPEED
-            * input_accumulator(
-                self.input_state.move_left_pressed,
-                self.input_state.move_right_pressed,
-            );
+        let mut delta_x = movement.x;
+        let mut delta_y = movement.y;
 
-        let mut delta_y = dt * WALK_SPEED * input_accumulator(false, self.input_state.jump_pressed);
+        // if the probe result is a ratchet tile, determine if it should be skipped.
+        let probe_test = |_dist: f32, sprite: &sprite::SpriteDesc| -> bool {
+            if position.y < sprite.top() && sprite.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
+                false
+            } else {
+                true
+            }
+        };
+
         if delta_x > 0.0 {
-            match collision_space.probe(position, ProbeDir::Right, steps, mask) {
+            match collision_space.probe(position, ProbeDir::Right, steps, mask, probe_test) {
                 ProbeResult::None => {}
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < delta_x {
@@ -277,7 +322,7 @@ impl CharacterController {
                 }
             }
         } else if delta_x < 0.0 {
-            match collision_space.probe(position, ProbeDir::Left, steps, mask) {
+            match collision_space.probe(position, ProbeDir::Left, steps, mask, probe_test) {
                 ProbeResult::None => {}
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < -delta_x {
@@ -300,7 +345,7 @@ impl CharacterController {
         }
 
         if delta_y > 0.0 {
-            match collision_space.probe(position, ProbeDir::Up, steps, mask) {
+            match collision_space.probe(position, ProbeDir::Up, steps, mask, probe_test) {
                 ProbeResult::None => {}
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < delta_y {
