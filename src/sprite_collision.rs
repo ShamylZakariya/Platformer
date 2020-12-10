@@ -51,7 +51,7 @@ impl CollisionSpace {
         Self { unit_sprites }
     }
 
-    pub fn get_sprite_at(&self, point: &Point2<i32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<SpriteDesc> {
         self.unit_sprites
             .get(&point)
             .filter(|s| s.mask & mask != 0)
@@ -62,12 +62,12 @@ impl CollisionSpace {
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, there is no guarantee which will be returned,
     /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test_point(&self, point: &Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<SpriteDesc> {
         // first test the unit sprites
         if let Some(sprite) = self
             .unit_sprites
             .get(&Point2::new(point.x.floor() as i32, point.y.floor() as i32))
-            .filter(|s| s.mask & mask != 0 && s.contains(point))
+            .filter(|s| s.mask & mask != 0 && s.contains(&point))
         {
             return Some(*sprite);
         } else {
@@ -148,7 +148,7 @@ impl CollisionSpace {
             ProbeDir::Right => {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
-                    if let Some(s) = self.get_sprite_at(&Point2::new(x, position_snapped.y), mask) {
+                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
                         result = Some((s.origin.x - (position.x + 1.0), s));
                         break;
                     }
@@ -157,7 +157,7 @@ impl CollisionSpace {
             ProbeDir::Up => {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
-                    if let Some(s) = self.get_sprite_at(&Point2::new(position_snapped.x, y), mask) {
+                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
                         result = Some((s.origin.y - (position.y + 1.0), s));
                         break;
                     }
@@ -166,7 +166,7 @@ impl CollisionSpace {
             ProbeDir::Down => {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
-                    if let Some(s) = self.get_sprite_at(&Point2::new(position_snapped.x, y), mask) {
+                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
                         result = Some((position.y - s.top(), s));
                         break;
                     }
@@ -175,7 +175,7 @@ impl CollisionSpace {
             ProbeDir::Left => {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
-                    if let Some(s) = self.get_sprite_at(&Point2::new(x, position_snapped.y), mask) {
+                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
                         result = Some((position.x - s.right(), s));
                         break;
                     }
@@ -315,80 +315,24 @@ mod sprite_hit_tester {
         let hit_tester = CollisionSpace::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test_point(&Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
-        assert!(hit_tester.test_point(&Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
-        assert!(hit_tester.test_point(&Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
-        assert!(hit_tester.test_point(&Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
+        assert!(hit_tester.test_point(Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
+        assert!(hit_tester.test_point(Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
+        assert!(hit_tester.test_point(Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
+        assert!(hit_tester.test_point(Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
         assert!(hit_tester
-            .test_point(&Point2::new(0.1, 4.1), square_mask)
+            .test_point(Point2::new(0.1, 4.1), square_mask)
             .is_none());
         assert!(hit_tester
-            .test_point(&Point2::new(0.1, 3.9), all_mask)
+            .test_point(Point2::new(0.1, 3.9), all_mask)
             .is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test_point(&Point2::new(0.5, 0.5), square_mask) == Some(sb1));
+        assert!(hit_tester.test_point(Point2::new(0.5, 0.5), square_mask) == Some(sb1));
         assert!(hit_tester
-            .test_point(&Point2::new(0.5, 0.5), triangle_mask)
+            .test_point(Point2::new(0.5, 0.5), triangle_mask)
             .is_none());
         assert!(hit_tester
-            .test_point(&Point2::new(0.5, 0.5), all_mask)
+            .test_point(Point2::new(0.5, 0.5), all_mask)
             .is_some());
-    }
-
-    #[test]
-    fn non_unit_hit_test_works() {
-        use cgmath::Point3;
-
-        let tco = Point2::new(0.0, 0.0);
-        let tce = vec2(1.0, 1.0);
-        let color = vec4(1.0, 1.0, 1.0, 1.0);
-
-        let mask0 = 1 << 0;
-        let mask1 = 1 << 1;
-        let mask2 = 1 << 2;
-        let unused_mask = 1 << 16;
-        let all_mask = mask0 | mask1 | mask2 | unused_mask;
-
-        let b0 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(-4.0, -4.0, 0.0),
-            vec2(8.0, 4.0),
-            tco,
-            tce,
-            color,
-            mask0,
-        );
-
-        let b1 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(3.0, -1.0, 0.0),
-            vec2(3.0, 1.0),
-            tco,
-            tce,
-            color,
-            mask1,
-        );
-
-        let b2 = SpriteDesc::new(
-            CollisionShape::Square,
-            Point3::new(3.0, -2.0, 0.0),
-            vec2(2.0, 5.0),
-            tco,
-            tce,
-            color,
-            mask2,
-        );
-
-        let hit_tester = CollisionSpace::new(&[b0, b1, b2]);
-
-        // this point is in all three boxes
-        let p = Point2::new(3.5, -0.5);
-
-        assert_eq!(hit_tester.test_point(&p, mask0), Some(b0));
-        assert_eq!(hit_tester.test_point(&p, mask1), Some(b1));
-        assert_eq!(hit_tester.test_point(&p, mask2), Some(b2));
-        assert_eq!(hit_tester.test_point(&p, unused_mask), None);
-        assert!(hit_tester.test_point(&p, all_mask).is_some());
     }
 }

@@ -2,10 +2,13 @@ CURRENTLY:
     Character Controller
         - SIMPLICATE, SIMPLICATE, SIMPLICATE
             find_character_footing has code duplication, perhaps we can use lambdas or a loop
+        - implement correct gravity speed
         - implement jump dynamics
         - implement kickback from contact with spikes, etc
         - grab onto walls
         - fly (w/ timer)
+        - implement water
+        - implement correct edge overlap
 
 
 BUGS:

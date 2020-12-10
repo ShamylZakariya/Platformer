@@ -26,7 +26,9 @@ const WALK_SPEED: f32 = 2.0;
 
 #[derive(Debug)]
 pub struct CharacterState {
+    // The current position of the character
     pub position: Point2<f32>,
+    // The current display cycle of the character, will be one of the CHARACTER_CYCLE_* constants.
     pub cycle: &'static str,
 }
 
@@ -69,9 +71,6 @@ pub struct CharacterController {
     input_state: InputState,
     pub character_state: CharacterState,
 
-    // if set, this is the current floor supporting the character
-    pub floor: Option<sprite::SpriteDesc>,
-
     // sprites the character is overlapping and might collide with
     pub overlapping_sprites: HashSet<sprite::SpriteDesc>,
 
@@ -84,7 +83,6 @@ impl CharacterController {
         Self {
             input_state: Default::default(),
             character_state: CharacterState::new(position),
-            floor: None,
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
         }
@@ -114,11 +112,10 @@ impl CharacterController {
     }
 
     pub fn update(&mut self, dt: Duration, collision_space: &CollisionSpace) -> &CharacterState {
-        let dt = dt.as_secs_f32();
-
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
+        let dt = dt.as_secs_f32();
         let movement = vec2(
             input_accumulator(
                 self.input_state.move_left_pressed,
@@ -129,8 +126,8 @@ impl CharacterController {
             * dt;
 
         //
-        //  Apply gravity
-        //
+        //  Apply gravity to current character position
+        //    /// If player is contacting any surfaces, they will be passed to handle_collision_with()
 
         let (mut position, gravity_delta_position) =
             self.apply_gravity(self.character_state.position, dt);
@@ -187,8 +184,17 @@ impl CharacterController {
         (position + motion, motion)
     }
 
-    // assumes character motion vector is (0.0, -N) -- e.g. falling. Finds the sprite which is best suitable for use in
-    // collision detection to act as footing.
+    /// looks beneath `position` to find the surface that the character would be standing on. This should be called
+    /// after gravity is applied, but before any user initiated movement.
+    /// - position: The position of the character
+    /// - gravity_delta_position: The change in position caused by gravity from last game state
+    /// - test_offset: An offset to apply to position
+    /// - may apply_correction: If true, this method will apply correction to position if it is found to be intersecting a footing
+    ///
+    /// Returns the updated (if necessary) character position, and if found the sprite which the player is standing on
+    /// or would be standing on if player were lower
+    ///
+    /// If player is contacting any surfaces, they will be passed to handle_collision_with()
     fn find_character_footing(
         &mut self,
         collision_space: &CollisionSpace,
@@ -219,67 +225,42 @@ impl CharacterController {
             }
         };
 
-        if let Some(s) = collision_space.get_sprite_at(&below_center, FLAG_MAP_TILE_IS_COLLIDER) {
-            if can_collide_width(&position, &s) {
-                match s.collision_shape {
-                    sprite::CollisionShape::Square => {
-                        if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
-                            self.handle_collision_with(&s);
-                            if may_apply_correction {
-                                position.y = s.origin.y + s.extent.y
+        for test_point in [below_center, center].iter() {
+            if let Some(s) = collision_space.get_sprite_at(*test_point, FLAG_MAP_TILE_IS_COLLIDER) {
+                if can_collide_width(&position, &s) {
+                    match s.collision_shape {
+                        sprite::CollisionShape::Square => {
+                            if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
+                                self.handle_collision_with(&s);
+                                if may_apply_correction {
+                                    position.y = s.origin.y + s.extent.y;
+                                }
                             }
                         }
-                    }
-                    sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
-                        if let Some(intersection) = s.line_intersection(
-                            &(position + vec2(0.5, 1.0)),
-                            &(position + vec2(0.5, 0.0)),
-                        ) {
-                            self.handle_collision_with(&s);
-                            if may_apply_correction {
-                                position.y = intersection.y;
+                        sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                            if let Some(intersection) = s.line_intersection(
+                                &(position + vec2(0.5, 1.0)),
+                                &(position + vec2(0.5, 0.0)),
+                            ) {
+                                self.handle_collision_with(&s);
+                                if may_apply_correction {
+                                    position.y = intersection.y;
+                                }
                             }
                         }
+                        _ => (),
                     }
-                    _ => (),
+                    self.overlapping_sprites.insert(s);
+                    tracking = Some(s);
                 }
-                self.overlapping_sprites.insert(s);
-                tracking = Some(s);
-            }
-        }
-
-        if let Some(s) = collision_space.get_sprite_at(&center, FLAG_MAP_TILE_IS_COLLIDER) {
-            if can_collide_width(&position, &s) {
-                match s.collision_shape {
-                    sprite::CollisionShape::Square => {
-                        if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
-                            self.handle_collision_with(&s);
-                            if may_apply_correction {
-                                position.y = s.origin.y + s.extent.y
-                            }
-                        }
-                    }
-                    sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
-                        if let Some(intersection) = s.line_intersection(
-                            &(position + vec2(0.5, 1.0)),
-                            &(position + vec2(0.5, 0.0)),
-                        ) {
-                            self.handle_collision_with(&s);
-                            if may_apply_correction {
-                                position.y = intersection.y;
-                            }
-                        }
-                    }
-                    _ => (),
-                }
-                self.overlapping_sprites.insert(s);
-                tracking = Some(s);
             }
         }
 
         (position, tracking)
     }
 
+    /// Applies a specified character movement to player, returning the player's new position and the change in position.
+    /// If player is contacting any surfaces, they will be passed to handle_collision_with()
     fn apply_character_movement(
         &mut self,
         collision_space: &CollisionSpace,
@@ -371,6 +352,7 @@ impl CharacterController {
         (position + delta_position, delta_position)
     }
 
+    /// Callback for handling collision with scene geometry.
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
         self.contacting_sprites.insert(*sprite);
     }
