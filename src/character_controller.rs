@@ -18,9 +18,20 @@ const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
 const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
-// Gravity is applied as a constant downward speed
-const GRAVITY_SPEED: f32 = -1.0;
-const WALK_SPEED: f32 = 2.0;
+// These constants were determined by examination of recorded gamplay
+const GRAVITY_ACCEL_TIME: f32 = 0.42;
+const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
+const WALK_SPEED: f32 = 1.0 / 0.3145;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy)]
+pub enum Stance {
+    Standing,
+    Falling { fall_start_time: f32 },
+    JumpUp,
+    Flying,
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,6 +41,9 @@ pub struct CharacterState {
     pub position: Point2<f32>,
     // The current display cycle of the character, will be one of the CHARACTER_CYCLE_* constants.
     pub cycle: &'static str,
+
+    // the character's current stance state
+    pub stance: Stance,
 }
 
 impl CharacterState {
@@ -37,6 +51,7 @@ impl CharacterState {
         CharacterState {
             position: *position,
             cycle: CHARACTER_CYCLE_DEFAULT,
+            stance: Stance::Standing,
         }
     }
 }
@@ -68,6 +83,7 @@ fn input_accumulator(negative: bool, positive: bool) -> f32 {
 
 #[derive(Debug)]
 pub struct CharacterController {
+    time: f32,
     input_state: InputState,
     pub character_state: CharacterState,
 
@@ -76,15 +92,19 @@ pub struct CharacterController {
 
     // sprites the character is contacting
     pub contacting_sprites: HashSet<sprite::SpriteDesc>,
+
+    vertical_velocity: f32,
 }
 
 impl CharacterController {
     pub fn new(position: &Point2<f32>) -> Self {
         Self {
+            time: 0.0,
             input_state: Default::default(),
             character_state: CharacterState::new(position),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
+            vertical_velocity: 0.0,
         }
     }
 
@@ -116,52 +136,63 @@ impl CharacterController {
         self.contacting_sprites.clear();
 
         let dt = dt.as_secs_f32();
-        let movement = vec2(
+        self.time += dt;
+
+        let input = vec2(
             input_accumulator(
                 self.input_state.move_left_pressed,
                 self.input_state.move_right_pressed,
             ),
             input_accumulator(false, self.input_state.jump_pressed),
-        ) * WALK_SPEED
-            * dt;
+        );
+
+        let movement = vec2(input.x * WALK_SPEED, input.y * -GRAVITY_SPEED_FINAL * 2.0) * dt;
 
         //
-        //  Apply gravity to current character position
-        //    /// If player is contacting any surfaces, they will be passed to handle_collision_with()
-
-        let (mut position, gravity_delta_position) =
-            self.apply_gravity(self.character_state.position, dt);
-
+        //  Determine if the character is standing on a surface or in the air.
+        //  This method probes downwards one step the farthest gravity would carry character.
+        //  It returns the position of the character and whether they're in the air.
         //
-        //  Find the footing (if any) for character
-        //
+        let (mut position, in_air) = {
+            let gravity_delta_position = vec2(0.0, GRAVITY_SPEED_FINAL) * dt;
+            let mut position = self.character_state.position + gravity_delta_position;
 
-        let footing_center = self.find_character_footing(
-            collision_space,
-            position,
-            gravity_delta_position,
-            Zero::zero(),
-            true,
-        );
-        position = footing_center.0;
+            let footing_center = self.find_character_footing(
+                collision_space,
+                position,
+                gravity_delta_position,
+                Zero::zero(),
+                true,
+            );
+            position = footing_center.0;
 
-        let footing_right = self.find_character_footing(
-            collision_space,
-            position,
-            gravity_delta_position,
-            vec2(1.0, 0.0),
-            footing_center.1.is_none(),
-        );
-        position = footing_right.0;
+            let footing_right = self.find_character_footing(
+                collision_space,
+                position,
+                gravity_delta_position,
+                vec2(1.0, 0.0),
+                footing_center.1.is_none(),
+            );
+            position = footing_right.0;
 
-        let footing_left = self.find_character_footing(
-            collision_space,
-            position,
-            gravity_delta_position,
-            vec2(-1.0, 0.0),
-            footing_center.1.is_none() && footing_right.1.is_none(),
-        );
-        position = footing_left.0;
+            let footing_left = self.find_character_footing(
+                collision_space,
+                position,
+                gravity_delta_position,
+                vec2(-1.0, 0.0),
+                footing_center.1.is_none() && footing_right.1.is_none(),
+            );
+            position = footing_left.0;
+
+            let in_air =
+                footing_center.1.is_none() && footing_right.1.is_none() && footing_left.1.is_none();
+            if in_air {
+                let g = self.apply_gravity(self.character_state.position, dt);
+                position = g.0;
+            }
+
+            (position, in_air)
+        };
 
         //
         //  Move character left/right/up
@@ -176,12 +207,78 @@ impl CharacterController {
         }
 
         self.character_state.position = position;
+
+        if in_air {
+            self.set_stance(Stance::Falling {
+                fall_start_time: self.time,
+            });
+        } else {
+            self.vertical_velocity = 0.0;
+            self.set_stance(Stance::Standing);
+        }
+
         &self.character_state
     }
 
-    fn apply_gravity(&self, position: Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
-        let motion = vec2(0.0, dt * GRAVITY_SPEED);
+    fn apply_gravity(&mut self, position: Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
+        match self.character_state.stance {
+            Stance::Standing => {
+                self.vertical_velocity = 0.0;
+            }
+            Stance::Falling { fall_start_time } => {
+                self.vertical_velocity =
+                    self.vertical_velocity + 0.01 * (GRAVITY_SPEED_FINAL - self.vertical_velocity);
+            }
+            Stance::JumpUp => {
+                self.vertical_velocity = 0.0;
+            }
+            Stance::Flying => {
+                self.vertical_velocity = 0.0;
+            }
+        }
+        let motion = vec2(0.0, self.vertical_velocity * dt);
+        println!("vertical_velocity: {}", self.vertical_velocity);
         (position + motion, motion)
+
+        // let motion = vec2(0.0, dt * GRAVITY_SPEED_FINAL);
+        // (position + motion, motion)
+    }
+
+    fn set_stance(&mut self, new_stance: Stance) {
+        match self.character_state.stance {
+            Stance::Standing => match new_stance {
+                Stance::Standing => {}
+                Stance::Falling { fall_start_time } => {
+                    println!(
+                        "Transitioned from Standing to Falling at {}",
+                        fall_start_time
+                    );
+                }
+                Stance::JumpUp => {}
+                Stance::Flying => {}
+            },
+            Stance::Falling { fall_start_time: _ } => match new_stance {
+                Stance::Standing => {
+                    println!("Transitioned from Falling to Standing");
+                }
+                Stance::Falling { fall_start_time: _ } => {}
+                Stance::JumpUp => {}
+                Stance::Flying => {}
+            },
+            Stance::JumpUp => match new_stance {
+                Stance::Standing => {}
+                Stance::Falling { fall_start_time: _ } => {}
+                Stance::JumpUp => {}
+                Stance::Flying => {}
+            },
+            Stance::Flying => match new_stance {
+                Stance::Standing => {}
+                Stance::Falling { fall_start_time: _ } => {}
+                Stance::JumpUp => {}
+                Stance::Flying => {}
+            },
+        }
+        self.character_state.stance = new_stance;
     }
 
     /// looks beneath `position` to find the surface that the character would be standing on. This should be called
@@ -232,6 +329,7 @@ impl CharacterController {
                         sprite::CollisionShape::Square => {
                             if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
                                 self.handle_collision_with(&s);
+                                tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = s.origin.y + s.extent.y;
                                 }
@@ -243,6 +341,7 @@ impl CharacterController {
                                 &(position + vec2(0.5, 0.0)),
                             ) {
                                 self.handle_collision_with(&s);
+                                tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = intersection.y;
                                 }
@@ -251,7 +350,6 @@ impl CharacterController {
                         _ => (),
                     }
                     self.overlapping_sprites.insert(s);
-                    tracking = Some(s);
                 }
             }
         }
