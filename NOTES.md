@@ -35,3 +35,6 @@ TIMINGS
         - 2:14:56 start
         - 2:15:09 end
         16/62ths of a second per 2 units
+    - JUMP
+        - 0:41:04
+        - 0:41:23

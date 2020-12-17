@@ -22,16 +22,24 @@ const CHARACTER_CYCLE_WALL: &str = "wall";
 const GRAVITY_ACCEL_TIME: f32 = 0.42;
 const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
 const WALK_SPEED: f32 = 1.0 / 0.3145;
+const JUMP_DURATION: f32 = 0.5;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy)]
+fn lerp(t: f32, a: f32, b: f32) -> f32 {
+    a + t * (b - a)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Stance {
     Standing,
-    Falling { fall_start_time: f32 },
-    JumpUp,
-    Flying,
+    InAir,
+    WallHold,
 }
+
+impl Eq for Stance {}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -58,27 +66,108 @@ impl CharacterState {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ButtonState {
+    Pressed,
+    Down,
+    Released,
+    Up,
+}
+
+impl ButtonState {
+    fn transition(&self, key_down: bool) -> ButtonState {
+        if key_down {
+            match self {
+                ButtonState::Pressed => ButtonState::Down,
+                ButtonState::Down => ButtonState::Down,
+                ButtonState::Released => ButtonState::Pressed,
+                ButtonState::Up => ButtonState::Pressed,
+            }
+        } else {
+            match self {
+                ButtonState::Pressed => ButtonState::Released,
+                ButtonState::Down => ButtonState::Released,
+                ButtonState::Released => ButtonState::Up,
+                ButtonState::Up => ButtonState::Up,
+            }
+        }
+    }
+
+    fn is_active(&self) -> bool {
+        match self {
+            ButtonState::Pressed | ButtonState::Down => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct InputState {
-    move_left_pressed: bool,
-    move_right_pressed: bool,
-    jump_pressed: bool,
-    fire_pressed: bool,
+    move_left: ButtonState,
+    move_right: ButtonState,
+    jump: ButtonState,
+    fire: ButtonState,
 }
 
 impl Default for InputState {
     fn default() -> Self {
         Self {
-            move_left_pressed: false,
-            move_right_pressed: false,
-            jump_pressed: false,
-            fire_pressed: false,
+            move_left: ButtonState::Up,
+            move_right: ButtonState::Up,
+            jump: ButtonState::Up,
+            fire: ButtonState::Up,
         }
     }
 }
 
-fn input_accumulator(negative: bool, positive: bool) -> f32 {
-    return if negative { -1.0 } else { 0.0 } + if positive { 1.0 } else { 0.0 };
+impl InputState {
+    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+        let pressed = state == ElementState::Pressed;
+        match key {
+            VirtualKeyCode::W => {
+                self.jump = self.jump.transition(pressed);
+                true
+            }
+            VirtualKeyCode::A => {
+                self.move_left = self.move_left.transition(pressed);
+                true
+            }
+            VirtualKeyCode::D => {
+                self.move_right = self.move_right.transition(pressed);
+                true
+            }
+            VirtualKeyCode::Space => {
+                self.fire = self.fire.transition(pressed);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    fn update(&mut self) {
+        self.jump = self.jump.transition(self.jump.is_active());
+        self.move_left = self.move_left.transition(self.move_left.is_active());
+        self.move_right = self.move_right.transition(self.move_right.is_active());
+        self.fire = self.fire.transition(self.fire.is_active());
+    }
+}
+
+fn input_accumulator(negative: ButtonState, positive: ButtonState) -> f32 {
+    let mut acc = 0.0;
+    match negative {
+        ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
+            acc -= 1.0;
+        }
+        ButtonState::Up => {}
+    }
+    match positive {
+        ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
+            acc += 1.0;
+        }
+        ButtonState::Up => {}
+    }
+
+    acc
 }
 
 #[derive(Debug)]
@@ -94,6 +183,7 @@ pub struct CharacterController {
     pub contacting_sprites: HashSet<sprite::SpriteDesc>,
 
     vertical_velocity: f32,
+    jump_start_time: Option<f32>,
 }
 
 impl CharacterController {
@@ -105,30 +195,12 @@ impl CharacterController {
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
+            jump_start_time: None,
         }
     }
 
     pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let pressed = state == ElementState::Pressed;
-        match key {
-            VirtualKeyCode::W => {
-                self.input_state.jump_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::A => {
-                self.input_state.move_left_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::D => {
-                self.input_state.move_right_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Space => {
-                self.input_state.fire_pressed = pressed;
-                true
-            }
-            _ => false,
-        }
+        self.input_state.process_keyboard(key, state)
     }
 
     pub fn update(&mut self, dt: Duration, collision_space: &CollisionSpace) -> &CharacterState {
@@ -138,15 +210,29 @@ impl CharacterController {
         let dt = dt.as_secs_f32();
         self.time += dt;
 
-        let input = vec2(
-            input_accumulator(
-                self.input_state.move_left_pressed,
-                self.input_state.move_right_pressed,
-            ),
-            input_accumulator(false, self.input_state.jump_pressed),
-        );
+        let movement = vec2(
+            input_accumulator(self.input_state.move_left, self.input_state.move_right) * WALK_SPEED,
+            0.0,
+        ) * dt;
 
-        let movement = vec2(input.x * WALK_SPEED, input.y * -GRAVITY_SPEED_FINAL * 2.0) * dt;
+        if self.input_state.jump.is_active() {
+            if self.input_state.jump == ButtonState::Pressed
+                && self.character_state.stance == Stance::Standing
+            {
+                println!("Jump started");
+                self.jump_start_time = Some(self.time);
+                self.set_stance(Stance::InAir);
+            }
+        } else {
+            self.jump_start_time = None;
+        }
+
+        if let Some(jump_start_time) = self.jump_start_time {
+            if self.time - jump_start_time > JUMP_DURATION {
+                println!("Jump expired");
+                self.jump_start_time = None;
+            }
+        }
 
         //
         //  Determine if the character is standing on a surface or in the air.
@@ -186,13 +272,16 @@ impl CharacterController {
 
             let in_air =
                 footing_center.1.is_none() && footing_right.1.is_none() && footing_left.1.is_none();
+
             if in_air {
-                let g = self.apply_gravity(self.character_state.position, dt);
-                position = g.0;
+                self.set_stance(Stance::InAir);
             }
 
             (position, in_air)
         };
+
+        let g = self.apply_gravity(self.character_state.position, dt);
+        position = g.0;
 
         //
         //  Move character left/right/up
@@ -209,13 +298,13 @@ impl CharacterController {
         self.character_state.position = position;
 
         if in_air {
-            self.set_stance(Stance::Falling {
-                fall_start_time: self.time,
-            });
+            self.set_stance(Stance::InAir);
         } else {
             self.vertical_velocity = 0.0;
             self.set_stance(Stance::Standing);
         }
+
+        self.input_state.update();
 
         &self.character_state
     }
@@ -225,60 +314,59 @@ impl CharacterController {
             Stance::Standing => {
                 self.vertical_velocity = 0.0;
             }
-            Stance::Falling { fall_start_time } => {
-                self.vertical_velocity =
-                    self.vertical_velocity + 0.01 * (GRAVITY_SPEED_FINAL - self.vertical_velocity);
+            Stance::InAir => {
+                let mut is_jumping = false;
+                if let Some(jump_start_time) = self.jump_start_time {
+                    let elapsed = self.time - jump_start_time;
+                    if elapsed < JUMP_DURATION {
+                        is_jumping = true;
+                        self.vertical_velocity =
+                            lerp(elapsed / JUMP_DURATION, -GRAVITY_SPEED_FINAL, 0.0);
+                    }
+                }
+                // if not applying a jump force, we're falling
+                if !is_jumping {
+                    self.vertical_velocity =
+                        lerp(0.01, self.vertical_velocity, GRAVITY_SPEED_FINAL);
+                }
             }
-            Stance::JumpUp => {
-                self.vertical_velocity = 0.0;
-            }
-            Stance::Flying => {
-                self.vertical_velocity = 0.0;
-            }
+            Stance::WallHold => {}
         }
         let motion = vec2(0.0, self.vertical_velocity * dt);
-        println!("vertical_velocity: {}", self.vertical_velocity);
         (position + motion, motion)
+    }
 
-        // let motion = vec2(0.0, dt * GRAVITY_SPEED_FINAL);
-        // (position + motion, motion)
+    fn is_jumping(&self) -> bool {
+        if let Some(jump_start_time) = self.jump_start_time {
+            let elapsed = self.time - jump_start_time;
+            if elapsed < JUMP_DURATION {
+                return true;
+            }
+        }
+        false
     }
 
     fn set_stance(&mut self, new_stance: Stance) {
-        match self.character_state.stance {
-            Stance::Standing => match new_stance {
-                Stance::Standing => {}
-                Stance::Falling { fall_start_time } => {
-                    println!(
-                        "Transitioned from Standing to Falling at {}",
-                        fall_start_time
-                    );
-                }
-                Stance::JumpUp => {}
-                Stance::Flying => {}
-            },
-            Stance::Falling { fall_start_time: _ } => match new_stance {
-                Stance::Standing => {
-                    println!("Transitioned from Falling to Standing");
-                }
-                Stance::Falling { fall_start_time: _ } => {}
-                Stance::JumpUp => {}
-                Stance::Flying => {}
-            },
-            Stance::JumpUp => match new_stance {
-                Stance::Standing => {}
-                Stance::Falling { fall_start_time: _ } => {}
-                Stance::JumpUp => {}
-                Stance::Flying => {}
-            },
-            Stance::Flying => match new_stance {
-                Stance::Standing => {}
-                Stance::Falling { fall_start_time: _ } => {}
-                Stance::JumpUp => {}
-                Stance::Flying => {}
-            },
+        if new_stance != self.character_state.stance {
+            println!(
+                "Transition from {:?} to {:?}",
+                self.character_state.stance, new_stance
+            );
+            match self.character_state.stance {
+                Stance::Standing => match new_stance {
+                    Stance::Standing => {}
+                    Stance::InAir => {}
+                    Stance::WallHold => {}
+                },
+                Stance::InAir => match new_stance {
+                    Stance::Standing => {}
+                    Stance::InAir => {}
+                    Stance::WallHold => {}
+                },
+                Stance::WallHold => {}
+            }
+            self.character_state.stance = new_stance;
         }
-        self.character_state.stance = new_stance;
     }
 
     /// looks beneath `position` to find the surface that the character would be standing on. This should be called
