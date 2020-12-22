@@ -1,14 +1,17 @@
 CURRENTLY:
     Character Controller
-        - SIMPLICATE, SIMPLICATE, SIMPLICATE
-            find_character_footing has code duplication, perhaps we can use lambdas or a loop
-        - implement correct gravity speed
-        - implement jump dynamics
-        - implement kickback from contact with spikes, etc
-        - grab onto walls
-        - fly (w/ timer)
-        - implement water
-        - implement correct edge overlap
+        BUGS:
+        TODO:
+            - implement correct gravity speed
+            - implement jump dynamics
+            - implement kickback from contact with spikes, etc
+            - grab onto walls
+                - any airborn wall collision is a grab (excepting spikes)
+            - fly (w/ timer)
+            - implement water
+            - implement correct edge overlap
+            - Simplify
+
 
 
 BUGS:
@@ -16,6 +19,7 @@ BUGS:
     - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
 
 TODO:
+    - State::update_ui_display_state should create an immutable UiDisplayState, not mutate an ivar
     - sprite.rs is too big - make it a module which re-exports various smaller sub components
         - https://doc.rust-lang.org/book/ch07-04-bringing-paths-into-scope-with-the-use-keyword.html
     - SpriteDesc can have integerial position, and drop extent because we only support 1x1 sprites

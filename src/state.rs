@@ -18,6 +18,7 @@ use crate::tileset;
 
 #[derive(Copy, Clone, Debug)]
 struct UiDisplayState {
+    camera_tracks_character: bool,
     camera_position: cgmath::Point3<f32>,
     zoom: f32,
     character_position: cgmath::Point2<f32>,
@@ -29,6 +30,7 @@ struct UiDisplayState {
 impl Default for UiDisplayState {
     fn default() -> Self {
         UiDisplayState {
+            camera_tracks_character: true,
             camera_position: [0.0, 0.0, 0.0].into(),
             zoom: 1.0,
             character_position: [0.0, 0.0].into(),
@@ -41,6 +43,7 @@ impl Default for UiDisplayState {
 
 #[derive(Default)]
 struct UiInputState {
+    camera_tracks_character: Option<bool>,
     zoom: Option<f32>,
     draw_stage_collision_info: Option<bool>,
     draw_entity_debug: Option<bool>,
@@ -89,7 +92,11 @@ pub struct State {
     winit_platform: imgui_winit_support::WinitPlatform,
     imgui: imgui::Context,
     imgui_renderer: imgui_wgpu::Renderer,
-    ui_display_state: UiDisplayState,
+
+    // Toggles
+    draw_entity_debug: bool,
+    draw_stage_collision_info: bool,
+    camera_tracks_character: bool,
 }
 
 impl State {
@@ -183,13 +190,13 @@ impl State {
         let mut character_controller =
             character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
 
-        character_controller.character_state.position.x = 23.0;
-        character_controller.character_state.position.y = 12.0;
-        camera.set_position(&cgmath::Point3::new(
-            character_controller.character_state.position.x,
-            character_controller.character_state.position.y,
-            camera.position().z,
-        ));
+        // character_controller.character_state.position.x = 23.0;
+        // character_controller.character_state.position.y = 12.0;
+        // camera.set_position(&cgmath::Point3::new(
+        //     character_controller.character_state.position.x,
+        //     character_controller.character_state.position.y,
+        //     camera.position().z,
+        // ));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -313,7 +320,10 @@ impl State {
             winit_platform,
             imgui,
             imgui_renderer,
-            ui_display_state: UiDisplayState::default(),
+
+            draw_entity_debug: true,
+            draw_stage_collision_info: true,
+            camera_tracks_character: true,
         }
     }
 
@@ -413,6 +423,13 @@ impl State {
         // Update player character state
         let character_state = self.character_controller.update(dt, &self.stage_hit_tester);
 
+        if self.camera_tracks_character {
+            let cp = self.camera.position();
+            let p = character_state.position;
+            self.camera
+                .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
+        }
+
         self.firebrand_uniforms
             .data
             .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0));
@@ -426,17 +443,6 @@ impl State {
             ));
 
         self.firebrand_uniforms.write(&mut self.queue);
-
-        // Update UI
-        self.update_ui_display_state(window, dt)
-    }
-
-    fn update_ui_display_state(&mut self, _window: &Window, _dt: std::time::Duration) {
-        self.ui_display_state.camera_position = self.camera.position();
-        self.ui_display_state.character_position =
-            self.character_controller.character_state.position;
-        self.ui_display_state.character_cycle = self.character_controller.character_state.cycle;
-        self.ui_display_state.zoom = self.projection.scale();
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -489,7 +495,7 @@ impl State {
                 &self.stage_uniforms,
             );
 
-            if self.ui_display_state.draw_stage_collision_info {
+            if self.draw_stage_collision_info {
                 if !self.character_controller.overlapping_sprites.is_empty() {
                     self.stage_sprite_collection.draw_sprites(
                         &self.character_controller.overlapping_sprites,
@@ -510,7 +516,7 @@ impl State {
             }
 
             // Render player character
-            let cycle = if self.ui_display_state.draw_entity_debug {
+            let cycle = if self.draw_entity_debug {
                 character_controller::CHARACTER_CYCLE_DEBUG
             } else {
                 self.character_controller.character_state.cycle
@@ -532,7 +538,12 @@ impl State {
                 .prepare_frame(self.imgui.io_mut(), window)
                 .expect("Failed to prepare frame");
 
-            let ui_input = self.render_ui(self.ui_display_state, &frame, &mut encoder, &window);
+            let ui_input = self.render_ui(
+                self.current_ui_display_state(),
+                &frame,
+                &mut encoder,
+                &window,
+            );
             self.process_ui_input(ui_input);
         }
 
@@ -558,6 +569,13 @@ impl State {
         imgui::Window::new(imgui::im_str!("Debug"))
             .size([280.0, 128.0], imgui::Condition::FirstUseEver)
             .build(&ui, || {
+                let mut camera_tracks_character = ui_display_state.camera_tracks_character;
+                if ui.checkbox(
+                    imgui::im_str!("Camera Tracks Character"),
+                    &mut camera_tracks_character,
+                ) {
+                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
+                }
                 ui.text(imgui::im_str!(
                     "camera: ({:.2},{:.2}) zoom: {:.2}",
                     ui_display_state.camera_position.x,
@@ -622,15 +640,30 @@ impl State {
         ui_input_state
     }
 
+    fn current_ui_display_state(&self) -> UiDisplayState {
+        UiDisplayState {
+            camera_tracks_character: self.camera_tracks_character,
+            camera_position: self.camera.position(),
+            zoom: self.projection.scale(),
+            character_position: self.character_controller.character_state.position,
+            character_cycle: self.character_controller.character_state.cycle,
+            draw_stage_collision_info: self.draw_stage_collision_info,
+            draw_entity_debug: self.draw_entity_debug,
+        }
+    }
+
     fn process_ui_input(&mut self, ui_input_state: UiInputState) {
         if let Some(z) = ui_input_state.zoom {
             self.projection.set_scale(z);
         }
         if let Some(d) = ui_input_state.draw_stage_collision_info {
-            self.ui_display_state.draw_stage_collision_info = d;
+            self.draw_stage_collision_info = d;
         }
         if let Some(d) = ui_input_state.draw_entity_debug {
-            self.ui_display_state.draw_entity_debug = d;
+            self.draw_entity_debug = d;
+        }
+        if let Some(ctp) = ui_input_state.camera_tracks_character {
+            self.camera_tracks_character = ctp;
         }
     }
 }
