@@ -19,10 +19,10 @@ const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
 // These constants were determined by examination of recorded gamplay
-const GRAVITY_ACCEL_TIME: f32 = 0.42;
 const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
 const WALK_SPEED: f32 = 1.0 / 0.3145;
-const JUMP_DURATION: f32 = 0.5;
+const JUMP_DURATION: f32 = 0.45;
+const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -239,7 +239,7 @@ impl CharacterController {
         //  This method probes downwards one step the farthest gravity would carry character.
         //  It returns the position of the character and whether they're in the air.
         //
-        let (mut position, in_air) = {
+        let in_air = {
             let gravity_delta_position = vec2(0.0, GRAVITY_SPEED_FINAL) * dt;
             let mut position = self.character_state.position + gravity_delta_position;
 
@@ -268,7 +268,6 @@ impl CharacterController {
                 vec2(-1.0, 0.0),
                 footing_center.1.is_none() && footing_right.1.is_none(),
             );
-            position = footing_left.0;
 
             let in_air =
                 footing_center.1.is_none() && footing_right.1.is_none() && footing_left.1.is_none();
@@ -277,17 +276,20 @@ impl CharacterController {
                 self.set_stance(Stance::InAir);
             }
 
-            (position, in_air)
+            if self.is_jumping() {
+                true
+            } else {
+                in_air
+            }
         };
 
         let g = self.apply_gravity(self.character_state.position, dt);
-        position = g.0;
-
+        let position = g.0;
         //
         //  Move character left/right/up
         //
 
-        position = self
+        let position = self
             .apply_character_movement(collision_space, position, movement)
             .0;
 
