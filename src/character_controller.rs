@@ -20,7 +20,7 @@ const CHARACTER_CYCLE_WALL: &str = "wall";
 
 // These constants were determined by examination of recorded gamplay
 const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
-const WALK_SPEED: f32 = 1.0 / 0.3145;
+const WALK_SPEED: f32 = 1.0 / 0.4;
 const JUMP_DURATION: f32 = 0.45;
 const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
 
@@ -28,6 +28,16 @@ const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
 
 fn lerp(t: f32, a: f32, b: f32) -> f32 {
     a + t * (b - a)
+}
+
+fn clamp(v: f32, min: f32, max: f32) -> f32 {
+    if v < min {
+        min
+    } else if v > max {
+        max
+    } else {
+        v
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -184,10 +194,12 @@ pub struct CharacterController {
 
     vertical_velocity: f32,
     jump_start_time: Option<f32>,
+    map_origin: Point2<f32>,
+    map_extent: Vector2<f32>,
 }
 
 impl CharacterController {
-    pub fn new(position: &Point2<f32>) -> Self {
+    pub fn new(position: &Point2<f32>, map_origin: Point2<f32>, map_extent: Vector2<f32>) -> Self {
         Self {
             time: 0.0,
             input_state: Default::default(),
@@ -196,6 +208,8 @@ impl CharacterController {
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_start_time: None,
+            map_origin,
+            map_extent,
         }
     }
 
@@ -292,6 +306,19 @@ impl CharacterController {
         let position = self
             .apply_character_movement(collision_space, position, movement)
             .0;
+
+        let position = Point2::new(
+            clamp(
+                position.x,
+                self.map_origin.x,
+                self.map_origin.x + self.map_extent.x - 1.0,
+            ),
+            clamp(
+                position.y,
+                self.map_origin.y,
+                self.map_origin.y + self.map_extent.y - 1.0,
+            ),
+        );
 
         for s in &self.contacting_sprites {
             self.overlapping_sprites.remove(s);

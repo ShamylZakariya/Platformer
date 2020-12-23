@@ -187,8 +187,11 @@ impl State {
             camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), map.tileset.tile_width);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
-        let mut character_controller =
-            character_controller::CharacterController::new(&cgmath::Point2::new(1.0, 4.0));
+        let mut character_controller = character_controller::CharacterController::new(
+            &cgmath::Point2::new(1.0, 4.0),
+            cgmath::Point2::new(0.0, 0.0),
+            cgmath::vec2(map.width as f32, map.height as f32),
+        );
 
         // character_controller.character_state.position.x = 23.0;
         // character_controller.character_state.position.y = 12.0;
@@ -381,7 +384,7 @@ impl State {
         }
     }
 
-    pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
+    pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
 
         // Update camera uniform state
