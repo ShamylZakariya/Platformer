@@ -1,6 +1,7 @@
 CURRENTLY:
     Character Controller
         BUGS:
+            - serial jumps not working
         TODO:
             - implement correct gravity speed
             - implement jump dynamics

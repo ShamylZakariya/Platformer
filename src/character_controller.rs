@@ -23,6 +23,7 @@ const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
 const WALK_SPEED: f32 = 1.0 / 0.4;
 const JUMP_DURATION: f32 = 0.45;
 const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
+const FLIGHT_DURATION: f32 = 2.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -46,6 +47,7 @@ fn clamp(v: f32, min: f32, max: f32) -> f32 {
 pub enum Stance {
     Standing,
     InAir,
+    Flying,
     WallHold,
 }
 
@@ -194,6 +196,7 @@ pub struct CharacterController {
 
     vertical_velocity: f32,
     jump_start_time: Option<f32>,
+    flight_start_time: Option<f32>,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
 }
@@ -208,6 +211,7 @@ impl CharacterController {
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_start_time: None,
+            flight_start_time: None,
             map_origin,
             map_extent,
         }
@@ -229,22 +233,47 @@ impl CharacterController {
             0.0,
         ) * dt;
 
+        // Handle jump button
         if self.input_state.jump.is_active() {
-            if self.input_state.jump == ButtonState::Pressed
-                && self.character_state.stance == Stance::Standing
-            {
-                println!("Jump started");
-                self.jump_start_time = Some(self.time);
-                self.set_stance(Stance::InAir);
+            if self.input_state.jump == ButtonState::Pressed {
+                match self.character_state.stance {
+                    Stance::Standing => {
+                        println!("Jump started");
+                        self.jump_start_time = Some(self.time);
+                        self.set_stance(Stance::InAir);
+                    }
+                    Stance::InAir => {
+                        println!("Flight started");
+                        self.jump_start_time = None;
+                        self.flight_start_time = Some(self.time);
+                        self.set_stance(Stance::Flying);
+                    }
+                    Stance::Flying => {
+                        println!("Flight ended");
+                        self.flight_start_time = None;
+                        self.set_stance(Stance::InAir);
+                    }
+                    Stance::WallHold => {}
+                }
             }
         } else {
             self.jump_start_time = None;
         }
 
+        // Track jump expiration
         if let Some(jump_start_time) = self.jump_start_time {
             if self.time - jump_start_time > JUMP_DURATION {
                 println!("Jump expired");
                 self.jump_start_time = None;
+            }
+        }
+
+        // Track flight expiration
+        if let Some(fly_start_time) = self.flight_start_time {
+            if self.time - fly_start_time > FLIGHT_DURATION {
+                println!("Flight expired");
+                self.flight_start_time = None;
+                self.set_stance(Stance::InAir);
             }
         }
 
@@ -253,7 +282,8 @@ impl CharacterController {
         //  This method probes downwards one step the farthest gravity would carry character.
         //  It returns the position of the character and whether they're in the air.
         //
-        let in_air = {
+
+        let (position, contacting_ground) = {
             let gravity_delta_position = vec2(0.0, GRAVITY_SPEED_FINAL) * dt;
             let mut position = self.character_state.position + gravity_delta_position;
 
@@ -282,22 +312,23 @@ impl CharacterController {
                 vec2(-1.0, 0.0),
                 footing_center.1.is_none() && footing_right.1.is_none(),
             );
+            position = footing_left.0;
 
-            let in_air =
-                footing_center.1.is_none() && footing_right.1.is_none() && footing_left.1.is_none();
+            let contacting_ground =
+                footing_center.1.is_some() || footing_right.1.is_some() || footing_left.1.is_some();
 
-            if in_air {
+            if !contacting_ground && self.character_state.stance != Stance::Flying {
                 self.set_stance(Stance::InAir);
             }
 
-            if self.is_jumping() {
-                true
+            if contacting_ground {
+                (position, !self.is_flying() && !self.is_jumping())
             } else {
-                in_air
+                (self.character_state.position, false)
             }
         };
 
-        let g = self.apply_gravity(self.character_state.position, dt);
+        let g = self.apply_gravity(position, dt);
         let position = g.0;
         //
         //  Move character left/right/up
@@ -324,14 +355,12 @@ impl CharacterController {
             self.overlapping_sprites.remove(s);
         }
 
-        self.character_state.position = position;
-
-        if in_air {
-            self.set_stance(Stance::InAir);
-        } else {
+        if contacting_ground {
             self.vertical_velocity = 0.0;
             self.set_stance(Stance::Standing);
         }
+
+        self.character_state.position = position;
 
         self.input_state.update();
 
@@ -340,7 +369,7 @@ impl CharacterController {
 
     fn apply_gravity(&mut self, position: Point2<f32>, dt: f32) -> (Point2<f32>, Vector2<f32>) {
         match self.character_state.stance {
-            Stance::Standing => {
+            Stance::Standing | Stance::Flying | Stance::WallHold => {
                 self.vertical_velocity = 0.0;
             }
             Stance::InAir => {
@@ -359,7 +388,6 @@ impl CharacterController {
                         lerp(0.01, self.vertical_velocity, GRAVITY_SPEED_FINAL);
                 }
             }
-            Stance::WallHold => {}
         }
         let motion = vec2(0.0, self.vertical_velocity * dt);
         (position + motion, motion)
@@ -369,6 +397,16 @@ impl CharacterController {
         if let Some(jump_start_time) = self.jump_start_time {
             let elapsed = self.time - jump_start_time;
             if elapsed < JUMP_DURATION {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn is_flying(&self) -> bool {
+        if let Some(flight_start_time) = self.flight_start_time {
+            let elapsed = self.time - flight_start_time;
+            if elapsed < FLIGHT_DURATION {
                 return true;
             }
         }
@@ -385,11 +423,21 @@ impl CharacterController {
                 Stance::Standing => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
+                    Stance::Flying => {}
                     Stance::WallHold => {}
                 },
                 Stance::InAir => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
+                    Stance::Flying => {}
+                    Stance::WallHold => {}
+                },
+                Stance::Flying => match new_stance {
+                    Stance::Standing => {}
+                    Stance::InAir => {
+                        println!("Transitioned from flying to in air");
+                    }
+                    Stance::Flying => {}
                     Stance::WallHold => {}
                 },
                 Stance::WallHold => {}
