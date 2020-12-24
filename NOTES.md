@@ -43,3 +43,9 @@ TIMINGS
     - JUMP
         - 0:41:04
         - 0:41:23
+    - FLIGHT
+        - 0:12:583
+        - 0:13:583
+        - BOB - 2px cycle on y, sinusoidal
+            - 0:13:016
+            - 0:13:249

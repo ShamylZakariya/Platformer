@@ -1,5 +1,5 @@
 use cgmath::{vec2, Point2, Vector2, Zero};
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, f32::consts::PI, time::Duration};
 use winit::event::*;
 
 use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
@@ -18,12 +18,15 @@ const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
 const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
-// These constants were determined by examination of recorded gamplay
+// These constants were determined by examination of recorded gamplay (and fiddling)
+// Units are seconds & tiles-per-second unless otherwise specified.
 const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
 const WALK_SPEED: f32 = 1.0 / 0.4;
 const JUMP_DURATION: f32 = 0.45;
 const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
-const FLIGHT_DURATION: f32 = 2.0;
+const FLIGHT_DURATION: f32 = 1.0;
+const FLIGHT_BOB_CYCLE_PERIOD: f32 = 0.5;
+const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -59,6 +62,9 @@ impl Eq for Stance {}
 pub struct CharacterState {
     // The current position of the character
     pub position: Point2<f32>,
+    // The current position-offset of the character - this is purely visual, used for bobbing effects,
+    // and is not part of collision detection.
+    pub position_offset: Vector2<f32>,
     // The current display cycle of the character, will be one of the CHARACTER_CYCLE_* constants.
     pub cycle: &'static str,
 
@@ -70,6 +76,7 @@ impl CharacterState {
     fn new(position: &Point2<f32>) -> Self {
         CharacterState {
             position: *position,
+            position_offset: Zero::zero(),
             cycle: CHARACTER_CYCLE_DEFAULT,
             stance: Stance::Standing,
         }
@@ -199,10 +206,16 @@ pub struct CharacterController {
     flight_start_time: Option<f32>,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
+    pixels_per_unit: f32,
 }
 
 impl CharacterController {
-    pub fn new(position: &Point2<f32>, map_origin: Point2<f32>, map_extent: Vector2<f32>) -> Self {
+    pub fn new(
+        position: &Point2<f32>,
+        map_origin: Point2<f32>,
+        map_extent: Vector2<f32>,
+        pixels_per_unit: u32,
+    ) -> Self {
         Self {
             time: 0.0,
             input_state: Default::default(),
@@ -214,6 +227,7 @@ impl CharacterController {
             flight_start_time: None,
             map_origin,
             map_extent,
+            pixels_per_unit: pixels_per_unit as f32,
         }
     }
 
@@ -238,18 +252,18 @@ impl CharacterController {
             if self.input_state.jump == ButtonState::Pressed {
                 match self.character_state.stance {
                     Stance::Standing => {
-                        println!("Jump started");
+                        println!("Jump starting");
                         self.jump_start_time = Some(self.time);
                         self.set_stance(Stance::InAir);
                     }
                     Stance::InAir => {
-                        println!("Flight started");
+                        println!("Flight starting");
                         self.jump_start_time = None;
                         self.flight_start_time = Some(self.time);
                         self.set_stance(Stance::Flying);
                     }
                     Stance::Flying => {
-                        println!("Flight ended");
+                        println!("Flight ending");
                         self.flight_start_time = None;
                         self.set_stance(Stance::InAir);
                     }
@@ -322,7 +336,7 @@ impl CharacterController {
             }
 
             if contacting_ground {
-                (position, !self.is_flying() && !self.is_jumping())
+                (position, self.vertical_velocity <= 0.0)
             } else {
                 (self.character_state.position, false)
             }
@@ -355,15 +369,24 @@ impl CharacterController {
             self.overlapping_sprites.remove(s);
         }
 
-        if contacting_ground {
-            self.vertical_velocity = 0.0;
+        if contacting_ground && self.vertical_velocity <= 0.0 {
             self.set_stance(Stance::Standing);
         }
 
         self.character_state.position = position;
 
-        self.input_state.update();
+        // apply flight bob
+        if let Some(flight_start_time) = self.flight_start_time {
+            let elapsed = self.time - flight_start_time;
+            let bob_cycle =
+                ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
+            let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
+            self.character_state.position_offset = vec2(0.0, bob_offset / self.pixels_per_unit);
+        } else {
+            self.character_state.position_offset = Zero::zero();
+        }
 
+        self.input_state.update();
         &self.character_state
     }
 
@@ -427,7 +450,9 @@ impl CharacterController {
                     Stance::WallHold => {}
                 },
                 Stance::InAir => match new_stance {
-                    Stance::Standing => {}
+                    Stance::Standing => {
+                        println!("boop");
+                    }
                     Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold => {}
