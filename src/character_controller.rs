@@ -214,7 +214,7 @@ pub struct CharacterController {
 
     vertical_velocity: f32,
     jump_start_time: Option<f32>,
-    flight_start_time: Option<f32>,
+    flight_time_remaining: f32,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
     pixels_per_unit: f32,
@@ -235,7 +235,7 @@ impl CharacterController {
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_start_time: None,
-            flight_start_time: None,
+            flight_time_remaining: FLIGHT_DURATION,
             map_origin,
             map_extent,
             pixels_per_unit: pixels_per_unit as f32,
@@ -265,42 +265,22 @@ impl CharacterController {
                     self.set_stance(Stance::InAir);
                 }
                 Stance::InAir => {
-                    println!("Flight starting");
-                    self.jump_start_time = None;
-                    self.flight_start_time = Some(self.time);
-                    self.set_stance(Stance::Flying);
+                    if self.flight_time_remaining > 0.0 {
+                        println!("Flight starting");
+                        self.jump_start_time = None;
+                        self.set_stance(Stance::Flying);
+                    }
                 }
                 Stance::Flying => {
                     println!("Flight ending");
-                    self.flight_start_time = None;
                     self.set_stance(Stance::InAir);
                 }
                 Stance::WallHold => {}
             },
             ButtonState::Released => {
-                println!("Released jump button");
                 self.jump_start_time = None;
             }
             _ => {}
-        }
-
-        //
-        //  Track jump and flight timed expirations
-        //
-
-        if let Some(jump_start_time) = self.jump_start_time {
-            if self.time - jump_start_time > JUMP_DURATION {
-                println!("Jump expired");
-                self.jump_start_time = None;
-            }
-        }
-
-        if let Some(fly_start_time) = self.flight_start_time {
-            if self.time - fly_start_time > FLIGHT_DURATION {
-                println!("Flight expired");
-                self.flight_start_time = None;
-                self.set_stance(Stance::InAir);
-            }
         }
 
         //
@@ -386,12 +366,34 @@ impl CharacterController {
 
         self.character_state.position = position;
 
-        if let Some(flight_start_time) = self.flight_start_time {
-            let elapsed = self.time - flight_start_time;
-            let bob_cycle =
-                ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
-            let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
-            self.character_state.position_offset = vec2(0.0, bob_offset / self.pixels_per_unit);
+        //
+        //  Track jump and flight timed expirations
+        //
+
+        if let Some(jump_start_time) = self.jump_start_time {
+            if self.time - jump_start_time > JUMP_DURATION {
+                println!("Jump expired");
+                self.jump_start_time = None;
+            }
+        }
+
+        if self.character_state.stance == Stance::Flying {
+            // Apply flight bob cycle
+            if self.flight_time_remaining > 0.0 {
+                let elapsed = FLIGHT_DURATION - self.flight_time_remaining;
+                let bob_cycle =
+                    ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
+                let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
+                self.character_state.position_offset = vec2(0.0, bob_offset / self.pixels_per_unit);
+            }
+
+            // Decrement remaining flight time
+            self.flight_time_remaining = self.flight_time_remaining - dt;
+            if self.flight_time_remaining <= 0.0 {
+                println!("Flight expired");
+                self.flight_time_remaining = 0.0;
+                self.set_stance(Stance::InAir);
+            }
         } else {
             self.character_state.position_offset = Zero::zero();
         }
@@ -497,13 +499,7 @@ impl CharacterController {
     }
 
     fn is_flying(&self) -> bool {
-        if let Some(flight_start_time) = self.flight_start_time {
-            let elapsed = self.time - flight_start_time;
-            if elapsed < FLIGHT_DURATION {
-                return true;
-            }
-        }
-        false
+        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
     }
 
     fn set_stance(&mut self, new_stance: Stance) {
@@ -532,8 +528,18 @@ impl CharacterController {
                     Stance::Flying => {}
                     Stance::WallHold => {}
                 },
-                Stance::WallHold => {}
+                Stance::WallHold => match new_stance {
+                    Stance::Standing => {}
+                    Stance::InAir => {}
+                    Stance::Flying => {}
+                    Stance::WallHold => {}
+                },
             }
+
+            if new_stance == Stance::Standing || new_stance == Stance::WallHold {
+                self.flight_time_remaining = FLIGHT_DURATION;
+            }
+
             self.character_state.stance = new_stance;
         }
     }
