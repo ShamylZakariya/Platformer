@@ -194,13 +194,13 @@ impl State {
             pixels_per_unit,
         );
 
-        character_controller.character_state.position.x = 14.0;
-        character_controller.character_state.position.y = 8.0;
-        camera.set_position(&cgmath::Point3::new(
-            character_controller.character_state.position.x,
-            character_controller.character_state.position.y,
-            camera.position().z,
-        ));
+        // character_controller.character_state.position.x = 26.0;
+        // character_controller.character_state.position.y = 5.0;
+        // camera.set_position(&cgmath::Point3::new(
+        //     character_controller.character_state.position.x,
+        //     character_controller.character_state.position.y,
+        //     camera.position().z,
+        // ));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);

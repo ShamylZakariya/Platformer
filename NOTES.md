@@ -1,7 +1,7 @@
 CURRENTLY:
     Character Controller
         BUGS:
-            - serial jumps not working
+            - need to not reset flight timeout until character transitions to Standing or WallHold state
         TODO:
             - implement correct gravity speed
             - implement jump dynamics
