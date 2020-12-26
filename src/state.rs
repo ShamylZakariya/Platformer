@@ -184,7 +184,7 @@ impl State {
 
         // Build camera, and camera uniform storage
         let pixels_per_unit = map.tileset.tile_width;
-        let mut camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), pixels_per_unit);
+        let mut camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0);
         let mut character_controller = character_controller::CharacterController::new(
