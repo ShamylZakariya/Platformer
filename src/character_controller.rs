@@ -20,7 +20,7 @@ const CHARACTER_CYCLE_WALL: &str = "wall";
 
 // These constants were determined by examination of recorded gamplay (and fiddling)
 // Units are seconds & tiles-per-second unless otherwise specified.
-const GRAVITY_SPEED_FINAL: f32 = -1.0 / 0.12903225806451613;
+const GRAVITY_VEL: f32 = -1.0 / 0.12903225806451613;
 const WALK_SPEED: f32 = 1.0 / 0.4;
 const JUMP_DURATION: f32 = 0.45;
 const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
@@ -28,6 +28,8 @@ const FLIGHT_DURATION: f32 = 1.0;
 const FLIGHT_BOB_CYCLE_PERIOD: f32 = 0.5;
 const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const COLLISION_PROBE_STEPS: i32 = 3;
+const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
+const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -215,6 +217,8 @@ pub struct CharacterController {
     vertical_velocity: f32,
     jump_time_remaining: f32,
     flight_time_remaining: f32,
+    wallgrab_jump_lateral_motion_time_remaining: f32,
+    wallgrab_jump_dir: f32, // -1 for left, +1 for right
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
     pixels_per_unit: f32,
@@ -236,6 +240,8 @@ impl CharacterController {
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
             flight_time_remaining: FLIGHT_DURATION,
+            wallgrab_jump_lateral_motion_time_remaining: 0.0,
+            wallgrab_jump_dir: 0.0,
             map_origin,
             map_extent,
             pixels_per_unit: pixels_per_unit as f32,
@@ -290,8 +296,17 @@ impl CharacterController {
                     println!("Flight ending");
                     self.set_stance(Stance::InAir);
                 }
-                Stance::WallHold(_) => {
-                    println!("Jumped while wallholding, would detach here");
+                Stance::WallHold(surface) => {
+                    println!("Wallgrab jump starting");
+                    self.wallgrab_jump_lateral_motion_time_remaining =
+                        WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
+                    self.jump_time_remaining = JUMP_DURATION;
+                    self.wallgrab_jump_dir = if surface.origin.x > self.character_state.position.x {
+                        -1.0
+                    } else {
+                        1.0
+                    };
+                    self.set_stance(Stance::InAir);
                 }
             },
             ButtonState::Released => {
@@ -307,7 +322,7 @@ impl CharacterController {
         //
 
         let (position, contacting_ground) = {
-            let gravity_delta_position = vec2(0.0, GRAVITY_SPEED_FINAL) * dt;
+            let gravity_delta_position = vec2(0.0, GRAVITY_VEL) * dt;
             let mut position = self.character_state.position + gravity_delta_position;
 
             let footing_center =
@@ -408,6 +423,15 @@ impl CharacterController {
             if self.jump_time_remaining < 0.0 {
                 println!("Jump expired");
                 self.jump_time_remaining = 0.0;
+            }
+
+            if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
+                self.wallgrab_jump_lateral_motion_time_remaining -= dt;
+            }
+
+            if self.wallgrab_jump_lateral_motion_time_remaining < 0.0 {
+                println!("Wallgrab jump lateral time expired");
+                self.wallgrab_jump_lateral_motion_time_remaining = 0.0;
             }
         }
 
@@ -575,18 +599,27 @@ impl CharacterController {
         position: Point2<f32>,
         dt: f32,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+        // this is a no-op while wallholding
         if self.is_wallholding() {
             return (position, None);
         }
 
         let mask = FLAG_MAP_TILE_IS_COLLIDER;
+        let probe_test = create_collision_probe_test(position);
 
         let mut delta_x =
             input_accumulator(self.input_state.move_left, self.input_state.move_right)
                 * WALK_SPEED
                 * dt;
 
-        let probe_test = create_collision_probe_test(position);
+        // walljump overrides user input vel birefly.
+        if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
+            delta_x = WALLGRAB_JUMP_LATERAL_VEL
+                * self.wallgrab_jump_lateral_motion_time_remaining
+                * dt
+                * self.wallgrab_jump_dir;
+        }
+
         let mut contacted: Option<sprite::SpriteDesc> = None;
 
         //
@@ -707,10 +740,9 @@ impl CharacterController {
                 if self.jump_time_remaining > 0.0 {
                     let elapsed = JUMP_DURATION - self.jump_time_remaining;
                     let jump_completion = elapsed / JUMP_DURATION;
-                    self.vertical_velocity = lerp(jump_completion, -GRAVITY_SPEED_FINAL, 0.0);
+                    self.vertical_velocity = lerp(jump_completion, -GRAVITY_VEL, 0.0);
                 } else {
-                    self.vertical_velocity =
-                        lerp(2.5 * dt, self.vertical_velocity, GRAVITY_SPEED_FINAL);
+                    self.vertical_velocity = lerp(2.5 * dt, self.vertical_velocity, GRAVITY_VEL);
                 }
             }
         }
