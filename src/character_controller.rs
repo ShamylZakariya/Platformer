@@ -704,18 +704,11 @@ impl CharacterController {
                 }
             }
             Stance::InAir => {
-                let mut is_jumping = false;
-
                 if self.jump_time_remaining > 0.0 {
                     let elapsed = JUMP_DURATION - self.jump_time_remaining;
                     let jump_completion = elapsed / JUMP_DURATION;
-                    is_jumping = true;
                     self.vertical_velocity = lerp(jump_completion, -GRAVITY_SPEED_FINAL, 0.0);
-                    println!("jump_completion: {}", jump_completion);
-                }
-
-                // if not applying a jump force, we're falling
-                if !is_jumping {
+                } else {
                     self.vertical_velocity =
                         lerp(2.5 * dt, self.vertical_velocity, GRAVITY_SPEED_FINAL);
                 }
