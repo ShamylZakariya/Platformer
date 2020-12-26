@@ -1,16 +1,11 @@
 CURRENTLY:
     Character Controller
         BUGS:
-            - need to not reset flight timeout until character transitions to Standing or WallHold state
+            - wallhold shouldn't kick in at top edge of a ledge.
         TODO:
             - implement correct gravity speed
-            - implement jump dynamics
             - implement kickback from contact with spikes, etc
-            - grab onto walls
-                - any airborn wall collision is a grab (excepting spikes)
-            - fly (w/ timer)
             - implement water
-            - implement correct edge overlap
             - Simplify
 
 
@@ -49,3 +44,8 @@ TIMINGS
         - BOB - 2px cycle on y, sinusoidal
             - 0:13:016
             - 0:13:249
+    - WALLGRAB JUMP
+        - 0:15:016
+        - 0:15:183
+        - travel diagonally up and away from wall for .167 seconds, then finish jump upwardly
+

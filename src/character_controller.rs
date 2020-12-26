@@ -62,7 +62,7 @@ pub enum Stance {
     Standing,
     InAir,
     Flying,
-    WallHold,
+    WallHold(sprite::SpriteDesc),
 }
 
 impl Eq for Stance {}
@@ -242,6 +242,27 @@ impl CharacterController {
         }
     }
 
+    pub fn is_jumping(&self) -> bool {
+        if let Some(jump_start_time) = self.jump_start_time {
+            let elapsed = self.time - jump_start_time;
+            if elapsed < JUMP_DURATION {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn is_flying(&self) -> bool {
+        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
+    }
+
+    pub fn is_wallholding(&self) -> bool {
+        match self.character_state.stance {
+            Stance::WallHold(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
         self.input_state.process_keyboard(key, state)
     }
@@ -275,7 +296,9 @@ impl CharacterController {
                     println!("Flight ending");
                     self.set_stance(Stance::InAir);
                 }
-                Stance::WallHold => {}
+                Stance::WallHold(_) => {
+                    println!("Jumped while wallholding, would detach here");
+                }
             },
             ButtonState::Released => {
                 self.jump_start_time = None;
@@ -320,12 +343,16 @@ impl CharacterController {
             //  If character just walked off a ledge start falling
             //
 
-            if !contacting_ground && self.character_state.stance != Stance::Flying {
+            if !contacting_ground
+                && self.character_state.stance != Stance::Flying
+                && !self.is_wallholding()
+            {
                 self.set_stance(Stance::InAir);
             }
 
             if self.character_state.stance == Stance::Flying
                 || (self.character_state.stance == Stance::InAir && self.vertical_velocity > 0.0)
+                || self.is_wallholding()
             {
                 (self.character_state.position, contacting_ground)
             } else {
@@ -343,13 +370,13 @@ impl CharacterController {
         //  ceilings, and will terminate the upward phase of a jump if bump head.
         //
 
-        let position = self.apply_gravity(collision_space, position, dt);
+        let position = self.apply_vertical_movement(collision_space, position, dt);
 
         //
         //  Apply character movement
         //
 
-        let position = self.apply_character_movement(collision_space, position, dt);
+        let (position, wall_contact) = self.apply_lateral_movement(collision_space, position, dt);
 
         //
         //  Note, vertical_velocity may have been changed by apply_gravity, so only
@@ -358,6 +385,15 @@ impl CharacterController {
 
         if contacting_ground && self.vertical_velocity <= 0.0 {
             self.set_stance(Stance::Standing);
+        }
+
+        if let Some(wall_contact) = wall_contact {
+            if self.character_state.stance == Stance::InAir
+                || self.character_state.stance == Stance::Flying
+            {
+                println!("WallHold starting");
+                self.set_stance(Stance::WallHold(wall_contact));
+            }
         }
 
         //
@@ -411,97 +447,6 @@ impl CharacterController {
         &self.character_state
     }
 
-    //
-    //  Applies gravity to `position`, if the current stance is InAir.
-    //  Updates self.vertical_velocity to make an accel curve.
-    //
-
-    fn apply_gravity(
-        &mut self,
-        collision_space: &CollisionSpace,
-        position: Point2<f32>,
-        dt: f32,
-    ) -> Point2<f32> {
-        match self.character_state.stance {
-            Stance::Standing | Stance::Flying | Stance::WallHold => {
-                if self.vertical_velocity.abs() != 0.0 {
-                    self.vertical_velocity = 0.0;
-                }
-            }
-            Stance::InAir => {
-                let mut is_jumping = false;
-                if let Some(jump_start_time) = self.jump_start_time {
-                    let elapsed = self.time - jump_start_time;
-                    if elapsed < JUMP_DURATION {
-                        is_jumping = true;
-                        self.vertical_velocity =
-                            lerp(elapsed / JUMP_DURATION, -GRAVITY_SPEED_FINAL, 0.0);
-                    }
-                }
-                // if not applying a jump force, we're falling
-                if !is_jumping {
-                    self.vertical_velocity =
-                        lerp(2.5 * dt, self.vertical_velocity, GRAVITY_SPEED_FINAL);
-                }
-            }
-        }
-
-        let mut delta = vec2(0.0, self.vertical_velocity * dt);
-
-        //
-        //  Now, if the movement is vertical, do a collision check with ceiling
-        //
-
-        if delta.y > 0.0 {
-            let mask = FLAG_MAP_TILE_IS_COLLIDER;
-            let probe_test = create_collision_probe_test(position);
-            match collision_space.probe(
-                position,
-                ProbeDir::Up,
-                COLLISION_PROBE_STEPS,
-                mask,
-                probe_test,
-            ) {
-                ProbeResult::None => {}
-                ProbeResult::OneHit { dist, sprite } => {
-                    if dist < delta.y {
-                        delta.y = dist;
-                        self.jump_start_time = None;
-                        self.handle_collision_with(&sprite);
-                    }
-                }
-                ProbeResult::TwoHits {
-                    dist,
-                    sprite_0,
-                    sprite_1,
-                } => {
-                    if dist < delta.y {
-                        delta.y = dist;
-                        self.jump_start_time = None;
-                        self.handle_collision_with(&sprite_0);
-                        self.handle_collision_with(&sprite_1);
-                    }
-                }
-            }
-        }
-
-        position + delta
-    }
-
-    fn is_jumping(&self) -> bool {
-        if let Some(jump_start_time) = self.jump_start_time {
-            let elapsed = self.time - jump_start_time;
-            if elapsed < JUMP_DURATION {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn is_flying(&self) -> bool {
-        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
-    }
-
     fn set_stance(&mut self, new_stance: Stance) {
         if new_stance != self.character_state.stance {
             println!(
@@ -514,30 +459,36 @@ impl CharacterController {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
-                    Stance::WallHold => {}
+                    Stance::WallHold(_) => {}
                 },
                 Stance::InAir => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
-                    Stance::WallHold => {}
+                    Stance::WallHold(_) => {}
                 },
                 Stance::Flying => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
-                    Stance::WallHold => {}
+                    Stance::WallHold(_) => {}
                 },
-                Stance::WallHold => match new_stance {
+                Stance::WallHold(_) => match new_stance {
                     Stance::Standing => {}
-                    Stance::InAir => {}
+                    Stance::InAir => {
+                        println!("boop");
+                    }
                     Stance::Flying => {}
-                    Stance::WallHold => {}
+                    Stance::WallHold(_) => {}
                 },
             }
 
-            if new_stance == Stance::Standing || new_stance == Stance::WallHold {
-                self.flight_time_remaining = FLIGHT_DURATION;
+            match new_stance {
+                // Flight time is reset whenever character touches ground or wallholds
+                Stance::Standing | Stance::WallHold(_) => {
+                    self.flight_time_remaining = FLIGHT_DURATION;
+                }
+                _ => {}
             }
 
             self.character_state.stance = new_stance;
@@ -616,14 +567,20 @@ impl CharacterController {
         (position, tracking)
     }
 
-    /// Applies a specified character movement to player, returning the player's new position and the change in position.
-    /// If player is contacting any surfaces, they will be passed to handle_collision_with()
-    fn apply_character_movement(
+    /// Moves character horizontally, based on the current left/right input state.
+    /// Returns tuple of updated position, and an optional sprite representing the wall surface the
+    /// character may have contacted. The character can collide with up to two sprites if on fractional
+    /// y coord, so this returns the one closer to the character's y position)
+    fn apply_lateral_movement(
         &mut self,
         collision_space: &CollisionSpace,
         position: Point2<f32>,
         dt: f32,
-    ) -> Point2<f32> {
+    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+        if self.is_wallholding() {
+            return (position, None);
+        }
+
         let mask = FLAG_MAP_TILE_IS_COLLIDER;
 
         let mut delta_x =
@@ -632,6 +589,7 @@ impl CharacterController {
                 * dt;
 
         let probe_test = create_collision_probe_test(position);
+        let mut contacted: Option<sprite::SpriteDesc> = None;
 
         //
         // Check if moving left or right would cause a collision, and adjust distance accordingly
@@ -649,6 +607,7 @@ impl CharacterController {
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < delta_x {
                         delta_x = dist;
+                        contacted = Some(sprite);
                         self.handle_collision_with(&sprite);
                     }
                 }
@@ -659,6 +618,13 @@ impl CharacterController {
                 } => {
                     if dist < delta_x {
                         delta_x = dist;
+                        let dist_0 = (sprite_0.origin.y - position.y).abs();
+                        let dist_1 = (sprite_1.origin.y - position.y).abs();
+                        contacted = if dist_0 < dist_1 {
+                            Some(sprite_0)
+                        } else {
+                            Some(sprite_1)
+                        };
                         self.handle_collision_with(&sprite_0);
                         self.handle_collision_with(&sprite_1);
                     }
@@ -676,6 +642,7 @@ impl CharacterController {
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < -delta_x {
                         delta_x = -dist;
+                        contacted = Some(sprite);
                         self.handle_collision_with(&sprite);
                     }
                 }
@@ -686,6 +653,13 @@ impl CharacterController {
                 } => {
                     if dist < -delta_x {
                         delta_x = -dist;
+                        let dist_0 = (sprite_0.origin.y - position.y).abs();
+                        let dist_1 = (sprite_1.origin.y - position.y).abs();
+                        contacted = if dist_0 < dist_1 {
+                            Some(sprite_0)
+                        } else {
+                            Some(sprite_1)
+                        };
                         self.handle_collision_with(&sprite_0);
                         self.handle_collision_with(&sprite_1);
                     }
@@ -697,18 +671,98 @@ impl CharacterController {
         //  Clamp position to fit on stage
         //
 
-        Point2::new(
-            clamp(
-                position.x + delta_x,
-                self.map_origin.x,
-                self.map_origin.x + self.map_extent.x - 1.0,
+        (
+            Point2::new(
+                clamp(
+                    position.x + delta_x,
+                    self.map_origin.x,
+                    self.map_origin.x + self.map_extent.x - 1.0,
+                ),
+                clamp(
+                    position.y,
+                    self.map_origin.y,
+                    self.map_origin.y + self.map_extent.y - 1.0,
+                ),
             ),
-            clamp(
-                position.y,
-                self.map_origin.y,
-                self.map_origin.y + self.map_extent.y - 1.0,
-            ),
+            contacted,
         )
+    }
+
+    //
+    //  Applies gravity to `position`, if the current stance is InAir.
+    //  Updates self.vertical_velocity to make an accel curve.
+    //
+
+    fn apply_vertical_movement(
+        &mut self,
+        collision_space: &CollisionSpace,
+        position: Point2<f32>,
+        dt: f32,
+    ) -> Point2<f32> {
+        match self.character_state.stance {
+            Stance::Standing | Stance::Flying | Stance::WallHold(_) => {
+                if self.vertical_velocity.abs() != 0.0 {
+                    self.vertical_velocity = 0.0;
+                }
+            }
+            Stance::InAir => {
+                let mut is_jumping = false;
+                if let Some(jump_start_time) = self.jump_start_time {
+                    let elapsed = self.time - jump_start_time;
+                    if elapsed < JUMP_DURATION {
+                        is_jumping = true;
+                        self.vertical_velocity =
+                            lerp(elapsed / JUMP_DURATION, -GRAVITY_SPEED_FINAL, 0.0);
+                    }
+                }
+                // if not applying a jump force, we're falling
+                if !is_jumping {
+                    self.vertical_velocity =
+                        lerp(2.5 * dt, self.vertical_velocity, GRAVITY_SPEED_FINAL);
+                }
+            }
+        }
+
+        let mut delta = vec2(0.0, self.vertical_velocity * dt);
+
+        //
+        //  Now, if the movement is vertical, do a collision check with ceiling
+        //
+
+        if delta.y > 0.0 {
+            let mask = FLAG_MAP_TILE_IS_COLLIDER;
+            let probe_test = create_collision_probe_test(position);
+            match collision_space.probe(
+                position,
+                ProbeDir::Up,
+                COLLISION_PROBE_STEPS,
+                mask,
+                probe_test,
+            ) {
+                ProbeResult::None => {}
+                ProbeResult::OneHit { dist, sprite } => {
+                    if dist < delta.y {
+                        delta.y = dist;
+                        self.jump_start_time = None;
+                        self.handle_collision_with(&sprite);
+                    }
+                }
+                ProbeResult::TwoHits {
+                    dist,
+                    sprite_0,
+                    sprite_1,
+                } => {
+                    if dist < delta.y {
+                        delta.y = dist;
+                        self.jump_start_time = None;
+                        self.handle_collision_with(&sprite_0);
+                        self.handle_collision_with(&sprite_1);
+                    }
+                }
+            }
+        }
+
+        position + delta
     }
 
     /// Callback for handling collision with scene geometry.
