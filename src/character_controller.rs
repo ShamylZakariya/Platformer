@@ -213,7 +213,7 @@ pub struct CharacterController {
     pub contacting_sprites: HashSet<sprite::SpriteDesc>,
 
     vertical_velocity: f32,
-    jump_start_time: Option<f32>,
+    jump_time_remaining: f32,
     flight_time_remaining: f32,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
@@ -234,7 +234,7 @@ impl CharacterController {
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
-            jump_start_time: None,
+            jump_time_remaining: 0.0,
             flight_time_remaining: FLIGHT_DURATION,
             map_origin,
             map_extent,
@@ -243,13 +243,7 @@ impl CharacterController {
     }
 
     pub fn is_jumping(&self) -> bool {
-        if let Some(jump_start_time) = self.jump_start_time {
-            let elapsed = self.time - jump_start_time;
-            if elapsed < JUMP_DURATION {
-                return true;
-            }
-        }
-        false
+        self.character_state.stance == Stance::InAir && self.jump_time_remaining > 0.0
     }
 
     pub fn is_flying(&self) -> bool {
@@ -282,13 +276,13 @@ impl CharacterController {
             ButtonState::Pressed => match self.character_state.stance {
                 Stance::Standing => {
                     println!("Jump starting");
-                    self.jump_start_time = Some(self.time);
+                    self.jump_time_remaining = JUMP_DURATION;
                     self.set_stance(Stance::InAir);
                 }
                 Stance::InAir => {
                     if self.flight_time_remaining > 0.0 {
                         println!("Flight starting");
-                        self.jump_start_time = None;
+                        self.jump_time_remaining = 0.0;
                         self.set_stance(Stance::Flying);
                     }
                 }
@@ -301,7 +295,7 @@ impl CharacterController {
                 }
             },
             ButtonState::Released => {
-                self.jump_start_time = None;
+                self.jump_time_remaining = 0.0;
             }
             _ => {}
         }
@@ -406,10 +400,14 @@ impl CharacterController {
         //  Track jump and flight timed expirations
         //
 
-        if let Some(jump_start_time) = self.jump_start_time {
-            if self.time - jump_start_time > JUMP_DURATION {
+        if self.character_state.stance == Stance::InAir {
+            if self.jump_time_remaining > 0.0 {
+                self.jump_time_remaining -= dt;
+            }
+
+            if self.jump_time_remaining < 0.0 {
                 println!("Jump expired");
-                self.jump_start_time = None;
+                self.jump_time_remaining = 0.0;
             }
         }
 
@@ -707,14 +705,15 @@ impl CharacterController {
             }
             Stance::InAir => {
                 let mut is_jumping = false;
-                if let Some(jump_start_time) = self.jump_start_time {
-                    let elapsed = self.time - jump_start_time;
-                    if elapsed < JUMP_DURATION {
-                        is_jumping = true;
-                        self.vertical_velocity =
-                            lerp(elapsed / JUMP_DURATION, -GRAVITY_SPEED_FINAL, 0.0);
-                    }
+
+                if self.jump_time_remaining > 0.0 {
+                    let elapsed = JUMP_DURATION - self.jump_time_remaining;
+                    let jump_completion = elapsed / JUMP_DURATION;
+                    is_jumping = true;
+                    self.vertical_velocity = lerp(jump_completion, -GRAVITY_SPEED_FINAL, 0.0);
+                    println!("jump_completion: {}", jump_completion);
                 }
+
                 // if not applying a jump force, we're falling
                 if !is_jumping {
                     self.vertical_velocity =
@@ -743,7 +742,7 @@ impl CharacterController {
                 ProbeResult::OneHit { dist, sprite } => {
                     if dist < delta.y {
                         delta.y = dist;
-                        self.jump_start_time = None;
+                        self.jump_time_remaining = 0.0;
                         self.handle_collision_with(&sprite);
                     }
                 }
@@ -754,7 +753,7 @@ impl CharacterController {
                 } => {
                     if dist < delta.y {
                         delta.y = dist;
-                        self.jump_start_time = None;
+                        self.jump_time_remaining = 0.0;
                         self.handle_collision_with(&sprite_0);
                         self.handle_collision_with(&sprite_1);
                     }
