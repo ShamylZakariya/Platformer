@@ -699,6 +699,21 @@ impl CharacterController {
         }
 
         //
+        //  Wallgrabs are dissallowed on the top-helf of a ledge (no tile above the contacted tile)
+        //
+
+        if let Some(c) = contacted {
+            if collision_space
+                .get_sprite_at(Point2::new(c.origin.x as i32, c.origin.y as i32 + 1), mask)
+                .is_none()
+            {
+                if position.y > c.origin.y + (c.extent.y * 0.5) {
+                    contacted = None;
+                }
+            }
+        }
+
+        //
         //  Clamp position to fit on stage
         //
 
