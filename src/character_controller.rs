@@ -497,9 +497,7 @@ impl CharacterController {
                 },
                 Stance::WallHold(_) => match new_stance {
                     Stance::Standing => {}
-                    Stance::InAir => {
-                        println!("boop");
-                    }
+                    Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold(_) => {}
                 },
