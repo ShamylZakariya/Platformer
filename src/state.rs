@@ -325,8 +325,8 @@ impl State {
             imgui,
             imgui_renderer,
 
-            draw_entity_debug: true,
-            draw_stage_collision_info: true,
+            draw_entity_debug: false,
+            draw_stage_collision_info: false,
             camera_tracks_character: true,
         }
     }

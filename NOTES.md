@@ -1,6 +1,7 @@
 CURRENTLY:
     Character Controller
         BUGS:
+            We don't have dedicated cycles for jump, only flight
         TODO:
             - implement water
             - implement kickback from contact with spikes, etc

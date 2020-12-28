@@ -1,5 +1,5 @@
 use cgmath::{vec2, Point2, Vector2, Zero};
-use std::{collections::HashSet, f32::consts::PI, time::Duration};
+use std::{collections::HashSet, f32::consts::PI, time::Duration, unimplemented};
 use winit::event::*;
 
 use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
@@ -14,6 +14,8 @@ const CHARACTER_CYCLE_SHOOT: &str = "shoot";
 const CHARACTER_CYCLE_WALK_0: &str = "walk_0";
 const CHARACTER_CYCLE_WALK_1: &str = "walk_1";
 const CHARACTER_CYCLE_WALK_2: &str = "walk_2";
+const CHARACTER_CYCLE_JUMP_0: &str = "fly_0";
+const CHARACTER_CYCLE_JUMP_1: &str = "fly_1";
 const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
 const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_WALL: &str = "wall";
@@ -30,6 +32,11 @@ const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const COLLISION_PROBE_STEPS: i32 = 3;
 const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
+
+// Animation timings
+const WALK_CYCLE_DURATION: f32 = 0.3;
+const FLIGHT_CYCLE_DURATION: f32 = 0.2;
+const JUMP_CYCLE_DURATION: f32 = 0.2;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -222,6 +229,7 @@ pub struct CharacterController {
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
     pixels_per_unit: f32,
+    cycle_animation_time_elapsed: Option<f32>,
 }
 
 impl CharacterController {
@@ -245,6 +253,7 @@ impl CharacterController {
             map_origin,
             map_extent,
             pixels_per_unit: pixels_per_unit as f32,
+            cycle_animation_time_elapsed: None,
         }
     }
 
@@ -455,6 +464,12 @@ impl CharacterController {
         } else {
             self.character_state.position_offset = Zero::zero();
         }
+
+        //
+        //  Update character cycle and animation
+        //
+
+        self.character_state.cycle = self.update_character_cycle(dt);
 
         //
         //  Remove any sprites in the contacting set from the overlapping set.
@@ -805,5 +820,60 @@ impl CharacterController {
     /// Callback for handling collision with scene geometry.
     fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
         self.contacting_sprites.insert(*sprite);
+    }
+
+    fn update_character_cycle(&mut self, dt: f32) -> &'static str {
+        match self.character_state.stance {
+            Stance::Standing => {
+                if self.input_state.move_left.is_active() || self.input_state.move_right.is_active()
+                {
+                    if self.cycle_animation_time_elapsed.is_none() {
+                        self.cycle_animation_time_elapsed = Some(0.0);
+                    }
+                    let elapsed = self.cycle_animation_time_elapsed.unwrap();
+
+                    let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 3;
+                    self.cycle_animation_time_elapsed = Some(elapsed + dt);
+
+                    match frame {
+                        1 => CHARACTER_CYCLE_WALK_1,
+                        2 => CHARACTER_CYCLE_WALK_2,
+                        0 | _ => CHARACTER_CYCLE_WALK_0,
+                    }
+                } else {
+                    self.cycle_animation_time_elapsed = None;
+                    CHARACTER_CYCLE_WALK_0
+                }
+            }
+            Stance::InAir => {
+                if self.cycle_animation_time_elapsed.is_none() {
+                    self.cycle_animation_time_elapsed = Some(0.0);
+                }
+                let elapsed = self.cycle_animation_time_elapsed.unwrap();
+
+                let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 2;
+                self.cycle_animation_time_elapsed = Some(elapsed + dt);
+
+                match frame {
+                    1 => CHARACTER_CYCLE_JUMP_0,
+                    0 | _ => CHARACTER_CYCLE_JUMP_1,
+                }
+            }
+            Stance::Flying => {
+                if self.cycle_animation_time_elapsed.is_none() {
+                    self.cycle_animation_time_elapsed = Some(0.0);
+                }
+                let elapsed = self.cycle_animation_time_elapsed.unwrap();
+
+                let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 2;
+                self.cycle_animation_time_elapsed = Some(elapsed + dt);
+
+                match frame {
+                    1 => CHARACTER_CYCLE_FLY_0,
+                    0 | _ => CHARACTER_CYCLE_FLY_1,
+                }
+            }
+            Stance::WallHold(_) => CHARACTER_CYCLE_WALL,
+        }
     }
 }
