@@ -16,8 +16,10 @@ const CHARACTER_CYCLE_WALK_1: &str = "walk_1";
 const CHARACTER_CYCLE_WALK_2: &str = "walk_2";
 const CHARACTER_CYCLE_JUMP_0: &str = "jump_0";
 const CHARACTER_CYCLE_JUMP_1: &str = "jump_1";
+const CHARACTER_CYCLE_JUMP_2: &str = "jump_2";
 const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
 const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
+const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
 // These constants were determined by examination of recorded gamplay (and fiddling)
@@ -34,9 +36,9 @@ const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
 
 // Animation timings
-const WALK_CYCLE_DURATION: f32 = 0.3;
-const FLIGHT_CYCLE_DURATION: f32 = 0.2;
-const JUMP_CYCLE_DURATION: f32 = 0.2;
+const WALK_CYCLE_DURATION: f32 = 0.2;
+const FLIGHT_CYCLE_DURATION: f32 = 0.1;
+const JUMP_CYCLE_DURATION: f32 = 0.1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -845,13 +847,15 @@ impl CharacterController {
                     }
                     let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                    let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 3;
+                    let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                     match frame {
+                        0 => CHARACTER_CYCLE_WALK_0,
                         1 => CHARACTER_CYCLE_WALK_1,
-                        2 => CHARACTER_CYCLE_WALK_2,
-                        0 | _ => CHARACTER_CYCLE_WALK_0,
+                        2 => CHARACTER_CYCLE_WALK_0,
+                        3 => CHARACTER_CYCLE_WALK_2,
+                        _ => unimplemented!("This shouldn't be reached"),
                     }
                 } else {
                     self.cycle_animation_time_elapsed = None;
@@ -864,12 +868,15 @@ impl CharacterController {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 2;
+                let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
-                    1 => CHARACTER_CYCLE_JUMP_0,
-                    0 | _ => CHARACTER_CYCLE_JUMP_1,
+                    0 => CHARACTER_CYCLE_JUMP_0,
+                    1 => CHARACTER_CYCLE_JUMP_1,
+                    2 => CHARACTER_CYCLE_JUMP_2,
+                    3 => CHARACTER_CYCLE_JUMP_1,
+                    _ => unimplemented!("This shouldn't be reached"),
                 }
             }
             Stance::Flying => {
@@ -878,12 +885,15 @@ impl CharacterController {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 2;
+                let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
-                    1 => CHARACTER_CYCLE_FLY_0,
-                    0 | _ => CHARACTER_CYCLE_FLY_1,
+                    0 => CHARACTER_CYCLE_FLY_0,
+                    1 => CHARACTER_CYCLE_FLY_1,
+                    2 => CHARACTER_CYCLE_FLY_2,
+                    3 => CHARACTER_CYCLE_FLY_1,
+                    _ => unimplemented!("This shouldn't be reached"),
                 }
             }
             Stance::WallHold(_) => CHARACTER_CYCLE_WALL,

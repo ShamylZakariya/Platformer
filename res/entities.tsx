@@ -242,55 +242,55 @@
  </tile>
  <tile id="38">
   <properties>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="39">
   <properties>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="40">
   <properties>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="41">
   <properties>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="42">
   <properties>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="43">
   <properties>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="44">
   <properties>
-   <property name="cycle" value="wall"/>
+   <property name="cycle" value="fly_1"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="45">
   <properties>
-   <property name="cycle" value="wall"/>
+   <property name="cycle" value="fly_1"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="46">
   <properties>
-   <property name="cycle" value="wall"/>
+   <property name="cycle" value="fly_1"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
@@ -341,51 +341,132 @@
  </tile>
  <tile id="54">
   <properties>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="55">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="56">
   <properties>
-   <property name="cycle" value="fly_0"/>
+   <property name="cycle" value="jump_2"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="57">
   <properties>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="58">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="59">
   <properties>
-   <property name="cycle" value="fly_1"/>
+   <property name="cycle" value="fly_0"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="60">
   <properties>
-   <property name="cycle" value="wall"/>
+   <property name="cycle" value="fly_1"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
  <tile id="61">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="62">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="63">
+  <properties>
+   <property name="collision_shape" value="none"/>
+  </properties>
+ </tile>
+ <tile id="64">
+  <properties>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="65">
+  <properties>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="66">
+  <properties>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="67">
+  <properties>
+   <property name="cycle" value="wall"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="68">
+  <properties>
+   <property name="cycle" value="wall"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="69">
+  <properties>
+   <property name="cycle" value="wall"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="80">
+  <properties>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="81">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="82">
+  <properties>
+   <property name="cycle" value="fly_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="83">
+  <properties>
+   <property name="cycle" value="wall"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="84">
   <properties>
    <property name="collision_shape" value="square"/>
    <property name="cycle" value="wall"/>
@@ -393,15 +474,10 @@
    <property name="role" value="root"/>
   </properties>
  </tile>
- <tile id="62">
+ <tile id="85">
   <properties>
    <property name="cycle" value="wall"/>
    <property name="name" value="firebrand"/>
-  </properties>
- </tile>
- <tile id="63">
-  <properties>
-   <property name="collision_shape" value="none"/>
   </properties>
  </tile>
  <tile id="220">
