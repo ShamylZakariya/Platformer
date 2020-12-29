@@ -76,20 +76,31 @@ pub enum Stance {
 
 impl Eq for Stance {}
 
+#[derive(Debug, Clone, Copy)]
+pub enum Facing {
+    Left,
+    Right,
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
 pub struct CharacterState {
     // The current position of the character
     pub position: Point2<f32>,
+
     // The current position-offset of the character - this is purely visual, used for bobbing effects,
     // and is not part of collision detection.
     pub position_offset: Vector2<f32>,
+
     // The current display cycle of the character, will be one of the CHARACTER_CYCLE_* constants.
     pub cycle: &'static str,
 
     // the character's current stance state
     pub stance: Stance,
+
+    // the direction the character is currently facing
+    pub facing: Facing,
 }
 
 impl CharacterState {
@@ -99,6 +110,7 @@ impl CharacterState {
             position_offset: Zero::zero(),
             cycle: CHARACTER_CYCLE_DEFAULT,
             stance: Stance::Standing,
+            facing: Facing::Left,
         }
     }
 }
@@ -466,10 +478,11 @@ impl CharacterController {
         }
 
         //
-        //  Update character cycle and animation
+        //  Update character cycle and animation, and facing dir
         //
 
         self.character_state.cycle = self.update_character_cycle(dt);
+        self.character_state.facing = self.character_facing();
 
         //
         //  Remove any sprites in the contacting set from the overlapping set.
@@ -874,6 +887,27 @@ impl CharacterController {
                 }
             }
             Stance::WallHold(_) => CHARACTER_CYCLE_WALL,
+        }
+    }
+
+    fn character_facing(&self) -> Facing {
+        match self.character_state.stance {
+            Stance::Standing | Stance::InAir | Stance::Flying => {
+                if self.input_state.move_left.is_active() {
+                    Facing::Left
+                } else if self.input_state.move_right.is_active() {
+                    Facing::Right
+                } else {
+                    self.character_state.facing
+                }
+            }
+            Stance::WallHold(attached_to) => {
+                if attached_to.left() > self.character_state.position.x {
+                    Facing::Left
+                } else {
+                    Facing::Right
+                }
+            }
         }
     }
 }

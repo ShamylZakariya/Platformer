@@ -15,6 +15,7 @@ layout(set = 1, binding = 0) uniform CameraUniforms {
 layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_model_position;
   vec4 u_color;
+  vec2 u_sprite_scale;
   vec2 u_sprite_size_px;
 };
 
@@ -22,7 +23,7 @@ void main() {
   v_tex_coords = a_tex_coords;
   v_color = a_color * u_color;
 
-  vec2 position = a_position.xy + u_model_position.xy;
+  vec2 position = (u_sprite_scale * a_position.xy) + u_model_position.xy;
   position = round(position * u_sprite_size_px) / u_sprite_size_px;
 
   gl_Position = u_view_proj * vec4(position.x, position.y,

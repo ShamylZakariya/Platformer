@@ -434,17 +434,22 @@ impl State {
                 .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
         }
 
-        self.firebrand_uniforms
-            .data
-            .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0));
+        {
+            let (xscale, xoffset) = match character_state.facing {
+                character_controller::Facing::Left => (-1.0, 1.0),
+                character_controller::Facing::Right => (1.0, 0.0),
+            };
 
-        self.firebrand_uniforms
-            .data
-            .set_model_position(&cgmath::Point3::new(
-                character_state.position.x + character_state.position_offset.x,
-                character_state.position.y + character_state.position_offset.y,
-                0.5,
-            ));
+            self.firebrand_uniforms
+                .data
+                .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0))
+                .set_sprite_scale(cgmath::vec2(xscale, 1.0))
+                .set_model_position(&cgmath::Point3::new(
+                    character_state.position.x + character_state.position_offset.x + xoffset,
+                    character_state.position.y + character_state.position_offset.y,
+                    0.5,
+                ));
+        }
 
         self.firebrand_uniforms.write(&mut self.queue);
     }

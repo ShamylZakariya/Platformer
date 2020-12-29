@@ -1,7 +1,7 @@
 CURRENTLY:
     Character Controller
         BUGS:
-            We don't have dedicated cycles for jump, only flight
+            Jumping while standing, facing a wall, should act like a wall jump while wallholding on that wall
         TODO:
             - implement water
             - implement kickback from contact with spikes, etc

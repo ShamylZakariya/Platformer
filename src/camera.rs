@@ -249,9 +249,10 @@ impl UniformData {
         }
     }
 
-    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) {
+    pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) -> &mut Self {
         self.view_position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
+        self
     }
 }
 

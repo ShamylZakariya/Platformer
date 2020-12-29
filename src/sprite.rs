@@ -110,6 +110,7 @@ pub fn create_render_pipeline(
 pub struct UniformData {
     model_position: cgmath::Vector4<f32>,
     color: cgmath::Vector4<f32>,
+    sprite_scale: cgmath::Vector2<f32>,
     sprite_size_px: cgmath::Vector2<f32>,
 }
 
@@ -121,23 +122,32 @@ impl UniformData {
         Self {
             model_position: cgmath::Vector4::zero(),
             color: cgmath::vec4(1.0, 1.0, 1.0, 1.0),
+            sprite_scale: cgmath::vec2(1.0, 1.0),
             sprite_size_px: cgmath::vec2(1.0, 1.0),
         }
     }
 
-    pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) {
+    pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) -> &mut Self {
         self.color = *color;
+        self
     }
 
-    pub fn set_model_position(&mut self, position: &cgmath::Point3<f32>) {
+    pub fn set_model_position(&mut self, position: &cgmath::Point3<f32>) -> &mut Self {
         self.model_position.x = position.x;
         self.model_position.y = position.y;
         self.model_position.z = position.z;
         self.model_position.w = 1.0;
+        self
     }
 
-    pub fn set_sprite_size_px(&mut self, sprite_size_px: cgmath::Vector2<f32>) {
-        self.sprite_size_px = sprite_size_px
+    pub fn set_sprite_scale(&mut self, sprite_scale: cgmath::Vector2<f32>) -> &mut Self {
+        self.sprite_scale = sprite_scale;
+        self
+    }
+
+    pub fn set_sprite_size_px(&mut self, sprite_size_px: cgmath::Vector2<f32>) -> &mut Self {
+        self.sprite_size_px = sprite_size_px;
+        self
     }
 }
 
