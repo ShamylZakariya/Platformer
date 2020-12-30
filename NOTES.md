@@ -1,7 +1,6 @@
 CURRENTLY:
     Character Controller
         BUGS:
-            Jumping while standing, facing a wall, should act like a wall jump while wallholding on that wall
         TODO:
             - implement water
             - implement kickback from contact with spikes, etc

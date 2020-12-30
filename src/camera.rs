@@ -149,14 +149,18 @@ pub struct CameraController {
     delta_scale: f32,
     speed: f32,
     input_state: CameraControllerInputState,
+    map_origin: Point2<f32>,
+    map_extent: Vector2<f32>,
 }
 
 impl CameraController {
-    pub fn new(speed: f32) -> Self {
+    pub fn new(speed: f32, map_origin: Point2<f32>, map_extent: Vector2<f32>) -> Self {
         Self {
             delta_scale: 1.0,
             speed,
             input_state: Default::default(),
+            map_origin,
+            map_extent,
         }
     }
 
@@ -225,6 +229,23 @@ impl CameraController {
 
         camera.position += delta_position * self.speed * dt;
         projection.set_scale(projection.scale + delta_zoom * self.speed * dt);
+
+        self.clamp_camera_position_to_map(camera, projection);
+    }
+
+    fn clamp_camera_position_to_map(&self, camera: &mut Camera, projection: &mut Projection) {
+        let viewport_size = vec2(projection.scale, projection.scale / projection.aspect);
+        camera.position.x = camera
+            .position
+            .x
+            .max(self.map_origin.x + viewport_size.x * 0.5)
+            .min(self.map_origin.x + self.map_extent.x - viewport_size.x * 0.5);
+
+        camera.position.y = camera
+            .position
+            .y
+            .max(self.map_origin.y + 1.0 + viewport_size.y * 0.5)
+            .min(self.map_origin.y + 1.0 + self.map_extent.y - viewport_size.y * 0.5);
     }
 }
 
