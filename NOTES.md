@@ -1,10 +1,11 @@
 CURRENTLY:
-    Character Controller
-        BUGS:
-        TODO:
-            - implement water
-            - implement kickback from contact with spikes, etc
-            - Simplify
+    Water
+    BUGS:
+
+
+TODO:
+    - implement kickback from contact with spikes, etc
+    - Simplify
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping

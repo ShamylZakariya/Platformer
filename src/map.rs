@@ -289,13 +289,13 @@ impl Map {
                     if tile.has_property("collision_shape") {
                         mask |= FLAG_MAP_TILE_IS_COLLIDER;
                     }
-                    if tile.has_property("water") {
+                    if tile.get_property("water") == Some("true") {
                         mask |= FLAG_MAP_TILE_IS_WATER;
                     }
-                    if tile.has_property("falls") {
+                    if tile.get_property("falls") == Some("true") {
                         mask |= FLAG_MAP_TILE_FALLS;
                     }
-                    if tile.has_property("ratchet") {
+                    if tile.get_property("ratchet") == Some("true") {
                         mask |= FLAG_MAP_TILE_IS_RATCHET;
                     }
 

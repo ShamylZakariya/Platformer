@@ -244,6 +244,7 @@ pub struct CharacterController {
     map_extent: Vector2<f32>,
     pixels_per_unit: f32,
     cycle_animation_time_elapsed: Option<f32>,
+    in_water: bool,
 }
 
 impl CharacterController {
@@ -268,6 +269,7 @@ impl CharacterController {
             map_extent,
             pixels_per_unit: pixels_per_unit as f32,
             cycle_animation_time_elapsed: None,
+            in_water: false,
         }
     }
 

@@ -162,9 +162,13 @@ impl State {
             let level_layer = map
                 .layer_named("Level")
                 .expect("Expected layer named 'Level'");
+            let fg_layer = map
+                .layer_named("Foreground")
+                .expect("Expected layer named 'Foreground'");
 
             let bg_sprites = map.generate_sprites(bg_layer, 1.0);
             let level_sprites = map.generate_sprites(level_layer, 0.9);
+            let fg_sprites = map.generate_sprites(fg_layer, 0.1);
             let mut all_sprites = vec![];
 
             for s in &bg_sprites {
@@ -172,6 +176,10 @@ impl State {
             }
 
             for s in &level_sprites {
+                all_sprites.push(s.clone());
+            }
+
+            for s in &fg_sprites {
                 all_sprites.push(s.clone());
             }
 

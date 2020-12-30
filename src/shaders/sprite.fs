@@ -22,5 +22,8 @@ layout(set = 2, binding = 0) uniform SpriteUniforms {
 void main() {
   vec4 object_color =
       v_color * texture(sampler2D(t_diffuse, s_diffuse), v_tex_coords);
+  if (object_color.a == 0.0) {
+    discard;
+  }
   f_color = object_color;
 }

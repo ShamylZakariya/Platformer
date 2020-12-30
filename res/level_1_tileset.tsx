@@ -18,7 +18,6 @@
  </tile>
  <tile id="3">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="water" value="true"/>
   </properties>
  </tile>
