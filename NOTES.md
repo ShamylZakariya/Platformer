@@ -8,10 +8,12 @@ CURRENTLY:
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
+        - could outset sprites a half pixel (what's apixel at different scales?)
+        - could make each "layer" an indexed mesh
+            - this will break texture mapping right?
     - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
 
 TODO:
-    - clamp camera position such that it doesn't fall off the edges of the map
     - sprite.rs is too big - make it a module which re-exports various smaller sub components
         - https://doc.rust-lang.org/book/ch07-04-bringing-paths-into-scope-with-the-use-keyword.html
     - SpriteDesc can have integerial position, and drop extent because we only support 1x1 sprites?
