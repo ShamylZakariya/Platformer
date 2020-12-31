@@ -1,4 +1,4 @@
-use map::FLAG_MAP_TILE_IS_WATER;
+use map::{FLAG_MAP_TILE_IS_ENTITY, FLAG_MAP_TILE_IS_WATER};
 use sprite::SpriteDesc;
 use std::path::Path;
 use std::rc::Rc;
@@ -10,6 +10,7 @@ use winit::{
 
 use crate::camera;
 use crate::character_controller;
+use crate::entities;
 use crate::map;
 use crate::sprite;
 use crate::sprite_collision;
@@ -89,6 +90,7 @@ pub struct State {
     entity_material: Rc<sprite::SpriteMaterial>,
     firebrand_uniforms: sprite::Uniforms,
     firebrand: sprite::SpriteEntity,
+    entities: Vec<Box<dyn entities::Entity>>,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -145,7 +147,7 @@ impl State {
         let map = map.expect("Expected map to load");
 
         let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
-        let (stage_sprite_collection, stage_hit_tester) = {
+        let (stage_sprite_collection, stage_hit_tester, entities) = {
             let mat = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
@@ -164,9 +166,13 @@ impl State {
             let level_layer = map
                 .layer_named("Level")
                 .expect("Expected layer named 'Level'");
+            let entity_layer = map
+                .layer_named("Entities")
+                .expect("Expected layer named 'Entities'");
 
-            let bg_sprites = map.generate_sprites(bg_layer, |_: &SpriteDesc| -> f32 { 1.0 });
-            let level_sprites = map.generate_sprites(level_layer, |sd: &SpriteDesc| -> f32 {
+            // generate level sprites
+            let bg_sprites = map.generate_sprites(bg_layer, |_| 1.0);
+            let level_sprites = map.generate_sprites(level_layer, |sd| {
                 // we draw water sprites in front of entities
                 if sd.mask & FLAG_MAP_TILE_IS_WATER != 0 {
                     0.1
@@ -174,20 +180,19 @@ impl State {
                     0.9
                 }
             });
+
+            // generate level entities
+            let entities = map.generate_entities(entity_layer, |_| 0.9);
+
             let mut all_sprites = vec![];
-
-            for s in &bg_sprites {
-                all_sprites.push(s.clone());
-            }
-
-            for s in &level_sprites {
-                all_sprites.push(s.clone());
-            }
+            all_sprites.extend(bg_sprites);
+            all_sprites.extend(level_sprites.clone());
 
             let sm = sprite::SpriteMesh::new(&all_sprites, 0, &device, "Sprite Mesh");
             (
                 sprite::SpriteCollection::new(vec![sm], vec![mat]),
                 sprite_collision::CollisionSpace::new(&level_sprites),
+                entities,
             )
         };
 
@@ -205,13 +210,13 @@ impl State {
             pixels_per_unit,
         );
 
-        // character_controller.character_state.position.x = 26.0;
-        // character_controller.character_state.position.y = 5.0;
-        // camera.set_position(&cgmath::Point3::new(
-        //     character_controller.character_state.position.x,
-        //     character_controller.character_state.position.y,
-        //     camera.position().z,
-        // ));
+        character_controller.character_state.position.x = 58.0;
+        character_controller.character_state.position.y = 20.0;
+        camera.set_position(&cgmath::Point3::new(
+            character_controller.character_state.position.x,
+            character_controller.character_state.position.y,
+            camera.position().z,
+        ));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -331,6 +336,7 @@ impl State {
             firebrand_uniforms: firebrand_uniforms,
             entity_material,
             firebrand,
+            entities,
 
             winit_platform,
             imgui,

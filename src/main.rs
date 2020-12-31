@@ -8,6 +8,7 @@ use winit::{
 };
 mod camera;
 mod character_controller;
+mod entities;
 mod geom;
 mod map;
 mod sprite;

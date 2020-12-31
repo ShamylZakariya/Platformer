@@ -77,7 +77,7 @@
  <tile id="15">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="falls" value="true"/>
+   <property name="entity_class" value="FallingBridge"/>
    <property name="ratchet" value="true"/>
   </properties>
  </tile>

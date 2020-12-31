@@ -307,23 +307,19 @@ impl CharacterController {
         match self.input_state.jump {
             ButtonState::Pressed => match self.character_state.stance {
                 Stance::Standing => {
-                    println!("Jump starting");
                     self.jump_time_remaining = JUMP_DURATION;
                     self.set_stance(Stance::InAir);
                 }
                 Stance::InAir => {
                     if self.flight_time_remaining > 0.0 {
-                        println!("Flight starting");
                         self.jump_time_remaining = 0.0;
                         self.set_stance(Stance::Flying);
                     }
                 }
                 Stance::Flying => {
-                    println!("Flight ending");
                     self.set_stance(Stance::InAir);
                 }
                 Stance::WallHold(surface) => {
-                    println!("Wallgrab jump starting");
                     self.wallgrab_jump_lateral_motion_time_remaining =
                         WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
                     self.jump_time_remaining = JUMP_DURATION;
@@ -426,7 +422,6 @@ impl CharacterController {
             if self.character_state.stance == Stance::InAir
                 || self.character_state.stance == Stance::Flying
             {
-                println!("WallHold starting");
                 self.set_stance(Stance::WallHold(wall_contact));
             }
         }
@@ -447,7 +442,6 @@ impl CharacterController {
             }
 
             if self.jump_time_remaining < 0.0 {
-                println!("Jump expired");
                 self.jump_time_remaining = 0.0;
             }
 
@@ -456,7 +450,6 @@ impl CharacterController {
             }
 
             if self.wallgrab_jump_lateral_motion_time_remaining < 0.0 {
-                println!("Wallgrab jump lateral time expired");
                 self.wallgrab_jump_lateral_motion_time_remaining = 0.0;
             }
         }
@@ -474,7 +467,6 @@ impl CharacterController {
             // Decrement remaining flight time
             self.flight_time_remaining = self.flight_time_remaining - dt;
             if self.flight_time_remaining <= 0.0 {
-                println!("Flight expired");
                 self.flight_time_remaining = 0.0;
                 self.set_stance(Stance::InAir);
             }
@@ -510,10 +502,10 @@ impl CharacterController {
 
     fn set_stance(&mut self, new_stance: Stance) {
         if new_stance != self.character_state.stance {
-            println!(
-                "Transition from {:?} to {:?}",
-                self.character_state.stance, new_stance
-            );
+            // println!(
+            //     "Transition from {:?} to {:?}",
+            //     self.character_state.stance, new_stance
+            // );
 
             match self.character_state.stance {
                 Stance::Standing => match new_stance {

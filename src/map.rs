@@ -5,13 +5,14 @@ use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
+use crate::entities;
 use crate::sprite;
 use crate::tileset;
 
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
-pub const FLAG_MAP_TILE_FALLS: u32 = 1 << 29;
-pub const FLAG_MAP_TILE_IS_RATCHET: u32 = 1 << 28;
+pub const FLAG_MAP_TILE_IS_RATCHET: u32 = 1 << 29;
+pub const FLAG_MAP_TILE_IS_ENTITY: u32 = 1 << 28;
 
 #[derive(Clone, Debug)]
 pub struct Layer {
@@ -261,12 +262,46 @@ impl Map {
     where
         F: Fn(&SpriteDesc) -> f32,
     {
+        let mut sprites: Vec<sprite::SpriteDesc> = vec![];
+
+        self.generate(layer, z_depth, |sprite, _tile| {
+            if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
+                sprites.push(sprite.clone());
+            }
+        });
+
+        sprites
+    }
+
+    pub fn generate_entities<F>(&self, layer: &Layer, z_depth: F) -> Vec<Box<dyn entities::Entity>>
+    where
+        F: Fn(&SpriteDesc) -> f32,
+    {
+        let mut entities: Vec<Box<dyn entities::Entity>> = vec![];
+
+        self.generate(layer, z_depth, |sprite, tile| {
+            if let Some(name) = tile.get_property("entity_class") {
+                let entity = entities::instantiate(name, sprite, tile).expect(&format!(
+                    "Unable to instantiate Entity with class name \"{}\"",
+                    name
+                ));
+                entities.push(entity);
+            }
+        });
+
+        entities
+    }
+
+    fn generate<Z, C>(&self, layer: &Layer, z_depth: Z, mut consumer: C)
+    where
+        Z: Fn(&SpriteDesc) -> f32,
+        C: FnMut(&SpriteDesc, &tileset::Tile),
+    {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         let flipped_horizontally_flag = 0x80000000 as u32;
         let flipped_vertically_flag = 0x40000000 as u32;
         let flipped_diagonally_flag = 0x20000000 as u32;
 
-        let mut sprites: Vec<sprite::SpriteDesc> = vec![];
         for y in 0..layer.height {
             for x in 0..layer.width {
                 let index: usize = (y * layer.width + x) as usize;
@@ -296,11 +331,11 @@ impl Map {
                     if tile.get_property("water") == Some("true") {
                         mask |= FLAG_MAP_TILE_IS_WATER;
                     }
-                    if tile.get_property("falls") == Some("true") {
-                        mask |= FLAG_MAP_TILE_FALLS;
-                    }
                     if tile.get_property("ratchet") == Some("true") {
                         mask |= FLAG_MAP_TILE_IS_RATCHET;
+                    }
+                    if tile.has_property("entity_class") {
+                        mask |= FLAG_MAP_TILE_IS_ENTITY;
                     }
 
                     let mut sd = sprite::SpriteDesc::unit(
@@ -327,10 +362,9 @@ impl Map {
                         sd = sd.flipped_vertically();
                     }
 
-                    sprites.push(sd);
+                    consumer(&sd, tile);
                 }
             }
         }
-        sprites
     }
 }
