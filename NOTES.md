@@ -1,6 +1,9 @@
 CURRENTLY:
-    Water
-        - collision space isn't reporting water tiles
+    Falling Tiles
+        - on cnotact, remove it from collision space
+        - should probably live as an entity and not as part of the level, this way it can be animated
+            - should the map have a subset of "dynamic" tiles which are easy to animate?
+
 
 
 TODO:
