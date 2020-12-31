@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use sprite::SpriteDesc;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -256,7 +257,10 @@ impl Map {
     }
 
     /// Generates a vector of SpriteDesc for the contents of the specified layer
-    pub fn generate_sprites(&self, layer: &Layer, z_depth: f32) -> Vec<sprite::SpriteDesc> {
+    pub fn generate_sprites<F>(&self, layer: &Layer, z_depth: F) -> Vec<sprite::SpriteDesc>
+    where
+        F: Fn(&SpriteDesc) -> f32,
+    {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         let flipped_horizontally_flag = 0x80000000 as u32;
         let flipped_vertically_flag = 0x40000000 as u32;
@@ -302,12 +306,14 @@ impl Map {
                     let mut sd = sprite::SpriteDesc::unit(
                         tile.shape(),
                         cgmath::Point2::new(x as i32, (layer.height - y) as i32),
-                        z_depth,
+                        0.0,
                         tex_coord_origin,
                         tex_coord_extent,
                         cgmath::vec4(1.0, 1.0, 1.0, 1.0),
                         mask,
                     );
+
+                    sd.origin.z = z_depth(&sd);
 
                     if flipped_diagonally {
                         sd = sd.flipped_diagonally();

@@ -2,7 +2,7 @@ use cgmath::{vec2, Point2, Vector2, Zero};
 use std::{collections::HashSet, f32::consts::PI, time::Duration, unimplemented};
 use winit::event::*;
 
-use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET};
+use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER};
 use crate::sprite;
 use crate::sprite_collision::{CollisionSpace, ProbeDir, ProbeResult};
 
@@ -34,6 +34,7 @@ const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const COLLISION_PROBE_STEPS: i32 = 3;
 const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
+const WATER_DAMPING: f32 = 0.5;
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
@@ -482,6 +483,12 @@ impl CharacterController {
         }
 
         //
+        //  Determine if character is in water
+        //
+
+        self.in_water = self.is_in_water(collision_space, self.character_state.position);
+
+        //
         //  Update character cycle and animation, and facing dir
         //
 
@@ -793,6 +800,9 @@ impl CharacterController {
         }
 
         let mut delta = vec2(0.0, self.vertical_velocity * dt);
+        if self.in_water && self.vertical_velocity < 0.0 {
+            delta.y *= WATER_DAMPING;
+        }
 
         //
         //  Now, if the movement is vertical, do a collision check with ceiling
@@ -840,7 +850,17 @@ impl CharacterController {
     }
 
     fn update_character_cycle(&mut self, dt: f32) -> &'static str {
-        match self.character_state.stance {
+        // The character "walks" when in water, otherwise use the actual stance.
+        let stance = if self.in_water {
+            match self.character_state.stance {
+                Stance::Standing | Stance::InAir | Stance::Flying => Stance::Standing,
+                Stance::WallHold(_) => self.character_state.stance,
+            }
+        } else {
+            self.character_state.stance
+        };
+
+        match stance {
             Stance::Standing => {
                 if self.input_state.move_left.is_active() || self.input_state.move_right.is_active()
                 {
@@ -921,5 +941,22 @@ impl CharacterController {
                 }
             }
         }
+    }
+
+    fn is_in_water(&self, collision_space: &CollisionSpace, position: Point2<f32>) -> bool {
+        let a = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
+        let b = Point2::new(a.x + 1, a.y);
+        let c = Point2::new(a.x, a.y + 1);
+        let d = Point2::new(a.x + 1, a.y + 1);
+
+        for p in [a, b, c, d].iter() {
+            if collision_space
+                .get_sprite_at(*p, FLAG_MAP_TILE_IS_WATER)
+                .is_some()
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

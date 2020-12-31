@@ -1,6 +1,6 @@
 CURRENTLY:
     Water
-    BUGS:
+        - collision space isn't reporting water tiles
 
 
 TODO:
