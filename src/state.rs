@@ -1,6 +1,6 @@
 use map::{FLAG_MAP_TILE_IS_ENTITY, FLAG_MAP_TILE_IS_WATER};
 use sprite::SpriteDesc;
-use std::path::Path;
+use std::{iter::Zip, path::Path};
 use std::rc::Rc;
 use winit::{
     dpi::PhysicalPosition,
@@ -90,6 +90,7 @@ pub struct State {
     entity_material: Rc<sprite::SpriteMaterial>,
     firebrand_uniforms: sprite::Uniforms,
     firebrand: sprite::SpriteEntity,
+    entity_uniforms: Vec<sprite::Uniforms>,
     entities: Vec<Box<dyn entities::Entity>>,
 
     // Imgui
@@ -276,6 +277,11 @@ impl State {
             0,
         );
 
+        let mut entity_uniforms = vec![];
+        for i in 0 .. entities.len() {
+            entity_uniforms.push(sprite::Uniforms::new(&device, sprite_size_px));
+        }
+
         // set up imgui
 
         let hidpi_factor = window.scale_factor();
@@ -333,9 +339,10 @@ impl State {
             stage_hit_tester,
             map,
 
-            firebrand_uniforms: firebrand_uniforms,
             entity_material,
+            firebrand_uniforms: firebrand_uniforms,
             firebrand,
+            entity_uniforms,
             entities,
 
             winit_platform,
@@ -469,6 +476,13 @@ impl State {
         }
 
         self.firebrand_uniforms.write(&mut self.queue);
+
+        // update game entities
+        for e in &mut self.entities {
+            e.update(dt);
+        }
+
+        self.entities.retain(|e| e.is_alive());
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -553,6 +567,11 @@ impl State {
                 &self.firebrand_uniforms,
                 cycle,
             );
+
+            // render entities
+            for (e,u) in self.entities.iter().zip(self.entity_uniforms.iter()) {
+                e.draw(&mut render_pass, &self.camera_uniforms, u);
+            }
         }
 
         //

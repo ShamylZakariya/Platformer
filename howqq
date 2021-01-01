@@ -1,0 +1,719 @@
+[33mcommit 13a03eea3d28020aafac86ce2b94deb97653eb14[m[33m ([m[1;36mHEAD -> [m[1;32mentities-and-falling-tiles[m[33m, [m[1;31morigin/entities-and-falling-tiles[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 31 14:58:54 2020 -0800
+
+    WIP: Implement skeleton/plumbing for entities
+    
+    - new Entities layer in map
+    - new Entity trait and factory method
+
+[33mcommit 102e3eb3e1ecdc6ce0383e87911b928edec44d8d[m[33m ([m[1;31morigin/water-and-dynamic-tiles[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 31 09:49:01 2020 -0800
+
+    Update NOTES
+
+[33mcommit cc90a05657ce0a971e98d5cb98af002222eed4fb[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 30 19:31:36 2020 -0800
+
+    Implement water tiles
+    
+    - Refactored how Map::generate_sprites computes tile depth to allow
+      water tiles to draw in front of entites
+
+[33mcommit ac0f42287adb6f1f91bcf63caf198751ff8b8a13[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 30 08:42:29 2020 -0800
+
+    Move water tiles to foreground and draw character beneath
+
+[33mcommit 4d9a57d98195363c426a2795098325e4a71b07bb[m[33m ([m[1;31morigin/camera-improvements[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 30 08:22:21 2020 -0800
+
+    Update NOTES
+
+[33mcommit 568a0869465242192e4a0fbbb5156db5cff6ad33[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 30 07:53:28 2020 -0800
+
+    Clamp camera viewable region to map bounds
+
+[33mcommit 39d6b92e85b6d2f85a62167e7c0b35827b1a7e1c[m[33m ([m[1;31morigin/character-animation-cycle[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 29 10:36:01 2020 -0800
+
+    Improvements to animation cycles
+    
+    - Adds missing jump and flight frames
+    - Improves frame timings to better match game
+    - Fixes walk cycle to match game
+
+[33mcommit d8690e944460f542e31674d4c83c17d5c180b271[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Dec 28 19:52:57 2020 -0800
+
+    Make character face the direction of movement
+    
+    - also make the Sprite and Camera UniformData structs have chainable
+      mutator functions for convenience.
+
+[33mcommit 7d756af006490faedd28f591a33180e431a6816a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Dec 28 08:41:55 2020 -0800
+
+    Add jump animation cycle
+
+[33mcommit 724eaa373bfeca3bd8eb46a68fa3d5a0ccff6b95[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 17:15:37 2020 -0800
+
+    WIP: Basic character cycle animations
+    
+    - timings not yet based on game footage
+    - no support for character facing left, only right
+    - need footage of character jumping, we only have sprites for flight
+
+[33mcommit 1fb35f59dea0d14a52220d020385a9aac0cd0968[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 16:43:44 2020 -0800
+
+    Add updated XCF files for level 1 fixes
+
+[33mcommit 4f0e6e19984b569a9d6774f909222fcff2af241d[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 15:54:05 2020 -0800
+
+    Small fixes to the level_1 map
+
+[33mcommit 82233959f85ff79a237749198d2d4fe2045dd3b0[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 15:53:41 2020 -0800
+
+    Remove spurious println
+
+[33mcommit 489c1fbe3a3dcc39d9870d5bfc30d3c44514a1f0[m[33m ([m[1;31morigin/character-controller[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 15:50:39 2020 -0800
+
+    Notes
+
+[33mcommit 0895910aca3ae2ef419e21626d000089b37431cc[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Dec 27 15:47:52 2020 -0800
+
+    Improvement to jumping/wallgrabbing behavior
+    
+    - Character can now bump over an upper part of a ledge block without
+      wallgrabbing.
+
+[33mcommit e0abe68bc901a18a53551b5c0b6a2366cb28df9d[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Dec 26 15:04:30 2020 -0800
+
+    Disable pixel snap for camera positioning since it caused hairline cracks in tiling
+
+[33mcommit b7659044f0658c96aae641ea5c85141af31f8fd9[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Dec 26 15:04:00 2020 -0800
+
+    Implement wallhold jumping
+
+[33mcommit 46d70e484861672836681395acbe67c712f76c9d[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Dec 26 14:36:29 2020 -0800
+
+    Minor code refactor for jumping
+
+[33mcommit 5ac37a7232ea2682d32e0971d7b1df7433598782[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Dec 26 14:20:56 2020 -0800
+
+    Refactor jump timing to work similarly to flight timing
+
+[33mcommit e4bf32a993de00325a9ce2d74af58f0f5dbb67a1[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Dec 26 14:11:50 2020 -0800
+
+    WIP: Character can now wallhold, but not jump away from wall yet
+
+[33mcommit efc27fcc9b16b4612208971ba169203faaca6919[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 24 16:34:00 2020 -0800
+
+    Improvement to flying behavior
+    
+    - flight has a time reserviour now, which counts down until empty, and
+      is only replenished on transition to standing or wall grab
+
+[33mcommit 6c93e8883c0b6de537ae2d04d18e9123a0f45850[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 24 16:00:40 2020 -0800
+
+    Improvements to jumping
+    
+    - fixes bug where jumping against/over a block caused character to attach to
+      top of that block
+    - fixes to gravity application
+    - when jumping up into a ceiling, fixes bug that prevented that
+      collision from happening, and also now terminates vertical phase of
+      jump
+
+[33mcommit e4f23206d0566923bcae96cb13d9009ba8a537b2[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 24 11:12:32 2020 -0800
+
+    Add flight "bob" cycle to character
+    
+    - Also fix a bug that sometimes prevented jumps from happening.
+
+[33mcommit dd7df3524b4cb36e6f4c5db74286ae7d8edb0095[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 23 08:32:44 2020 -0800
+
+    Add basic flight support, and fix issue with sequential jumps
+
+[33mcommit 8e92999b55240348d460f9fa767ce515687afc6a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 22 18:55:00 2020 -0800
+
+    Tweak walking speed
+    
+    - also clamp character position to be inside map
+
+[33mcommit 9528012bd645fb56728ebd824c24b2ffe4f94b05[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 22 09:13:56 2020 -0800
+
+    Add toggle to make camera track player
+
+[33mcommit 5fb2be2a2872f8d91bb7b4d16c6d2e8c379d62f3[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 22 08:41:33 2020 -0800
+
+    WIP: Improvements to jumping
+
+[33mcommit 663f1c1dc41cf85b9d4ee0cd1efab74874af1530[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 17 08:35:10 2020 -0800
+
+    WIP: Jumping
+    
+    Implement a more fine-grained keyboard button state approach to handle
+    pressed->down->relased->up button states.
+
+[33mcommit 7627d843100bf4c0b514a11fcf792152ee0c14d9[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 15 08:09:31 2020 -0800
+
+    WIP: Implementing gravity accel and walk speed sourced from video
+
+[33mcommit 9f9953a454aaee392b49a2976bd0b0ac54879964[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Dec 10 08:16:00 2020 -0800
+
+    Small code cleanups
+
+[33mcommit 83639d1cc2bf83c841d90446011cc43d9506d2c5[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 9 20:53:54 2020 -0800
+
+    Implement FLAG_MAP_TILE_IS_RATCHET collision testing
+
+[33mcommit 382f11a787b261cc2646cbd11a56da54a2175bcb[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 9 08:34:53 2020 -0800
+
+    Minor code cleanup
+
+[33mcommit 86d28bc8e41b65bf1552fbb65a5e759a30699e61[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 9 08:14:04 2020 -0800
+
+    Finally, correct character positioning and collision state
+
+[33mcommit 2b8371db2b31b2a9466004a4e304967a5c810fea[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 8 19:36:16 2020 -0800
+
+    Fix issue causing weird chaarcter jumps
+    
+    - was picking wrong collider distance when character was on fractional boundaries
+
+[33mcommit b4f36171134e0cb46f754301a5f48b6dfc1360ac[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 8 07:18:01 2020 -0800
+
+    Refactor how probe() method works to keep data on stack
+
+[33mcommit b6636aaad7f8e49da257eebeb1c331cba50996ce[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Dec 7 19:49:17 2020 -0800
+
+    Change how collisions are computed
+    
+    Instead of responding to a movement, recording collision, and moving
+    character back, we now compute what character would collide with if
+    moved in a specified direction by some amount.
+
+[33mcommit 5c52f21fd244f0127a7b765013b6f4781f0f8102[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 2 08:17:27 2020 -0800
+
+    Implement basic ceiling collision handling
+    
+    - Does not handle ratchet type collisions
+
+[33mcommit f68e6758cff69bf53d8d90c42311a81dab0622f5[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Dec 2 07:52:30 2020 -0800
+
+    Minor refactoring to make sprite drawing more typesafe
+
+[33mcommit 4cc6c0c32a3c513e13346ef830ba2709ea96fede[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Dec 1 19:09:00 2020 -0800
+
+    Big improvement to footing and lateral motion collision
+    
+    - character can reliably walk sideways, and on slopes, without oddities.
+
+[33mcommit cd13645eea90988dba97b25db4039e8a94873e74[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 28 14:51:47 2020 -0800
+
+    Add character position to debug window
+
+[33mcommit cbf24a8b94f832a8128b31cc3271677d5be9dd1d[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 28 14:43:42 2020 -0800
+
+    WIP: Handle left/right collisions in character positioning
+
+[33mcommit da808f46b01e2053203e6c1304d7a2f915568679[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 27 20:29:29 2020 -0800
+
+    WIP: Improve character footing calculation
+
+[33mcommit b7d268fcee8fd171e12c11ef190412ed05c6882a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 27 17:04:25 2020 -0800
+
+    WIP Steps towards ground tracking for collision detection
+
+[33mcommit aab437eca3635ff6accb6c74e6c8ae76d3f0278a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 27 15:17:14 2020 -0800
+
+    Fix minor render issue with debug stage sprites
+    
+    - Also add a renderdoc config to make life easier.
+
+[33mcommit 09baa8d0cff80e8bea31d1837547fdb8da2fd5c8[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 27 15:08:34 2020 -0800
+
+    Add a debug character draw mode
+
+[33mcommit adafb19f4f6cd0bbefdcbd2732734ef423487281[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 27 14:50:43 2020 -0800
+
+    WIP: Contact visualization to aid in character controller
+    
+    - Adds a mechanism to draw specific sprites in a
+      SpriteCollection/SpriteMesh with their own uniform buffers
+    - CharacterController exposes overlap and contact with stage
+
+[33mcommit 134b8ac890120f3e558f72d4c9ce06451fb3a8ec[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Nov 22 15:49:17 2020 -0800
+
+    Move level geometry back in depth
+
+[33mcommit 5433c8681028e5b441ba595d30b0ff6a4a069b00[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Nov 22 15:31:27 2020 -0800
+
+    Implement gravity with collision against map tiles
+
+[33mcommit 32059ca165bb20909ff667396a1ce1d0170334bf[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 18 07:45:34 2020 -0800
+
+    Snap camera movement to pixel boundaries.
+
+[33mcommit 1274ec5719bc075f1701fd36851211c5c7a633ee[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 14 13:51:49 2020 -0800
+
+    Snap sprites to pixel position when rendering
+
+[33mcommit d0e35e153ac5babb213da8f6e0d9ed667cbc1437[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 14 13:36:12 2020 -0800
+
+    First steps towards a "character controller"
+    
+    - doesn't do gameplay control, but moves firebrand sprite around
+      and can specify the sprite cycle to use.
+
+[33mcommit 4210edf1613c9c66a634f75026d5fd2be2a68c01[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 14 12:57:45 2020 -0800
+
+    Move sprite_entity::SpriteEntity into sprite::
+
+[33mcommit 8dfd296e5eeb00130562dc3b2d55c27bba9d034d[m[33m ([m[1;31morigin/add-character-sprite[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 13 08:24:33 2020 -0800
+
+    Rename SpriteShape to SpriteCollisionShape, and add None type.
+    
+    - Fix: Misunderstanding of tsx format lead to Tile instances only for
+      tiles with custom properties. This was wrong.
+
+[33mcommit c54c23fd60afc53d123e72f01db3703523e82484[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 13 07:49:16 2020 -0800
+
+    Fix cycle name for firebrand, now he renders.
+
+[33mcommit aa9195493e4e3e397971cd0103cd5d4599869be7[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 13 06:56:51 2020 -0800
+
+    Share a single pipeline for stage and entity rendering
+
+[33mcommit 25674414a44a3e7310893cee46db5d647b9b2804[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 13 06:49:14 2020 -0800
+
+    WIP: Got "firebrand" sprite_entity to render, with issues
+    
+    - uses its own pipeline, which is non-optimal
+    - the "cycle" collection in sprite_entity isn't working right, we only
+      have the root sprite
+
+[33mcommit 2f7b4e306dad73dd431713875468ca49b1cfc545[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Nov 12 17:09:32 2020 -0800
+
+    WIP: Refactoring how uniform data is represented
+
+[33mcommit dd38846be6f1a4b6356407ea9b20cefd5cfd28b6[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 11 19:42:05 2020 -0800
+
+    Adds an alpha channel to level tileset
+    
+    - Also makes the sprite render pipeline support blending
+
+[33mcommit 5bdb49515ca99018d07707af3c6eaa566284c5d0[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 11 12:44:59 2020 -0800
+
+    Move creation of uniform resources into respective impls
+
+[33mcommit 5f379fcb9a8361afa3f55aa3a19d3dff2d162dea[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 11 11:00:53 2020 -0800
+
+    Separated monolithic Uniforms struct into two
+    
+    - camera::Uniforms which deals with camera-specific data
+    - sprite::Uniforms which deals with sprite-rendering data
+
+[33mcommit 3cf2adf6656f8cdc255ef7eb9dc462f0bb502c65[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 11 10:46:00 2020 -0800
+
+    WIP: Sketching out the SpriteEntity loader
+
+[33mcommit c31898cbfa0543dd154ff1775a1114e353acf3fc[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Nov 10 08:59:30 2020 -0800
+
+    Move Uniforms to sprite.rs in prep for adding fields
+    
+    - also add z_depth param to Map::generate_sprites
+
+[33mcommit 5452fef86d46e840ef0c3231d08d305b69abfaf7[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Nov 10 07:47:04 2020 -0800
+
+    Fix build breakage
+
+[33mcommit 12d886e6ea01d475f3eefb233b60847f45b2942a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Nov 10 07:44:38 2020 -0800
+
+    Some initial refactoring before drawing entities
+    
+    - Moved SpriteCollection drawing from being an impl on RenderPass to
+      being just a method on SpriteCollection
+    - Renamed CameraUniforms to just Uniforms because I beleive we can use it for
+      all our needs
+    - Added skeleton SpriteEntity
+
+[33mcommit 1fd15171611f90828f91cdbea71e5f29d6e90725[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Nov 9 07:52:05 2020 -0800
+
+    Adds a spritesheet for Firebrand
+
+[33mcommit b05213b964f1193bbda810310e859d8822a7a7db[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Nov 8 18:37:14 2020 -0800
+
+    Fix sprite rendering for level_1
+
+[33mcommit 9ed21a28abf2fc31623101528f2f9b06ac4f5e8a[m[33m ([m[1;31morigin/map-processing[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Nov 8 11:59:10 2020 -0800
+
+    Implemented tile flipping/rotation for tmx format.
+    
+    - Some tiles are not rendering (?!), but the ones that are are rendering
+      correctly, even with flips and rotations.
+
+[33mcommit 21d4ddcaca4889bd797201e15f680ab8a621940a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Nov 7 16:28:15 2020 -0800
+
+    WIP: First rendering of the map/tileset
+    
+    - note, rendering is super broken, but it is rendering.
+
+[33mcommit 7d5223d7cb3c94d765e7fa32cd985b575a70fa9e[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 6 08:46:14 2020 -0800
+
+    Implement diagonal flips, and add test coverage.
+
+[33mcommit 948b8274d8983a42da62705f8a2cb759a37cfd0b[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 6 08:03:24 2020 -0800
+
+    Big refactoring of SpriteDesc storage
+    
+    - The addition of sprite flipping necessitated a rethink of sprite
+      coordinate frames from left/bottom/right/top to origin/extent.
+
+[33mcommit 36b44ec9a9b676e82900b46990885d5ce97fa7cd[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Nov 6 07:28:19 2020 -0800
+
+    WIP: Added texture coords to SpriteDesc
+    
+    - added flip functions for horizontal and vertical.
+
+[33mcommit 0ba3b0e15646a5e9bcdeb1322c289734189df823[m[33m ([m[1;31morigin/map-loader[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Nov 5 08:17:43 2020 -0800
+
+    Code cleanup to tileset
+    
+    - comment XmlEvent match arms
+    - use simpler idiom to mutate current_layer, dropping Deref/DerefMut
+      stuff
+
+[33mcommit 5108652f916b46d8786d560bd65e665f265aa893[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Nov 5 08:09:30 2020 -0800
+
+    Add map::Map which parses Tiled TMX map files.
+    
+    - handles a *bare* minimum of TMX file format, but enough for our needs
+      right now.
+
+[33mcommit ca7da5561ed5ec8da2cc2d84c3290733b63cec80[m[33m ([m[1;31morigin/spritesheet-loader[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 4 20:24:30 2020 -0800
+
+    Remove unused use decl
+
+[33mcommit 078ff0db5dfd040fdce1fa2062737ec4457af47f[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 4 19:58:27 2020 -0800
+
+    First pass at a tileset loader
+    
+    - provides the *barest* of support for Tiled TSX format
+
+[33mcommit ca8e3c3c05d08148c8343e0d86d931cbbec6583c[m[33m ([m[1;31morigin/sprite-improvements[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 4 17:13:01 2020 -0800
+
+    Renamed level and spritesheet files, and added Tiled project.
+
+[33mcommit da88c2de7620725d647df56f05bae4732f5f1579[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Nov 4 09:06:53 2020 -0800
+
+    Add spritesheet and level 1 tilemap
+
+[33mcommit 2895ae47a7079208fae373ec45bac82c31129b8c[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Nov 3 08:11:21 2020 -0800
+
+    Add first pass at Gargoyle's Quest level 1 map
+    
+    - Needs to be cut into a sprite sheet
+    - Needs to be turned into a level via Tiled editor
+
+[33mcommit 2c5b9ba17cd6d222518192910164afb0c8a77c3a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Nov 3 08:11:05 2020 -0800
+
+    Add sprite hit tester to state
+
+[33mcommit 9b223c8c6452cc0eb71c3085764aee7d3f7f849d[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Oct 31 11:21:57 2020 -0700
+
+    Add test coverage for SpriteHitTester
+    
+    - Renamed sprite "flags" to "mask"
+    - Fixed issue with rounding to int for unit sprites
+
+[33mcommit 098f6e2b9286d0695cdbcce9bf210f198e975108[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Fri Oct 30 09:08:26 2020 -0700
+
+    Implement first steps towards sprite hit testing
+
+[33mcommit ec0cc4384f7f7d364e3ba09cbe8f9f8fc45edf55[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Thu Oct 29 07:50:40 2020 -0700
+
+    Implement shaped sprites
+    
+    - right now that's just "square" and four triangle orientations.
+
+[33mcommit c30ba1b3d3193403e3f7d7babcc7dc5bde12bdf2[m[33m ([m[1;31morigin/ortho-camera[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 28 13:41:53 2020 -0700
+
+    Update notes
+
+[33mcommit c67f79e536c7afadda110bd9bb8370b7c6abb41f[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 28 13:41:05 2020 -0700
+
+    Implement ortho zoom, centered on center of context
+
+[33mcommit bc69cfaf8d2e158a2baa8031265e1ecb290be755[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 28 08:01:40 2020 -0700
+
+    First pass at an ortho camera.
+    
+    - is ortho
+    - scale is not symmetrical about center of window
+    - scale not being used, yet
+
+[33mcommit 24fcef8b3014df0bd4b62b23b010a72d8b61c69d[m[33m ([m[1;31morigin/improve-keyboard-handling[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 28 07:41:54 2020 -0700
+
+    Fixes how keyboard is handled by camera controller
+
+[33mcommit bcbf42b9ecaaeba5224a11e57cf18e4db65393c7[m[33m ([m[1;31morigin/add-imgui[m[33m)[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 28 06:57:56 2020 -0700
+
+    Implement a zoom slider using imgui.
+
+[33mcommit e3647a06cb9a493206cb04f6ce22dd23346ce648[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Oct 27 08:36:30 2020 -0700
+
+    Refactoring, cleanup
+    
+    - imgui ui rendering is in render_ui method
+    - processing of ui input (button presses, etc) is in process_ui_input
+
+[33mcommit 63603ed9c3922b381080a05340c6ac823cc9e20a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Oct 27 08:26:28 2020 -0700
+
+    Minor refactoring of imgui update/render pass
+
+[33mcommit ffdee8a44fddf77533756191adbeb89dd8683e7b[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Tue Oct 27 08:15:33 2020 -0700
+
+    Make a way for imgui ui to modify game state
+    
+    - This is possibly a naive, or overly complex mechanism, but it allows
+      imgui actions to modify game state, and for game state to be displayed
+    by imgui.
+
+[33mcommit fd86c2175ce74f47283dbef2ee72190279b96051[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Oct 26 08:47:48 2020 -0700
+
+    Display camera pos in imgui
+
+[33mcommit 61c9a353765fc798d522c97ef35d364ff2b38fff[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Oct 25 16:23:00 2020 -0700
+
+    Get input and resizing dispatched to imgui.
+
+[33mcommit 3b170b579ca8849a624bb4c4ec3077488fed858a[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Oct 25 11:37:24 2020 -0700
+
+    Adds incomplete imgui support
+    
+    - draws imgui contents
+    - does not handle input
+    - does not handle resize
+
+[33mcommit 5a696a49097f2a466d340e0455710cd699695965[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Wed Oct 21 07:42:32 2020 -0700
+
+    Implemented ortho-like camera, and a left-hand coordinate system
+
+[33mcommit c6d225f239926697b8c628c3db1b9eed981819a6[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Oct 19 07:56:12 2020 -0700
+
+    Small naming refactorings
+
+[33mcommit 1db5cef958f939a221cc8106bf7f523d44a4d258[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Mon Oct 19 07:47:19 2020 -0700
+
+    Add color to sprites, and refactor slightly the bind group layouts
+
+[33mcommit fa999a4c893e5eae855105b60c6578694dc99494[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sun Oct 18 10:21:17 2020 -0700
+
+    cargo fmt
+
+[33mcommit f84ebdb263c5c8ec1ece177b8aff70dd8130ff1f[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Oct 17 19:57:19 2020 -0700
+
+    Implemented a bare-bones sprite quad system.
+    
+    - we get textured pixels on screen
+
+[33mcommit 953e9110c4526b6696822b7a425218db9d48f489[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Oct 17 15:52:50 2020 -0700
+
+    Initial import of boilerplate/skeleton app
+
+[33mcommit fa9bf21ee04fd9f13999bc5484e89ca17f3b477f[m
+Author: Shamyl Zakariya <shamyl@gmail.com>
+Date:   Sat Oct 17 15:35:58 2020 -0700
+
+    Initial commit

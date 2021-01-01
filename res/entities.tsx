@@ -518,4 +518,11 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="240">
+  <properties>
+   <property name="cycle" value="default"/>
+   <property name="name" value="falling_bridge"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
 </tileset>
