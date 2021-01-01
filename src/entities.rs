@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
+use cgmath::{vec4, Point2, Point3, Zero};
 
 use crate::camera;
 use crate::sprite;
@@ -8,15 +9,10 @@ use crate::tileset;
 
 pub trait Entity {
     fn init(&mut self, sprite: &sprite::SpriteDesc, tile: &tileset::Tile);
-    fn update(&mut self, dt: Duration);
+    fn update(&mut self, dt: Duration, uniforms: &mut sprite::Uniforms);
     fn is_alive(&self) -> bool;
-    fn draw<'a, 'b>(
-        &'a self,
-        render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a sprite::Uniforms,
-    ) where
-        'a: 'b;
+    fn sprite_name(&self) -> &str;
+    fn sprite_cycle(&self) -> &str;
 }
 
 pub fn instantiate(
@@ -37,32 +33,36 @@ pub fn instantiate(
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-struct FallingBridge {}
+struct FallingBridge {
+    position: Point3<f32>,
+}
 
 impl Default for FallingBridge {
     fn default() -> Self {
-        Self {}
+        Self {
+            position: Point3::new(0.0, 0.0, 0.0),
+        }
     }
 }
 
 impl Entity for FallingBridge {
     fn init(&mut self, sprite: &sprite::SpriteDesc, tile: &tileset::Tile) {
-        println!("FallingBridge::init sprite: {:?} tile: {:?}", sprite, tile);
+        self.position = sprite.origin;
     }
 
-    fn update(&mut self, _dt: Duration) {}
+    fn update(&mut self, _dt: Duration, uniforms: &mut sprite::Uniforms) {
+        uniforms.data.set_model_position(&self.position);
+    }
 
     fn is_alive(&self) -> bool {
         true
     }
 
-    fn draw<'a, 'b>(
-        &'a self,
-        render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a sprite::Uniforms,
-    ) where
-        'a: 'b {
+    fn sprite_name(&self) -> &str {
+        "falling_bridge"
+    }
 
+    fn sprite_cycle(&self) -> &str {
+        "default"
     }
 }

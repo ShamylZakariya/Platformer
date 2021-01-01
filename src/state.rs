@@ -1,7 +1,7 @@
 use map::{FLAG_MAP_TILE_IS_ENTITY, FLAG_MAP_TILE_IS_WATER};
 use sprite::SpriteDesc;
-use std::{iter::Zip, path::Path};
 use std::rc::Rc;
+use std::{iter::Zip, path::Path};
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -91,6 +91,7 @@ pub struct State {
     firebrand_uniforms: sprite::Uniforms,
     firebrand: sprite::SpriteEntity,
     entity_uniforms: Vec<sprite::Uniforms>,
+    entity_sprites: Vec<sprite::SpriteEntity>,
     entities: Vec<Box<dyn entities::Entity>>,
 
     // Imgui
@@ -278,8 +279,16 @@ impl State {
         );
 
         let mut entity_uniforms = vec![];
-        for i in 0 .. entities.len() {
+        let mut entity_sprites = vec![];
+        for e in &entities {
             entity_uniforms.push(sprite::Uniforms::new(&device, sprite_size_px));
+            entity_sprites.push(sprite::SpriteEntity::load(
+                &entity_tileset,
+                entity_material.clone(),
+                &device,
+                e.sprite_name(),
+                0,
+            ));
         }
 
         // set up imgui
@@ -343,6 +352,7 @@ impl State {
             firebrand_uniforms: firebrand_uniforms,
             firebrand,
             entity_uniforms,
+            entity_sprites,
             entities,
 
             winit_platform,
@@ -478,8 +488,9 @@ impl State {
         self.firebrand_uniforms.write(&mut self.queue);
 
         // update game entities
-        for e in &mut self.entities {
-            e.update(dt);
+        for i in 0..self.entities.len() {
+            self.entities[i].update(dt, &mut self.entity_uniforms[i]);
+            self.entity_uniforms[i].write(&mut self.queue);
         }
 
         self.entities.retain(|e| e.is_alive());
@@ -569,8 +580,13 @@ impl State {
             );
 
             // render entities
-            for (e,u) in self.entities.iter().zip(self.entity_uniforms.iter()) {
-                e.draw(&mut render_pass, &self.camera_uniforms, u);
+            for i in 0..self.entities.len() {
+                self.entity_sprites[i].draw(
+                    &mut render_pass,
+                    &self.camera_uniforms,
+                    &self.entity_uniforms[i],
+                    self.entities[i].sprite_cycle(),
+                );
             }
         }
 
