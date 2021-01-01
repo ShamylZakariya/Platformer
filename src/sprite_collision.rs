@@ -29,7 +29,7 @@ pub struct CollisionSpace {
     unit_sprites: HashMap<Point2<i32>, SpriteDesc>,
 }
 
-const HASH_MAP_SCALE:i32 = 1000;
+const HASH_MAP_SCALE: i32 = 1000;
 
 impl CollisionSpace {
     pub fn new(sprites: &[SpriteDesc]) -> Self {
@@ -51,7 +51,7 @@ impl CollisionSpace {
         }
 
         Self {
-            unit_sprites: unit_sprite_map
+            unit_sprites: unit_sprite_map,
         }
     }
 
@@ -88,7 +88,10 @@ impl CollisionSpace {
     /// except that unit sprites will be tested before non-unit sprites.
     pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<SpriteDesc> {
         self.unit_sprites
-            .get(&Point2::new(point.x.floor() as i32 * HASH_MAP_SCALE, point.y.floor() as i32 * HASH_MAP_SCALE))
+            .get(&Point2::new(
+                point.x.floor() as i32 * HASH_MAP_SCALE,
+                point.y.floor() as i32 * HASH_MAP_SCALE,
+            ))
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
             .map(|s| *s)
     }
@@ -166,9 +169,7 @@ impl CollisionSpace {
             ProbeDir::Right => {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
-                    if let Some(s) =
-                        self.get_sprite_at(Point2::new(x, position_snapped.y), mask)
-                    {
+                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
                         result = Some((s.origin.x - (position.x + 1.0), s));
                         break;
                     }
@@ -177,9 +178,7 @@ impl CollisionSpace {
             ProbeDir::Up => {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
-                    if let Some(s) =
-                        self.get_sprite_at(Point2::new(position_snapped.x, y), mask)
-                    {
+                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
                         result = Some((s.origin.y - (position.y + 1.0), s));
                         break;
                     }
@@ -188,9 +187,7 @@ impl CollisionSpace {
             ProbeDir::Down => {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
-                    if let Some(s) =
-                        self.get_sprite_at(Point2::new(position_snapped.x, y), mask)
-                    {
+                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
                         result = Some((position.y - s.top(), s));
                         break;
                     }
@@ -199,9 +196,7 @@ impl CollisionSpace {
             ProbeDir::Left => {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
-                    if let Some(s) =
-                        self.get_sprite_at(Point2::new(x, position_snapped.y), mask)
-                    {
+                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
                         result = Some((position.x - s.right(), s));
                         break;
                     }
@@ -255,14 +250,14 @@ mod sprite_hit_tester {
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&Point2::new(unit_0.origin.x as i32, unit_0.origin.y as i32))
+                .get(&Point2::new(unit_0.origin.x as i32 * HASH_MAP_SCALE, unit_0.origin.y as i32 * HASH_MAP_SCALE))
                 .unwrap(),
             &unit_0
         );
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&Point2::new(unit_1.origin.x as i32, unit_1.origin.y as i32))
+                .get(&Point2::new(unit_1.origin.x as i32 * HASH_MAP_SCALE, unit_1.origin.y as i32 * HASH_MAP_SCALE))
                 .unwrap(),
             &unit_1
         );

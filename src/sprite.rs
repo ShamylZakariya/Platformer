@@ -320,6 +320,7 @@ pub struct SpriteDesc {
     pub tex_coord_extent: Vector2<f32>,
     pub color: Vector4<f32>,
     pub mask: u32,
+    pub entity_id: u32,
     flipped_diagonally: bool,
     flipped_horizontally: bool,
     flipped_vertically: bool,
@@ -328,6 +329,7 @@ pub struct SpriteDesc {
 impl PartialEq for SpriteDesc {
     fn eq(&self, other: &Self) -> bool {
         self.collision_shape == other.collision_shape
+            && self.entity_id == other.entity_id
             && self.mask == other.mask
             && relative_eq!(self.origin, other.origin)
             && relative_eq!(self.extent, other.extent)
@@ -343,6 +345,7 @@ impl PartialEq for SpriteDesc {
 impl Hash for SpriteDesc {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.collision_shape.hash(state);
+        self.entity_id.hash(state);
         hash_point3(&self.origin, state);
         hash_vec2(&self.extent, state);
         hash_point2(&self.tex_coord_origin, state);
@@ -382,6 +385,7 @@ impl SpriteDesc {
             tex_coord_extent,
             color,
             mask,
+            entity_id: 0,
             flipped_diagonally: false,
             flipped_horizontally: false,
             flipped_vertically: false,
@@ -406,6 +410,7 @@ impl SpriteDesc {
             tex_coord_extent,
             color,
             mask,
+            entity_id: 0,
             flipped_diagonally: false,
             flipped_horizontally: false,
             flipped_vertically: false,
@@ -595,6 +600,7 @@ impl SpriteDesc {
             tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            entity_id: self.entity_id,
             flipped_diagonally: self.flipped_diagonally,
             flipped_horizontally: !self.flipped_horizontally,
             flipped_vertically: self.flipped_vertically,
@@ -611,6 +617,7 @@ impl SpriteDesc {
             tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            entity_id: self.entity_id,
             flipped_diagonally: self.flipped_diagonally,
             flipped_horizontally: self.flipped_horizontally,
             flipped_vertically: !self.flipped_vertically,
@@ -629,6 +636,7 @@ impl SpriteDesc {
             tex_coord_extent: self.tex_coord_extent,
             color: self.color,
             mask: self.mask,
+            entity_id: self.entity_id,
             flipped_diagonally: !self.flipped_diagonally,
             flipped_horizontally: self.flipped_horizontally,
             flipped_vertically: self.flipped_vertically,

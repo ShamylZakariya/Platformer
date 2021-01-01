@@ -7,6 +7,26 @@ use crate::sprite;
 use crate::sprite_collision;
 use crate::tileset;
 
+pub struct EntityIdVendor {
+    current_id: u32,
+}
+
+impl Default for EntityIdVendor {
+    fn default() -> Self {
+        EntityIdVendor { current_id: 1u32 }
+    }
+}
+
+impl EntityIdVendor {
+    pub fn next_id(&mut self) -> u32 {
+        let r = self.current_id;
+        self.current_id += 1;
+        r
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 pub trait Entity {
     fn init(
         &mut self,
@@ -20,6 +40,7 @@ pub trait Entity {
         collision_space: &mut sprite_collision::CollisionSpace,
         uniforms: &mut sprite::Uniforms,
     );
+    fn entity_id(&self) -> u32;
     fn is_alive(&self) -> bool;
     fn sprite_name(&self) -> &str;
     fn sprite_cycle(&self) -> &str;
@@ -45,12 +66,14 @@ pub fn instantiate(
 // ---------------------------------------------------------------------------------------------------------------------
 
 struct FallingBridge {
+    entity_id: u32,
     position: Point3<f32>,
 }
 
 impl Default for FallingBridge {
     fn default() -> Self {
         Self {
+            entity_id: 0,
             position: Point3::new(0.0, 0.0, 0.0),
         }
     }
@@ -63,6 +86,7 @@ impl Entity for FallingBridge {
         tile: &tileset::Tile,
         collision_space: &mut sprite_collision::CollisionSpace,
     ) {
+        self.entity_id = sprite.entity_id;
         self.position = sprite.origin;
         collision_space.add_sprite(sprite);
     }
@@ -74,6 +98,10 @@ impl Entity for FallingBridge {
         uniforms: &mut sprite::Uniforms,
     ) {
         uniforms.data.set_model_position(&self.position);
+    }
+
+    fn entity_id(&self) -> u32 {
+        self.entity_id
     }
 
     fn is_alive(&self) -> bool {

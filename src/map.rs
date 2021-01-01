@@ -264,11 +264,16 @@ impl Map {
     {
         let mut sprites: Vec<sprite::SpriteDesc> = vec![];
 
-        self.generate(layer, z_depth, |sprite, _tile| {
-            if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
-                sprites.push(sprite.clone());
-            }
-        });
+        self.generate(
+            layer,
+            |_, _| 0, // sprites always have entity_id of zero
+            z_depth,
+            |sprite, _tile| {
+                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
+                    sprites.push(sprite.clone());
+                }
+            },
+        );
 
         sprites
     }
@@ -277,6 +282,7 @@ impl Map {
         &self,
         layer: &Layer,
         collision_space: &mut sprite_collision::CollisionSpace,
+        entity_id_vendor: &mut entities::EntityIdVendor,
         z_depth: F,
     ) -> Vec<Box<dyn entities::Entity>>
     where
@@ -284,22 +290,28 @@ impl Map {
     {
         let mut entities: Vec<Box<dyn entities::Entity>> = vec![];
 
-        self.generate(layer, z_depth, |sprite, tile| {
-            if let Some(name) = tile.get_property("entity_class") {
-                let entity = entities::instantiate(name, sprite, tile, collision_space).expect(
-                    &format!("Unable to instantiate Entity with class name \"{}\"", name),
-                );
-                entities.push(entity);
-            }
-        });
+        self.generate(
+            layer,
+            |_, _| entity_id_vendor.next_id(),
+            z_depth,
+            |sprite, tile| {
+                if let Some(name) = tile.get_property("entity_class") {
+                    let entity = entities::instantiate(name, sprite, tile, collision_space).expect(
+                        &format!("Unable to instantiate Entity with class name \"{}\"", name),
+                    );
+                    entities.push(entity);
+                }
+            },
+        );
 
         entities
     }
 
-    fn generate<Z, C>(&self, layer: &Layer, z_depth: Z, mut consumer: C)
+    fn generate<Z, C, E>(&self, layer: &Layer, mut entity_id_vendor: E, z_depth: Z, mut consumer: C)
     where
         Z: Fn(&SpriteDesc) -> f32,
         C: FnMut(&SpriteDesc, &tileset::Tile),
+        E: FnMut(&SpriteDesc, &tileset::Tile) -> u32,
     {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         let flipped_horizontally_flag = 0x80000000 as u32;
@@ -351,6 +363,10 @@ impl Map {
                         cgmath::vec4(1.0, 1.0, 1.0, 1.0),
                         mask,
                     );
+
+                    if mask & FLAG_MAP_TILE_IS_ENTITY != 0 {
+                        sd.entity_id = entity_id_vendor(&sd, tile);
+                    }
 
                     sd.origin.z = z_depth(&sd);
 

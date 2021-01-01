@@ -184,8 +184,14 @@ impl State {
             });
 
             // generate level entities
+            let mut entity_id_vendor = entities::EntityIdVendor::default();
             let mut collision_space = sprite_collision::CollisionSpace::new(&level_sprites);
-            let entities = map.generate_entities(entity_layer, &mut collision_space, |_| 0.9);
+            let entities = map.generate_entities(
+                entity_layer,
+                &mut collision_space,
+                &mut entity_id_vendor,
+                |_| 0.9,
+            );
 
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);
