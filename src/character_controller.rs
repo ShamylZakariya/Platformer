@@ -584,7 +584,9 @@ impl CharacterController {
         };
 
         for test_point in [below_center, center].iter() {
-            if let Some(s) = collision_space.get_sprite_at(*test_point, FLAG_MAP_TILE_IS_COLLIDER) {
+            if let Some(s) =
+                collision_space.get_sprite_at(*test_point, FLAG_MAP_TILE_IS_COLLIDER)
+            {
                 if can_collide_width(&position, &s) {
                     match s.collision_shape {
                         sprite::CollisionShape::Square => {

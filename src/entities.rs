@@ -1,15 +1,25 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use cgmath::{vec4, Point2, Point3, Zero};
+use cgmath::Point3;
 
-use crate::camera;
 use crate::sprite;
+use crate::sprite_collision;
 use crate::tileset;
 
 pub trait Entity {
-    fn init(&mut self, sprite: &sprite::SpriteDesc, tile: &tileset::Tile);
-    fn update(&mut self, dt: Duration, uniforms: &mut sprite::Uniforms);
+    fn init(
+        &mut self,
+        sprite: &sprite::SpriteDesc,
+        tile: &tileset::Tile,
+        collision_space: &mut sprite_collision::CollisionSpace,
+    );
+    fn update(
+        &mut self,
+        dt: Duration,
+        collision_space: &mut sprite_collision::CollisionSpace,
+        uniforms: &mut sprite::Uniforms,
+    );
     fn is_alive(&self) -> bool;
     fn sprite_name(&self) -> &str;
     fn sprite_cycle(&self) -> &str;
@@ -19,12 +29,13 @@ pub fn instantiate(
     classname: &str,
     sprite: &sprite::SpriteDesc,
     tile: &tileset::Tile,
+    collision_space: &mut sprite_collision::CollisionSpace,
 ) -> Result<Box<dyn Entity>> {
     if let Some(mut e) = match classname {
         "FallingBridge" => Some(Box::new(FallingBridge::default())),
         _ => None,
     } {
-        e.init(sprite, tile);
+        e.init(sprite, tile, collision_space);
         Ok(e)
     } else {
         anyhow::bail!("Unrecognized entity class \"{}\"", classname)
@@ -46,11 +57,22 @@ impl Default for FallingBridge {
 }
 
 impl Entity for FallingBridge {
-    fn init(&mut self, sprite: &sprite::SpriteDesc, tile: &tileset::Tile) {
+    fn init(
+        &mut self,
+        sprite: &sprite::SpriteDesc,
+        tile: &tileset::Tile,
+        collision_space: &mut sprite_collision::CollisionSpace,
+    ) {
         self.position = sprite.origin;
+        collision_space.add_sprite(sprite);
     }
 
-    fn update(&mut self, _dt: Duration, uniforms: &mut sprite::Uniforms) {
+    fn update(
+        &mut self,
+        dt: Duration,
+        collision_space: &mut sprite_collision::CollisionSpace,
+        uniforms: &mut sprite::Uniforms,
+    ) {
         uniforms.data.set_model_position(&self.position);
     }
 

@@ -83,7 +83,7 @@ pub struct State {
     stage_debug_draw_overlap_uniforms: sprite::Uniforms,
     stage_debug_draw_contact_uniforms: sprite::Uniforms,
     stage_sprite_collection: sprite::SpriteCollection,
-    stage_hit_tester: sprite_collision::CollisionSpace,
+    collision_space: sprite_collision::CollisionSpace,
     map: map::Map,
 
     // Entity rendering
@@ -184,7 +184,8 @@ impl State {
             });
 
             // generate level entities
-            let entities = map.generate_entities(entity_layer, |_| 0.9);
+            let mut collision_space = sprite_collision::CollisionSpace::new(&level_sprites);
+            let entities = map.generate_entities(entity_layer, &mut collision_space, |_| 0.9);
 
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);
@@ -193,7 +194,7 @@ impl State {
             let sm = sprite::SpriteMesh::new(&all_sprites, 0, &device, "Sprite Mesh");
             (
                 sprite::SpriteCollection::new(vec![sm], vec![mat]),
-                sprite_collision::CollisionSpace::new(&level_sprites),
+                collision_space,
                 entities,
             )
         };
@@ -345,7 +346,7 @@ impl State {
             stage_debug_draw_overlap_uniforms,
             stage_debug_draw_contact_uniforms,
             stage_sprite_collection,
-            stage_hit_tester,
+            collision_space: stage_hit_tester,
             map,
 
             entity_material,
@@ -459,7 +460,7 @@ impl State {
             .write(&mut self.queue);
 
         // Update player character state
-        let character_state = self.character_controller.update(dt, &self.stage_hit_tester);
+        let character_state = self.character_controller.update(dt, &self.collision_space);
 
         if self.camera_tracks_character {
             let cp = self.camera.position();
@@ -489,7 +490,7 @@ impl State {
 
         // update game entities
         for i in 0..self.entities.len() {
-            self.entities[i].update(dt, &mut self.entity_uniforms[i]);
+            self.entities[i].update(dt, &mut self.collision_space, &mut self.entity_uniforms[i]);
             self.entity_uniforms[i].write(&mut self.queue);
         }
 

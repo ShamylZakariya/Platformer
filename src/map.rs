@@ -5,9 +5,9 @@ use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
-use crate::entities;
 use crate::sprite;
 use crate::tileset;
+use crate::{entities, sprite_collision};
 
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
@@ -273,7 +273,12 @@ impl Map {
         sprites
     }
 
-    pub fn generate_entities<F>(&self, layer: &Layer, z_depth: F) -> Vec<Box<dyn entities::Entity>>
+    pub fn generate_entities<F>(
+        &self,
+        layer: &Layer,
+        collision_space: &mut sprite_collision::CollisionSpace,
+        z_depth: F,
+    ) -> Vec<Box<dyn entities::Entity>>
     where
         F: Fn(&SpriteDesc) -> f32,
     {
@@ -281,10 +286,9 @@ impl Map {
 
         self.generate(layer, z_depth, |sprite, tile| {
             if let Some(name) = tile.get_property("entity_class") {
-                let entity = entities::instantiate(name, sprite, tile).expect(&format!(
-                    "Unable to instantiate Entity with class name \"{}\"",
-                    name
-                ));
+                let entity = entities::instantiate(name, sprite, tile, collision_space).expect(
+                    &format!("Unable to instantiate Entity with class name \"{}\"", name),
+                );
                 entities.push(entity);
             }
         });
