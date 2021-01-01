@@ -83,18 +83,18 @@ impl Entity for FallingBridge {
     fn init(
         &mut self,
         sprite: &sprite::SpriteDesc,
-        tile: &tileset::Tile,
+        _tile: &tileset::Tile,
         collision_space: &mut sprite_collision::CollisionSpace,
     ) {
-        self.entity_id = sprite.entity_id;
+        self.entity_id = sprite.entity_id.expect("Entity sprites should have an entity_id");
         self.position = sprite.origin;
         collision_space.add_sprite(sprite);
     }
 
     fn update(
         &mut self,
-        dt: Duration,
-        collision_space: &mut sprite_collision::CollisionSpace,
+        _dt: Duration,
+        _collision_space: &mut sprite_collision::CollisionSpace,
         uniforms: &mut sprite::Uniforms,
     ) {
         uniforms.data.set_model_position(&self.position);

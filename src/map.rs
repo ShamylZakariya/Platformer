@@ -365,7 +365,7 @@ impl Map {
                     );
 
                     if mask & FLAG_MAP_TILE_IS_ENTITY != 0 {
-                        sd.entity_id = entity_id_vendor(&sd, tile);
+                        sd.entity_id = Some(entity_id_vendor(&sd, tile));
                     }
 
                     sd.origin.z = z_depth(&sd);

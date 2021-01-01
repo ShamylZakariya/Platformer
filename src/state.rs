@@ -1,7 +1,6 @@
-use map::{FLAG_MAP_TILE_IS_ENTITY, FLAG_MAP_TILE_IS_WATER};
-use sprite::SpriteDesc;
+use map::FLAG_MAP_TILE_IS_WATER;
+use std::path::Path;
 use std::rc::Rc;
-use std::{iter::Zip, path::Path};
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
