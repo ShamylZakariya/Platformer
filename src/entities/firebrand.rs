@@ -1,12 +1,15 @@
-use cgmath::{vec2, Point2, Vector2, Zero};
-use std::{collections::HashSet, f32::consts::PI, time::Duration, unimplemented};
-use winit::event::*;
+use std::{collections::HashSet, f32::consts::PI, time::Duration};
 
-use crate::collision::{ProbeDir, ProbeResult, Space};
-use crate::constants;
-use crate::entity::{Dispatcher, Event, Message};
-use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER};
-use crate::sprite;
+use cgmath::{vec2, Point2, Vector2, Zero};
+use winit::event::{ElementState, VirtualKeyCode};
+
+use crate::{
+    collision::{self, ProbeDir, ProbeResult, Space},
+    constants,
+    entity::{Dispatcher, Entity, Event, Message},
+    map::{self, FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER},
+    sprite, tileset,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -92,9 +95,9 @@ pub struct CharacterState {
 }
 
 impl CharacterState {
-    fn new(position: &Point2<f32>) -> Self {
+    fn new(position: Point2<f32>) -> Self {
         CharacterState {
-            position: *position,
+            position: position,
             position_offset: Zero::zero(),
             cycle: CHARACTER_CYCLE_DEFAULT,
             stance: Stance::Standing,
@@ -209,11 +212,15 @@ fn input_accumulator(negative: ButtonState, positive: ButtonState) -> f32 {
     acc
 }
 
-#[derive(Debug)]
-pub struct CharacterController {
+// ---------------------------------------------------------------------------------------------------------------------
+
+pub struct Firebrand {
+    entity_id: u32,
+    sprite_size_px: Vector2<f32>,
+
     time: f32,
     input_state: InputState,
-    pub character_state: CharacterState,
+    character_state: CharacterState,
 
     // sprites the character is overlapping and might collide with
     pub overlapping_sprites: HashSet<sprite::SpriteDesc>,
@@ -228,22 +235,18 @@ pub struct CharacterController {
     wallgrab_jump_dir: f32, // -1 for left, +1 for right
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
-    pixels_per_unit: f32,
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
 }
 
-impl CharacterController {
-    pub fn new(
-        position: &Point2<f32>,
-        map_origin: Point2<f32>,
-        map_extent: Vector2<f32>,
-        pixels_per_unit: u32,
-    ) -> Self {
+impl Default for Firebrand {
+    fn default() -> Self {
         Self {
+            entity_id: 0,
+            sprite_size_px: vec2(0.0, 0.0),
             time: 0.0,
             input_state: Default::default(),
-            character_state: CharacterState::new(position),
+            character_state: CharacterState::new(Point2::new(0.0, 0.0)),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
@@ -251,40 +254,44 @@ impl CharacterController {
             flight_time_remaining: constants::FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_time_remaining: 0.0,
             wallgrab_jump_dir: 0.0,
-            map_origin,
-            map_extent,
-            pixels_per_unit: pixels_per_unit as f32,
+            map_origin: Point2::new(0.0, 0.0),
+            map_extent: vec2(0.0, 0.0),
             cycle_animation_time_elapsed: None,
             in_water: false,
         }
     }
+}
 
-    pub fn is_jumping(&self) -> bool {
-        self.character_state.stance == Stance::InAir && self.jump_time_remaining > 0.0
+impl Entity for Firebrand {
+    fn init(
+        &mut self,
+        sprite: &sprite::SpriteDesc,
+        tile: &tileset::Tile,
+        map: &map::Map,
+        _collision_space: &mut collision::Space,
+        sprite_size_px: Vector2<f32>,
+    ) {
+        println!("Firebrand::init sprite: {:?}, tile: {:?}", sprite, tile);
+        self.entity_id = sprite
+            .entity_id
+            .expect("Entity sprites should have an entity_id");
+        self.sprite_size_px = sprite_size_px;
+        self.map_origin = Point2::new(0.0, 0.0);
+        self.map_extent = vec2(map.width as f32, map.height as f32);
+        self.character_state.position = Point2::new(sprite.origin.x, sprite.origin.y);
     }
 
-    pub fn is_flying(&self) -> bool {
-        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
-    }
-
-    pub fn is_wallholding(&self) -> bool {
-        match self.character_state.stance {
-            Stance::WallHold(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
         self.input_state.process_keyboard(key, state)
     }
 
-    pub fn update(
+    fn update(
         &mut self,
         dt: Duration,
-        collision_space: &Space,
-        collision_dispatcher: &mut Dispatcher,
+        collision_space: &mut collision::Space,
+        message_dispatcher: &mut Dispatcher,
         uniforms: &mut sprite::Uniforms,
-    ) -> &CharacterState {
+    ) {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
@@ -454,7 +461,8 @@ impl CharacterController {
                         * 0.5
                         + 0.5; // remap to [0,1]
                 let bob_offset = bob_cycle * constants::FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
-                self.character_state.position_offset = vec2(0.0, bob_offset / self.pixels_per_unit);
+                self.character_state.position_offset =
+                    vec2(0.0, bob_offset / self.sprite_size_px.y);
             }
 
             // Decrement remaining flight time
@@ -494,7 +502,7 @@ impl CharacterController {
 
         for s in &self.contacting_sprites {
             if let Some(entity_id) = s.entity_id {
-                collision_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
+                message_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
             }
         }
 
@@ -526,8 +534,45 @@ impl CharacterController {
                     0.5,
                 ));
         }
+    }
 
-        &self.character_state
+    fn entity_id(&self) -> u32 {
+        self.entity_id
+    }
+
+    fn is_alive(&self) -> bool {
+        true
+    }
+
+    fn position(&self) -> Point2<f32> {
+        self.character_state.position
+    }
+
+    fn sprite_name(&self) -> &str {
+        "firebrand"
+    }
+
+    fn sprite_cycle(&self) -> &str {
+        self.character_state.cycle
+    }
+
+    fn handle_collision(&mut self, _message: &Message) {}
+}
+
+impl Firebrand {
+    pub fn is_jumping(&self) -> bool {
+        self.character_state.stance == Stance::InAir && self.jump_time_remaining > 0.0
+    }
+
+    pub fn is_flying(&self) -> bool {
+        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
+    }
+
+    pub fn is_wallholding(&self) -> bool {
+        match self.character_state.stance {
+            Stance::WallHold(_) => true,
+            _ => false,
+        }
     }
 
     fn set_stance(&mut self, new_stance: Stance) {

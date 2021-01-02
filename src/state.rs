@@ -7,7 +7,6 @@ use winit::{
 };
 
 use crate::camera;
-use crate::character_controller;
 use crate::collision;
 use crate::entity;
 use crate::map;
@@ -17,15 +16,14 @@ use crate::tileset;
 
 // --------------------------------------------------------------------------------------------------------------------
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 struct UiDisplayState {
     camera_tracks_character: bool,
     camera_position: cgmath::Point3<f32>,
     zoom: f32,
     character_position: cgmath::Point2<f32>,
-    character_cycle: &'static str,
+    character_cycle: String,
     draw_stage_collision_info: bool,
-    draw_entity_debug: bool,
 }
 
 impl Default for UiDisplayState {
@@ -35,9 +33,8 @@ impl Default for UiDisplayState {
             camera_position: [0.0, 0.0, 0.0].into(),
             zoom: 1.0,
             character_position: [0.0, 0.0].into(),
-            character_cycle: "",
+            character_cycle: "".to_string(),
             draw_stage_collision_info: true,
-            draw_entity_debug: true,
         }
     }
 }
@@ -64,7 +61,6 @@ pub struct State {
 
     // Input state
     camera_controller: camera::CameraController,
-    character_controller: character_controller::CharacterController,
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
@@ -89,11 +85,10 @@ pub struct State {
 
     // Entity rendering
     entity_material: Rc<sprite::SpriteMaterial>,
-    firebrand_uniforms: sprite::Uniforms,
-    firebrand: sprite::SpriteEntity,
     entity_uniforms: Vec<sprite::Uniforms>,
     entity_sprites: Vec<sprite::SpriteEntity>,
     entities: Vec<Box<dyn entity::Entity>>,
+    firebrand_entity_id: u32,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -101,7 +96,6 @@ pub struct State {
     imgui_renderer: imgui_wgpu::Renderer,
 
     // Toggles
-    draw_entity_debug: bool,
     draw_stage_collision_info: bool,
     camera_tracks_character: bool,
 }
@@ -211,26 +205,11 @@ impl State {
         };
 
         // Build camera, and camera uniform storage
-        let pixels_per_unit = map.tileset.tile_width;
         let map_origin = cgmath::Point2::new(0.0, 0.0);
         let map_extent = cgmath::Vector2::new(map.width as f32, map.height as f32);
-        let mut camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
+        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0, map_origin, map_extent);
-        let mut character_controller = character_controller::CharacterController::new(
-            &cgmath::Point2::new(1.0, 4.0),
-            map_origin,
-            map_extent,
-            pixels_per_unit,
-        );
-
-        character_controller.character_state.position.x = 58.0;
-        character_controller.character_state.position.y = 20.0;
-        camera.set_position(&cgmath::Point3::new(
-            character_controller.character_state.position.x,
-            character_controller.character_state.position.y,
-            camera.position().z,
-        ));
 
         let mut camera_uniforms = camera::Uniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
@@ -277,18 +256,14 @@ impl State {
             )
         });
 
-        let firebrand_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
-        let firebrand = sprite::SpriteEntity::load(
-            &entity_tileset,
-            entity_material.clone(),
-            &device,
-            "firebrand",
-            0,
-        );
-
         let mut entity_uniforms = vec![];
         let mut entity_sprites = vec![];
+        let mut firebrand_entity_id: u32 = 0;
         for e in &entities {
+            if e.sprite_name() == "firebrand" {
+                firebrand_entity_id = entity_uniforms.len() as u32;
+            }
+
             entity_uniforms.push(sprite::Uniforms::new(&device, sprite_size_px));
             entity_sprites.push(sprite::SpriteEntity::load(
                 &entity_tileset,
@@ -339,7 +314,6 @@ impl State {
             size,
 
             camera_controller,
-            character_controller,
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
 
@@ -359,17 +333,15 @@ impl State {
             collision_dispatcher: entity::Dispatcher::default(),
 
             entity_material,
-            firebrand_uniforms: firebrand_uniforms,
-            firebrand,
             entity_uniforms,
             entity_sprites,
             entities,
+            firebrand_entity_id,
 
             winit_platform,
             imgui,
             imgui_renderer,
 
-            draw_entity_debug: false,
             draw_stage_collision_info: false,
             camera_tracks_character: true,
         }
@@ -401,8 +373,13 @@ impl State {
                     },
                 ..
             } => {
-                self.character_controller.process_keyboard(*key, *state)
-                    || self.camera_controller.process_keyboard(*key, *state)
+                let mut consumed = false;
+                for e in &mut self.entities {
+                    if e.process_keyboard(*key, *state) {
+                        consumed = true;
+                    }
+                }
+                consumed || self.camera_controller.process_keyboard(*key, *state)
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 self.camera_controller.process_scroll(delta);
@@ -459,38 +436,6 @@ impl State {
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
-        //
-        // Update player character state
-        //
-
-        let character_state = self.character_controller.update(
-            dt,
-            &self.collision_space,
-            &mut self.collision_dispatcher,
-            &mut self.firebrand_uniforms,
-        );
-
-        self.firebrand_uniforms.write(&mut self.queue);
-
-        //
-        // Update camera state
-        //
-
-        self.camera_controller
-            .update_camera(&mut self.camera, &mut self.projection, dt);
-        self.camera_uniforms
-            .data
-            .update_view_proj(&self.camera, &self.projection);
-
-        if self.camera_tracks_character {
-            let cp = self.camera.position();
-            let p = character_state.position;
-            self.camera
-                .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
-        }
-
-        self.camera_uniforms.write(&mut self.queue);
-
         // Update game entities
         // TODO: Research how best to compact our multiple arrays together, because Vec::retain will only
         // affect one at a time. We'd need to run a pass collecting indices first, then use the indices in multiple
@@ -506,6 +451,25 @@ impl State {
                 self.entity_uniforms[i].write(&mut self.queue);
             }
         }
+
+        //
+        // Update camera state
+        //
+
+        self.camera_controller
+            .update_camera(&mut self.camera, &mut self.projection, dt);
+        self.camera_uniforms
+            .data
+            .update_view_proj(&self.camera, &self.projection);
+
+        if self.camera_tracks_character {
+            let cp = self.camera.position();
+            let p = self.entities[self.firebrand_entity_id as usize].position();
+            self.camera
+                .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
+        }
+
+        self.camera_uniforms.write(&mut self.queue);
 
         // Dispatch collisions
         for m in &self.collision_dispatcher.messages {
@@ -564,38 +528,26 @@ impl State {
                 &self.stage_uniforms,
             );
 
-            if self.draw_stage_collision_info {
-                if !self.character_controller.overlapping_sprites.is_empty() {
-                    self.stage_sprite_collection.draw_sprites(
-                        &self.character_controller.overlapping_sprites,
-                        &mut render_pass,
-                        &self.camera_uniforms,
-                        &self.stage_debug_draw_overlap_uniforms,
-                    );
-                }
+            // TODO: How do we expose this info from Firebrand entity?
+            // if self.draw_stage_collision_info {
+            //     if !self.character_controller.overlapping_sprites.is_empty() {
+            //         self.stage_sprite_collection.draw_sprites(
+            //             &self.character_controller.overlapping_sprites,
+            //             &mut render_pass,
+            //             &self.camera_uniforms,
+            //             &self.stage_debug_draw_overlap_uniforms,
+            //         );
+            //     }
 
-                if !self.character_controller.contacting_sprites.is_empty() {
-                    self.stage_sprite_collection.draw_sprites(
-                        &self.character_controller.contacting_sprites,
-                        &mut render_pass,
-                        &self.camera_uniforms,
-                        &self.stage_debug_draw_contact_uniforms,
-                    );
-                }
-            }
-
-            // Render player character
-            let cycle = if self.draw_entity_debug {
-                character_controller::CHARACTER_CYCLE_DEBUG
-            } else {
-                self.character_controller.character_state.cycle
-            };
-            self.firebrand.draw(
-                &mut render_pass,
-                &self.camera_uniforms,
-                &self.firebrand_uniforms,
-                cycle,
-            );
+            //     if !self.character_controller.contacting_sprites.is_empty() {
+            //         self.stage_sprite_collection.draw_sprites(
+            //             &self.character_controller.contacting_sprites,
+            //             &mut render_pass,
+            //             &self.camera_uniforms,
+            //             &self.stage_debug_draw_contact_uniforms,
+            //         );
+            //     }
+            // }
 
             // render entities
             for i in 0..self.entities.len() {
@@ -686,14 +638,6 @@ impl State {
                 ) {
                     ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
                 }
-
-                let mut draw_entity_debug = ui_display_state.draw_entity_debug;
-                if ui.checkbox(
-                    imgui::im_str!("Debug Draw Entities"),
-                    &mut draw_entity_debug,
-                ) {
-                    ui_input_state.draw_entity_debug = Some(draw_entity_debug);
-                }
             });
 
         //
@@ -726,10 +670,11 @@ impl State {
             camera_tracks_character: self.camera_tracks_character,
             camera_position: self.camera.position(),
             zoom: self.projection.scale(),
-            character_position: self.character_controller.character_state.position,
-            character_cycle: self.character_controller.character_state.cycle,
+            character_position: self.entities[self.firebrand_entity_id as usize].position(),
             draw_stage_collision_info: self.draw_stage_collision_info,
-            draw_entity_debug: self.draw_entity_debug,
+            character_cycle: self.entities[self.firebrand_entity_id as usize]
+                .sprite_cycle()
+                .to_string(),
         }
     }
 
@@ -739,9 +684,6 @@ impl State {
         }
         if let Some(d) = ui_input_state.draw_stage_collision_info {
             self.draw_stage_collision_info = d;
-        }
-        if let Some(d) = ui_input_state.draw_entity_debug {
-            self.draw_entity_debug = d;
         }
         if let Some(ctp) = ui_input_state.camera_tracks_character {
             self.camera_tracks_character = ctp;

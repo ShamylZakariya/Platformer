@@ -480,44 +480,6 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
- <tile id="220">
-  <properties>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-  </properties>
- </tile>
- <tile id="221">
-  <properties>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-  </properties>
- </tile>
- <tile id="222">
-  <properties>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-  </properties>
- </tile>
- <tile id="236">
-  <properties>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-  </properties>
- </tile>
- <tile id="237">
-  <properties>
-   <property name="collision_shape" value="square"/>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-   <property name="role" value="root"/>
-  </properties>
- </tile>
- <tile id="238">
-  <properties>
-   <property name="cycle" value="debug"/>
-   <property name="name" value="firebrand"/>
-  </properties>
- </tile>
  <tile id="240">
   <properties>
    <property name="cycle" value="default"/>

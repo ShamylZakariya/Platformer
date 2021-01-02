@@ -298,12 +298,18 @@ impl Map {
             z_depth,
             |sprite, tile| {
                 if let Some(name) = tile.get_property("entity_class") {
-                    let entity =
-                        entities::instantiate(name, sprite, tile, collision_space, sprite_size_px)
-                            .expect(&format!(
-                                "Unable to instantiate Entity with class name \"{}\"",
-                                name
-                            ));
+                    let entity = entities::instantiate(
+                        name,
+                        sprite,
+                        tile,
+                        self,
+                        collision_space,
+                        sprite_size_px,
+                    )
+                    .expect(&format!(
+                        "Unable to instantiate Entity with class name \"{}\"",
+                        name
+                    ));
                     entities.push(entity);
                 }
             },

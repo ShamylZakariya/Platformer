@@ -1,9 +1,7 @@
 CURRENTLY:
-    Falling Tiles
-        - need to plumb pixel density in, because the 2px drop on contact is at present hardcoded as 2/16
+    - How do I expose the info needed for colorizing firebrand's contacts/collisions while staying an anonymous entity?
 
 TODO:
-    - Character can be refactored into an Entity impl.
     - implement kickback from contact with spikes, etc
     - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
     - Simplify

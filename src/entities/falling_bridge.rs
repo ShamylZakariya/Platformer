@@ -1,11 +1,12 @@
 use std::time::Duration;
 
-use cgmath::{vec2, Point3, Vector2};
+use cgmath::{vec2, Point2, Point3, Vector2};
+use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     collision, constants,
     entity::{Dispatcher, Entity, Event, Message},
-    sprite, tileset,
+    map, sprite, tileset,
 };
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
@@ -39,6 +40,7 @@ impl Entity for FallingBridge {
         &mut self,
         sprite: &sprite::SpriteDesc,
         _tile: &tileset::Tile,
+        _map: &map::Map,
         collision_space: &mut collision::Space,
         sprite_size_px: Vector2<f32>,
     ) {
@@ -49,6 +51,11 @@ impl Entity for FallingBridge {
         self.position = sprite.origin;
         self.sprite_size_px = sprite_size_px;
         collision_space.add_sprite(sprite);
+    }
+
+    fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
+        // FallingBridge doesn't consume input
+        false
     }
 
     fn update(
@@ -92,6 +99,10 @@ impl Entity for FallingBridge {
     fn is_alive(&self) -> bool {
         // once we fall off bottom of the screen, we're done
         self.position.y > -1.0
+    }
+
+    fn position(&self) -> Point2<f32> {
+        Point2::new(self.position.x, self.position.y)
     }
 
     fn sprite_name(&self) -> &str {

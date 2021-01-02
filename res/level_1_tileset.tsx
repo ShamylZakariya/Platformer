@@ -87,4 +87,9 @@
    <property name="collision_shape" value="square"/>
   </properties>
  </tile>
+ <tile id="37">
+  <properties>
+   <property name="entity_class" value="Firebrand"/>
+  </properties>
+ </tile>
 </tileset>
