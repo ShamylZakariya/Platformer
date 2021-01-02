@@ -5,6 +5,7 @@ CURRENTLY:
 TODO:
     - Character can be refactored into an Entity impl.
     - implement kickback from contact with spikes, etc
+    - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
     - Simplify
 
 BUGS:
@@ -12,7 +13,6 @@ BUGS:
         - could outset sprites a half pixel (what's apixel at different scales?)
         - could make each "layer" an indexed mesh
             - this will break texture mapping right?
-    - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
 
 TODO:
     - sprite.rs is too big - make it a module which re-exports various smaller sub components
