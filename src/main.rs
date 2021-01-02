@@ -11,6 +11,7 @@ mod character_controller;
 mod collision;
 mod constants;
 mod entities;
+mod entity;
 mod geom;
 mod map;
 mod sprite;

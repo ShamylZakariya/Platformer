@@ -1,117 +1,16 @@
 use std::time::Duration;
 
-use anyhow::Result;
 use cgmath::{vec2, Point3, Vector2};
 
-use crate::collision;
-use crate::constants;
-use crate::sprite;
-use crate::tileset;
-
-pub struct EntityIdVendor {
-    current_id: u32,
-}
-
-impl Default for EntityIdVendor {
-    fn default() -> Self {
-        EntityIdVendor { current_id: 0u32 }
-    }
-}
-
-impl EntityIdVendor {
-    pub fn next_id(&mut self) -> u32 {
-        let r = self.current_id;
-        self.current_id += 1;
-        r
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-pub trait Entity {
-    fn init(
-        &mut self,
-        sprite: &sprite::SpriteDesc,
-        tile: &tileset::Tile,
-        collision_space: &mut collision::Space,
-        sprite_size_px: Vector2<f32>,
-    );
-    fn update(
-        &mut self,
-        dt: Duration,
-        collision_space: &mut collision::Space,
-        message_dispatcher: &mut Dispatcher,
-        uniforms: &mut sprite::Uniforms,
-    );
-    fn entity_id(&self) -> u32;
-    fn is_alive(&self) -> bool;
-    fn sprite_name(&self) -> &str;
-    fn sprite_cycle(&self) -> &str;
-    fn handle_collision(&mut self, message: &Message);
-}
-
-pub fn instantiate(
-    classname: &str,
-    sprite: &sprite::SpriteDesc,
-    tile: &tileset::Tile,
-    collision_space: &mut collision::Space,
-    sprite_size_px: Vector2<f32>,
-) -> Result<Box<dyn Entity>> {
-    if let Some(mut e) = match classname {
-        "FallingBridge" => Some(Box::new(FallingBridge::default())),
-        _ => None,
-    } {
-        e.init(sprite, tile, collision_space, sprite_size_px);
-        Ok(e)
-    } else {
-        anyhow::bail!("Unrecognized entity class \"{}\"", classname)
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy)]
-pub enum Event {
-    CharacterContact,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Message {
-    pub entity_id: u32,
-    pub event: Event,
-}
-
-impl Message {
-    pub fn new(entity_id: u32, event: Event) -> Self {
-        Message { entity_id, event }
-    }
-}
-
-pub struct Dispatcher {
-    pub messages: Vec<Message>,
-}
-
-impl Default for Dispatcher {
-    fn default() -> Self {
-        Dispatcher { messages: vec![] }
-    }
-}
-
-impl Dispatcher {
-    pub fn enqueue(&mut self, message: Message) {
-        self.messages.push(message);
-    }
-
-    pub fn clear(&mut self) {
-        self.messages.clear();
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
+use crate::{
+    collision, constants,
+    entity::{Dispatcher, Entity, Event, Message},
+    sprite, tileset,
+};
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
-struct FallingBridge {
+pub struct FallingBridge {
     entity_id: u32,
     sprite: Option<sprite::SpriteDesc>,
     position: Point3<f32>,

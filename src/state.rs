@@ -1,4 +1,3 @@
-use map::FLAG_MAP_TILE_IS_WATER;
 use std::path::Path;
 use std::rc::Rc;
 use winit::{
@@ -10,7 +9,7 @@ use winit::{
 use crate::camera;
 use crate::character_controller;
 use crate::collision;
-use crate::entities;
+use crate::entity;
 use crate::map;
 use crate::sprite;
 use crate::texture;
@@ -86,7 +85,7 @@ pub struct State {
 
     // Collision detection and dispatch
     collision_space: collision::Space,
-    collision_dispatcher: entities::Dispatcher,
+    collision_dispatcher: entity::Dispatcher,
 
     // Entity rendering
     entity_material: Rc<sprite::SpriteMaterial>,
@@ -94,7 +93,7 @@ pub struct State {
     firebrand: sprite::SpriteEntity,
     entity_uniforms: Vec<sprite::Uniforms>,
     entity_sprites: Vec<sprite::SpriteEntity>,
-    entities: Vec<Box<dyn entities::Entity>>,
+    entities: Vec<Box<dyn entity::Entity>>,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -189,7 +188,7 @@ impl State {
             });
 
             // generate level entities
-            let mut entity_id_vendor = entities::EntityIdVendor::default();
+            let mut entity_id_vendor = entity::IdVendor::default();
             let mut collision_space = collision::Space::new(&level_sprites);
             let entities = map.generate_entities(
                 entity_layer,
@@ -357,7 +356,7 @@ impl State {
             map,
 
             collision_space: stage_hit_tester,
-            collision_dispatcher: entities::Dispatcher::default(),
+            collision_dispatcher: entity::Dispatcher::default(),
 
             entity_material,
             firebrand_uniforms: firebrand_uniforms,

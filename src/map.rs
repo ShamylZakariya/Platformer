@@ -5,9 +5,10 @@ use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
+use crate::entities;
 use crate::sprite;
 use crate::tileset;
-use crate::{collision, entities};
+use crate::{collision, entity};
 
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
@@ -282,14 +283,14 @@ impl Map {
         &self,
         layer: &Layer,
         collision_space: &mut collision::Space,
-        entity_id_vendor: &mut entities::EntityIdVendor,
+        entity_id_vendor: &mut entity::IdVendor,
         sprite_size_px: cgmath::Vector2<f32>,
         z_depth: Z,
-    ) -> Vec<Box<dyn entities::Entity>>
+    ) -> Vec<Box<dyn entity::Entity>>
     where
         Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
     {
-        let mut entities: Vec<Box<dyn entities::Entity>> = vec![];
+        let mut entities: Vec<Box<dyn entity::Entity>> = vec![];
 
         self.generate(
             layer,

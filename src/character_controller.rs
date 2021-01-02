@@ -4,7 +4,7 @@ use winit::event::*;
 
 use crate::collision::{ProbeDir, ProbeResult, Space};
 use crate::constants;
-use crate::entities::{Dispatcher, Event, Message};
+use crate::entity::{Dispatcher, Event, Message};
 use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER};
 use crate::sprite;
 
