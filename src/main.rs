@@ -8,11 +8,12 @@ use winit::{
 };
 mod camera;
 mod character_controller;
+mod collision;
+mod constants;
 mod entities;
 mod geom;
 mod map;
 mod sprite;
-mod sprite_collision;
 mod state;
 mod texture;
 mod tileset;

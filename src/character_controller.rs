@@ -2,9 +2,11 @@ use cgmath::{vec2, Point2, Vector2, Zero};
 use std::{collections::HashSet, f32::consts::PI, time::Duration, unimplemented};
 use winit::event::*;
 
+use crate::collision::{ProbeDir, ProbeResult, Space};
+use crate::constants;
+use crate::entities::{Dispatcher, Event, Message};
 use crate::map::{FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER};
 use crate::sprite;
-use crate::sprite_collision::{CollisionSpace, ProbeDir, ProbeResult};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -22,32 +24,15 @@ const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
-// These constants were determined by examination of recorded gamplay (and fiddling)
-// Units are seconds & tiles-per-second unless otherwise specified.
-const GRAVITY_VEL: f32 = -1.0 / 0.12903225806451613;
-const WALK_SPEED: f32 = 1.0 / 0.4;
-const JUMP_DURATION: f32 = 0.45;
-const GRAVITY_ACCEL_TIME: f32 = JUMP_DURATION;
-const FLIGHT_DURATION: f32 = 1.0;
-const FLIGHT_BOB_CYCLE_PERIOD: f32 = 0.5;
-const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const COLLISION_PROBE_STEPS: i32 = 3;
-const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
-const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
-const WATER_DAMPING: f32 = 0.5;
-
-// Animation timings
-const WALK_CYCLE_DURATION: f32 = 0.2;
-const FLIGHT_CYCLE_DURATION: f32 = 0.1;
-const JUMP_CYCLE_DURATION: f32 = 0.1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn lerp(t: f32, a: f32, b: f32) -> f32 {
+pub fn lerp(t: f32, a: f32, b: f32) -> f32 {
     a + t * (b - a)
 }
 
-fn clamp(v: f32, min: f32, max: f32) -> f32 {
+pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
     if v < min {
         min
     } else if v > max {
@@ -263,7 +248,7 @@ impl CharacterController {
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
-            flight_time_remaining: FLIGHT_DURATION,
+            flight_time_remaining: constants::FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_time_remaining: 0.0,
             wallgrab_jump_dir: 0.0,
             map_origin,
@@ -293,7 +278,13 @@ impl CharacterController {
         self.input_state.process_keyboard(key, state)
     }
 
-    pub fn update(&mut self, dt: Duration, collision_space: &CollisionSpace) -> &CharacterState {
+    pub fn update(
+        &mut self,
+        dt: Duration,
+        collision_space: &Space,
+        collision_dispatcher: &mut Dispatcher,
+        uniforms: &mut sprite::Uniforms,
+    ) -> &CharacterState {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
 
@@ -307,7 +298,7 @@ impl CharacterController {
         match self.input_state.jump {
             ButtonState::Pressed => match self.character_state.stance {
                 Stance::Standing => {
-                    self.jump_time_remaining = JUMP_DURATION;
+                    self.jump_time_remaining = constants::JUMP_DURATION;
                     self.set_stance(Stance::InAir);
                 }
                 Stance::InAir => {
@@ -321,8 +312,8 @@ impl CharacterController {
                 }
                 Stance::WallHold(surface) => {
                     self.wallgrab_jump_lateral_motion_time_remaining =
-                        WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
-                    self.jump_time_remaining = JUMP_DURATION;
+                        constants::WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
+                    self.jump_time_remaining = constants::JUMP_DURATION;
                     self.wallgrab_jump_dir = if surface.origin.x > self.character_state.position.x {
                         -1.0
                     } else {
@@ -344,7 +335,7 @@ impl CharacterController {
         //
 
         let (position, contacting_ground) = {
-            let gravity_delta_position = vec2(0.0, GRAVITY_VEL) * dt;
+            let gravity_delta_position = vec2(0.0, constants::GRAVITY_VEL) * dt;
             let mut position = self.character_state.position + gravity_delta_position;
 
             let footing_center =
@@ -457,10 +448,12 @@ impl CharacterController {
         if self.character_state.stance == Stance::Flying {
             // Apply flight bob cycle
             if self.flight_time_remaining > 0.0 {
-                let elapsed = FLIGHT_DURATION - self.flight_time_remaining;
+                let elapsed = constants::FLIGHT_DURATION - self.flight_time_remaining;
                 let bob_cycle =
-                    ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
-                let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
+                    ((elapsed / constants::FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin()
+                        * 0.5
+                        + 0.5; // remap to [0,1]
+                let bob_offset = bob_cycle * constants::FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
                 self.character_state.position_offset = vec2(0.0, bob_offset / self.pixels_per_unit);
             }
 
@@ -495,7 +488,44 @@ impl CharacterController {
             self.overlapping_sprites.remove(s);
         }
 
+        //
+        //  Dispatch any collisions with entities
+        //
+
+        for s in &self.contacting_sprites {
+            if let Some(entity_id) = s.entity_id {
+                collision_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
+            }
+        }
+
+        //
+        //  Update input state *after* all input has been processed.
+        //
+
         self.input_state.update();
+
+        //
+        //  Write state into uniform storage
+        //
+
+        {
+            let (xscale, xoffset) = match self.character_state.facing {
+                Facing::Left => (-1.0, 1.0),
+                Facing::Right => (1.0, 0.0),
+            };
+
+            uniforms
+                .data
+                .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0))
+                .set_sprite_scale(cgmath::vec2(xscale, 1.0))
+                .set_model_position(&cgmath::Point3::new(
+                    self.character_state.position.x
+                        + self.character_state.position_offset.x
+                        + xoffset,
+                    self.character_state.position.y + self.character_state.position_offset.y,
+                    0.5,
+                ));
+        }
 
         &self.character_state
     }
@@ -537,7 +567,7 @@ impl CharacterController {
             match new_stance {
                 // Flight time is reset whenever character touches ground or wallholds
                 Stance::Standing | Stance::WallHold(_) => {
-                    self.flight_time_remaining = FLIGHT_DURATION;
+                    self.flight_time_remaining = constants::FLIGHT_DURATION;
                 }
                 _ => {}
             }
@@ -556,7 +586,7 @@ impl CharacterController {
     /// If player is contacting any surfaces, they will be passed to handle_collision_with()
     fn find_character_footing(
         &mut self,
-        collision_space: &CollisionSpace,
+        collision_space: &Space,
         position: Point2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
@@ -624,7 +654,7 @@ impl CharacterController {
     /// y coord, so this returns the one closer to the character's y position)
     fn apply_lateral_movement(
         &mut self,
-        collision_space: &CollisionSpace,
+        collision_space: &Space,
         position: Point2<f32>,
         dt: f32,
     ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
@@ -638,12 +668,12 @@ impl CharacterController {
 
         let mut delta_x =
             input_accumulator(self.input_state.move_left, self.input_state.move_right)
-                * WALK_SPEED
+                * constants::WALK_SPEED
                 * dt;
 
         // walljump overrides user input vel birefly.
         if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
-            delta_x = WALLGRAB_JUMP_LATERAL_VEL
+            delta_x = constants::WALLGRAB_JUMP_LATERAL_VEL
                 * self.wallgrab_jump_lateral_motion_time_remaining
                 * dt
                 * self.wallgrab_jump_dir;
@@ -770,7 +800,7 @@ impl CharacterController {
 
     fn apply_vertical_movement(
         &mut self,
-        collision_space: &CollisionSpace,
+        collision_space: &Space,
         position: Point2<f32>,
         dt: f32,
     ) -> Point2<f32> {
@@ -782,18 +812,18 @@ impl CharacterController {
             }
             Stance::InAir => {
                 if self.jump_time_remaining > 0.0 {
-                    let elapsed = JUMP_DURATION - self.jump_time_remaining;
-                    let jump_completion = elapsed / JUMP_DURATION;
-                    self.vertical_velocity = lerp(jump_completion, -GRAVITY_VEL, 0.0);
+                    let elapsed = constants::JUMP_DURATION - self.jump_time_remaining;
+                    let jump_completion = elapsed / constants::JUMP_DURATION;
+                    self.vertical_velocity = lerp(jump_completion, -constants::GRAVITY_VEL, 0.0);
                 } else {
-                    self.vertical_velocity = lerp(2.5 * dt, self.vertical_velocity, GRAVITY_VEL);
+                    self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
                 }
             }
         }
 
         let mut delta = vec2(0.0, self.vertical_velocity * dt);
         if self.in_water && self.vertical_velocity < 0.0 {
-            delta.y *= WATER_DAMPING;
+            delta.y *= constants::WATER_DAMPING;
         }
 
         //
@@ -861,7 +891,7 @@ impl CharacterController {
                     }
                     let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                    let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
+                    let frame = ((elapsed / constants::WALK_CYCLE_DURATION).floor() as i32) % 4;
                     self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                     match frame {
@@ -882,7 +912,7 @@ impl CharacterController {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
+                let frame = ((elapsed / constants::JUMP_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
@@ -899,7 +929,7 @@ impl CharacterController {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
+                let frame = ((elapsed / constants::FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
@@ -935,7 +965,7 @@ impl CharacterController {
         }
     }
 
-    fn is_in_water(&self, collision_space: &CollisionSpace, position: Point2<f32>) -> bool {
+    fn is_in_water(&self, collision_space: &Space, position: Point2<f32>) -> bool {
         let a = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
         let b = Point2::new(a.x + 1, a.y);
         let c = Point2::new(a.x, a.y + 1);

@@ -9,10 +9,10 @@ use winit::{
 
 use crate::camera;
 use crate::character_controller;
+use crate::collision;
 use crate::entities;
 use crate::map;
 use crate::sprite;
-use crate::sprite_collision;
 use crate::texture;
 use crate::tileset;
 
@@ -82,8 +82,11 @@ pub struct State {
     stage_debug_draw_overlap_uniforms: sprite::Uniforms,
     stage_debug_draw_contact_uniforms: sprite::Uniforms,
     stage_sprite_collection: sprite::SpriteCollection,
-    collision_space: sprite_collision::CollisionSpace,
     map: map::Map,
+
+    // Collision detection and dispatch
+    collision_space: collision::Space,
+    collision_dispatcher: entities::Dispatcher,
 
     // Entity rendering
     entity_material: Rc<sprite::SpriteMaterial>,
@@ -184,7 +187,7 @@ impl State {
 
             // generate level entities
             let mut entity_id_vendor = entities::EntityIdVendor::default();
-            let mut collision_space = sprite_collision::CollisionSpace::new(&level_sprites);
+            let mut collision_space = collision::Space::new(&level_sprites);
             let entities = map.generate_entities(
                 entity_layer,
                 &mut collision_space,
@@ -351,8 +354,10 @@ impl State {
             stage_debug_draw_overlap_uniforms,
             stage_debug_draw_contact_uniforms,
             stage_sprite_collection,
-            collision_space: stage_hit_tester,
             map,
+
+            collision_space: stage_hit_tester,
+            collision_dispatcher: entities::Dispatcher::default(),
 
             entity_material,
             firebrand_uniforms: firebrand_uniforms,
@@ -428,15 +433,6 @@ impl State {
     pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
 
-        // Update camera uniform state
-        self.camera_controller
-            .update_camera(&mut self.camera, &mut self.projection, dt);
-        self.camera_uniforms
-            .data
-            .update_view_proj(&self.camera, &self.projection);
-
-        self.camera_uniforms.write(&mut self.queue);
-
         // Update stage uniform state
         self.stage_uniforms
             .data
@@ -464,8 +460,28 @@ impl State {
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
+        //
         // Update player character state
-        let character_state = self.character_controller.update(dt, &self.collision_space);
+        //
+
+        let character_state = self.character_controller.update(
+            dt,
+            &self.collision_space,
+            &mut self.collision_dispatcher,
+            &mut self.firebrand_uniforms,
+        );
+
+        self.firebrand_uniforms.write(&mut self.queue);
+
+        //
+        // Update camera state
+        //
+
+        self.camera_controller
+            .update_camera(&mut self.camera, &mut self.projection, dt);
+        self.camera_uniforms
+            .data
+            .update_view_proj(&self.camera, &self.projection);
 
         if self.camera_tracks_character {
             let cp = self.camera.position();
@@ -474,32 +490,29 @@ impl State {
                 .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
         }
 
-        {
-            let (xscale, xoffset) = match character_state.facing {
-                character_controller::Facing::Left => (-1.0, 1.0),
-                character_controller::Facing::Right => (1.0, 0.0),
-            };
+        self.camera_uniforms.write(&mut self.queue);
 
-            self.firebrand_uniforms
-                .data
-                .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0))
-                .set_sprite_scale(cgmath::vec2(xscale, 1.0))
-                .set_model_position(&cgmath::Point3::new(
-                    character_state.position.x + character_state.position_offset.x + xoffset,
-                    character_state.position.y + character_state.position_offset.y,
-                    0.5,
-                ));
-        }
-
-        self.firebrand_uniforms.write(&mut self.queue);
-
-        // update game entities
+        // Update game entities
+        // TODO: Research how best to compact our multiple arrays together, because Vec::retain will only
+        // affect one at a time. We'd need to run a pass collecting indices first, then use the indices in multiple
+        // calls to retain. Or we can package up entities/sprites/uniforms into a single struct :)
         for i in 0..self.entities.len() {
-            self.entities[i].update(dt, &mut self.collision_space, &mut self.entity_uniforms[i]);
-            self.entity_uniforms[i].write(&mut self.queue);
+            if self.entities[i].is_alive() {
+                self.entities[i].update(
+                    dt,
+                    &mut self.collision_space,
+                    &mut self.collision_dispatcher,
+                    &mut self.entity_uniforms[i],
+                );
+                self.entity_uniforms[i].write(&mut self.queue);
+            }
         }
 
-        self.entities.retain(|e| e.is_alive());
+        // Dispatch collisions
+        for m in &self.collision_dispatcher.messages {
+            self.entities[m.entity_id as usize].handle_collision(m);
+        }
+        self.collision_dispatcher.clear();
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -587,12 +600,14 @@ impl State {
 
             // render entities
             for i in 0..self.entities.len() {
-                self.entity_sprites[i].draw(
-                    &mut render_pass,
-                    &self.camera_uniforms,
-                    &self.entity_uniforms[i],
-                    self.entities[i].sprite_cycle(),
-                );
+                if self.entities[i].is_alive() {
+                    self.entity_sprites[i].draw(
+                        &mut render_pass,
+                        &self.camera_uniforms,
+                        &self.entity_uniforms[i],
+                        self.entities[i].sprite_cycle(),
+                    );
+                }
             }
         }
 

@@ -7,7 +7,7 @@ use xml::reader::{EventReader, XmlEvent};
 
 use crate::sprite;
 use crate::tileset;
-use crate::{entities, sprite_collision};
+use crate::{collision, entities};
 
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
@@ -281,7 +281,7 @@ impl Map {
     pub fn generate_entities<F>(
         &self,
         layer: &Layer,
-        collision_space: &mut sprite_collision::CollisionSpace,
+        collision_space: &mut collision::Space,
         entity_id_vendor: &mut entities::EntityIdVendor,
         z_depth: F,
     ) -> Vec<Box<dyn entities::Entity>>

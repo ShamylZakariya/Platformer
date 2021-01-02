@@ -1,12 +1,9 @@
 CURRENTLY:
     Falling Tiles
-        - on cnotact, remove it from collision space
-        - should probably live as an entity and not as part of the level, this way it can be animated
-            - should the map have a subset of "dynamic" tiles which are easy to animate?
-
-
+        - need to plumb pixel density in, because the 2px drop on contact is at present hardcoded as 2/16
 
 TODO:
+    - Character can be refactored into an Entity impl.
     - implement kickback from contact with spikes, etc
     - Simplify
 
@@ -22,31 +19,4 @@ TODO:
         - https://doc.rust-lang.org/book/ch07-04-bringing-paths-into-scope-with-the-use-keyword.html
     - SpriteDesc can have integerial position, and drop extent because we only support 1x1 sprites?
     - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms.
-
-TIMINGS
-    - WALK
-        - 51:29 start
-        - 52:08 2 units
-        39/62ths of a second per 2 units
-    - FALL_START
-        - 2:15:16 start
-        - 2:15:42 end
-        - 26/62th of a second to get up to falling speed
-    - FALL_FINAL
-        - 2:14:56 start
-        - 2:15:09 end
-        16/62ths of a second per 2 units
-    - JUMP
-        - 0:41:04
-        - 0:41:23
-    - FLIGHT
-        - 0:12:583
-        - 0:13:583
-        - BOB - 2px cycle on y, sinusoidal
-            - 0:13:016
-            - 0:13:249
-    - WALLGRAB JUMP
-        - 0:15:016
-        - 0:15:183
-        - travel diagonally up and away from wall for .167 seconds, then finish jump upwardly
 
