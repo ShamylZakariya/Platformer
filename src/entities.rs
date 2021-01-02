@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use cgmath::Point3;
+use cgmath::{vec2, Point3, Vector2};
 
 use crate::collision;
 use crate::constants;
@@ -34,6 +34,7 @@ pub trait Entity {
         sprite: &sprite::SpriteDesc,
         tile: &tileset::Tile,
         collision_space: &mut collision::Space,
+        sprite_size_px: Vector2<f32>,
     );
     fn update(
         &mut self,
@@ -54,12 +55,13 @@ pub fn instantiate(
     sprite: &sprite::SpriteDesc,
     tile: &tileset::Tile,
     collision_space: &mut collision::Space,
+    sprite_size_px: Vector2<f32>,
 ) -> Result<Box<dyn Entity>> {
     if let Some(mut e) = match classname {
         "FallingBridge" => Some(Box::new(FallingBridge::default())),
         _ => None,
     } {
-        e.init(sprite, tile, collision_space);
+        e.init(sprite, tile, collision_space, sprite_size_px);
         Ok(e)
     } else {
         anyhow::bail!("Unrecognized entity class \"{}\"", classname)
@@ -116,6 +118,7 @@ struct FallingBridge {
     time_remaining: Option<f32>,
     is_falling: bool,
     vertical_velocity: f32,
+    sprite_size_px: Vector2<f32>,
 }
 
 impl Default for FallingBridge {
@@ -127,6 +130,7 @@ impl Default for FallingBridge {
             time_remaining: None,
             is_falling: false,
             vertical_velocity: 0.0,
+            sprite_size_px: vec2(0.0, 0.0),
         }
     }
 }
@@ -137,12 +141,14 @@ impl Entity for FallingBridge {
         sprite: &sprite::SpriteDesc,
         _tile: &tileset::Tile,
         collision_space: &mut collision::Space,
+        sprite_size_px: Vector2<f32>,
     ) {
         self.entity_id = sprite
             .entity_id
             .expect("Entity sprites should have an entity_id");
         self.sprite = Some(*sprite);
         self.position = sprite.origin;
+        self.sprite_size_px = sprite_size_px;
         collision_space.add_sprite(sprite);
     }
 
@@ -201,7 +207,7 @@ impl Entity for FallingBridge {
         match message.event {
             Event::CharacterContact => {
                 if self.time_remaining.is_none() {
-                    self.position.y -= 2.0 / 16.0; // TODO: Plumb in pixel density
+                    self.position.y -= 2.0 / self.sprite_size_px.y;
                     self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
                 }
             }

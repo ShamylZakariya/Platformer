@@ -149,6 +149,10 @@ impl State {
         // Load the stage map
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
+        let sprite_size_px = cgmath::vec2(
+            map.tileset.tile_width as f32,
+            map.tileset.tile_height as f32,
+        );
 
         let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
         let (stage_sprite_collection, stage_hit_tester, entities) = {
@@ -175,10 +179,9 @@ impl State {
                 .expect("Expected layer named 'Entities'");
 
             // generate level sprites
-            let bg_sprites = map.generate_sprites(bg_layer, |_| 1.0);
-            let level_sprites = map.generate_sprites(level_layer, |sd| {
-                // we draw water sprites in front of entities
-                if sd.mask & FLAG_MAP_TILE_IS_WATER != 0 {
+            let bg_sprites = map.generate_sprites(bg_layer, |_, _| 1.0);
+            let level_sprites = map.generate_sprites(level_layer, |_sprite, tile| {
+                if tile.get_property("foreground") == Some("true") {
                     0.1
                 } else {
                     0.9
@@ -192,7 +195,8 @@ impl State {
                 entity_layer,
                 &mut collision_space,
                 &mut entity_id_vendor,
-                |_| 0.9,
+                sprite_size_px,
+                |_, _| 0.9,
             );
 
             let mut all_sprites = vec![];
@@ -233,10 +237,6 @@ impl State {
         camera_uniforms.data.update_view_proj(&camera, &projection);
 
         // Build the sprite render pipeline
-        let sprite_size_px = cgmath::vec2(
-            map.tileset.tile_width as f32,
-            map.tileset.tile_height as f32,
-        );
 
         let stage_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
         let stage_debug_draw_overlap_uniforms = sprite::Uniforms::new(&device, sprite_size_px);

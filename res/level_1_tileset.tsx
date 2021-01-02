@@ -18,6 +18,7 @@
  </tile>
  <tile id="3">
   <properties>
+   <property name="foreground" value="true"/>
    <property name="water" value="true"/>
   </properties>
  </tile>

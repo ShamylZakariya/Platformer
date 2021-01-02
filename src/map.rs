@@ -258,9 +258,9 @@ impl Map {
     }
 
     /// Generates a vector of SpriteDesc for the contents of the specified layer
-    pub fn generate_sprites<F>(&self, layer: &Layer, z_depth: F) -> Vec<sprite::SpriteDesc>
+    pub fn generate_sprites<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<sprite::SpriteDesc>
     where
-        F: Fn(&SpriteDesc) -> f32,
+        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
     {
         let mut sprites: Vec<sprite::SpriteDesc> = vec![];
 
@@ -278,15 +278,16 @@ impl Map {
         sprites
     }
 
-    pub fn generate_entities<F>(
+    pub fn generate_entities<Z>(
         &self,
         layer: &Layer,
         collision_space: &mut collision::Space,
         entity_id_vendor: &mut entities::EntityIdVendor,
-        z_depth: F,
+        sprite_size_px: cgmath::Vector2<f32>,
+        z_depth: Z,
     ) -> Vec<Box<dyn entities::Entity>>
     where
-        F: Fn(&SpriteDesc) -> f32,
+        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
     {
         let mut entities: Vec<Box<dyn entities::Entity>> = vec![];
 
@@ -296,9 +297,12 @@ impl Map {
             z_depth,
             |sprite, tile| {
                 if let Some(name) = tile.get_property("entity_class") {
-                    let entity = entities::instantiate(name, sprite, tile, collision_space).expect(
-                        &format!("Unable to instantiate Entity with class name \"{}\"", name),
-                    );
+                    let entity =
+                        entities::instantiate(name, sprite, tile, collision_space, sprite_size_px)
+                            .expect(&format!(
+                                "Unable to instantiate Entity with class name \"{}\"",
+                                name
+                            ));
                     entities.push(entity);
                 }
             },
@@ -309,7 +313,7 @@ impl Map {
 
     fn generate<Z, C, E>(&self, layer: &Layer, mut entity_id_vendor: E, z_depth: Z, mut consumer: C)
     where
-        Z: Fn(&SpriteDesc) -> f32,
+        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
         C: FnMut(&SpriteDesc, &tileset::Tile),
         E: FnMut(&SpriteDesc, &tileset::Tile) -> u32,
     {
@@ -368,7 +372,7 @@ impl Map {
                         sd.entity_id = Some(entity_id_vendor(&sd, tile));
                     }
 
-                    sd.origin.z = z_depth(&sd);
+                    sd.origin.z = z_depth(&sd, tile);
 
                     if flipped_diagonally {
                         sd = sd.flipped_diagonally();
