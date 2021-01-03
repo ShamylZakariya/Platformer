@@ -1,5 +1,4 @@
 CURRENTLY:
-    - How do I expose the info needed for colorizing firebrand's contacts/collisions while staying an anonymous entity?
 
 TODO:
     - implement kickback from contact with spikes, etc
