@@ -306,7 +306,6 @@ impl Entity for Firebrand {
         dt: Duration,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
-        uniforms: &mut sprite::Uniforms,
     ) {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
@@ -525,7 +524,9 @@ impl Entity for Firebrand {
         //
 
         self.input_state.update();
+    }
 
+    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms) {
         //
         //  Write state into uniform storage
         //
@@ -570,7 +571,7 @@ impl Entity for Firebrand {
         self.character_state.cycle
     }
 
-    fn handle_collision(&mut self, _message: &Message) {}
+    fn handle_message(&mut self, _message: &Message) {}
 }
 
 impl Firebrand {

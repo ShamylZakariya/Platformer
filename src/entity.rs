@@ -7,6 +7,9 @@ use crate::sprite;
 use crate::tileset;
 use crate::{collision, map};
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+/// IDVendor vends a new unique id, starting from zero, for each entity.
 pub struct IdVendor {
     current_id: u32,
 }
@@ -42,14 +45,15 @@ pub trait Entity {
         dt: Duration,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
-        uniforms: &mut sprite::Uniforms,
     );
+    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms);
+
     fn entity_id(&self) -> u32;
     fn is_alive(&self) -> bool;
     fn position(&self) -> Point2<f32>;
     fn sprite_name(&self) -> &str;
     fn sprite_cycle(&self) -> &str;
-    fn handle_collision(&mut self, message: &Message);
+    fn handle_message(&mut self, message: &Message);
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -47,6 +47,26 @@ struct UiInputState {
     draw_entity_debug: Option<bool>,
 }
 
+struct EntityComponents {
+    entity: Box<dyn entity::Entity>,
+    sprite: sprite::SpriteEntity,
+    uniforms: sprite::Uniforms,
+}
+
+impl EntityComponents {
+    fn new(
+        entity: Box<dyn entity::Entity>,
+        sprite: sprite::SpriteEntity,
+        uniforms: sprite::Uniforms,
+    ) -> Self {
+        Self {
+            entity,
+            sprite,
+            uniforms,
+        }
+    }
+}
+
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct State {
@@ -81,14 +101,12 @@ pub struct State {
 
     // Collision detection and dispatch
     collision_space: collision::Space,
-    collision_dispatcher: entity::Dispatcher,
+    message_dispatcher: entity::Dispatcher,
 
     // Entity rendering
     entity_material: Rc<sprite::SpriteMaterial>,
-    entity_uniforms: Vec<sprite::Uniforms>,
-    entity_sprites: Vec<sprite::SpriteEntity>,
-    entities: Vec<Box<dyn entity::Entity>>,
-    firebrand_entity_id: u32,
+    entities: Vec<EntityComponents>,
+    firebrand_entity_id: usize,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -256,25 +274,31 @@ impl State {
             )
         });
 
-        let mut entity_uniforms = vec![];
-        let mut entity_sprites = vec![];
-        let mut firebrand_entity_id: u32 = 0;
-        for e in &entities {
+        let mut entity_components = vec![];
+        let mut firebrand_entity_id: usize = 0;
+
+        for (i, e) in entities.into_iter().enumerate() {
             if e.sprite_name() == "firebrand" {
-                firebrand_entity_id = entity_uniforms.len() as u32;
+                firebrand_entity_id = i;
             }
 
-            entity_uniforms.push(sprite::Uniforms::new(&device, sprite_size_px));
-            entity_sprites.push(sprite::SpriteEntity::load(
-                &entity_tileset,
-                entity_material.clone(),
-                &device,
-                e.sprite_name(),
-                0,
+            let name = e.sprite_name().to_string();
+            entity_components.push(EntityComponents::new(
+                e,
+                sprite::SpriteEntity::load(
+                    &entity_tileset,
+                    entity_material.clone(),
+                    &device,
+                    &name,
+                    0,
+                ),
+                sprite::Uniforms::new(&device, sprite_size_px),
             ));
         }
 
+        //
         // set up imgui
+        //
 
         let hidpi_factor = window.scale_factor();
         let mut imgui = imgui::Context::create();
@@ -330,12 +354,10 @@ impl State {
             map,
 
             collision_space: stage_hit_tester,
-            collision_dispatcher: entity::Dispatcher::default(),
+            message_dispatcher: entity::Dispatcher::default(),
 
             entity_material,
-            entity_uniforms,
-            entity_sprites,
-            entities,
+            entities: entity_components,
             firebrand_entity_id,
 
             winit_platform,
@@ -375,7 +397,7 @@ impl State {
             } => {
                 let mut consumed = false;
                 for e in &mut self.entities {
-                    if e.process_keyboard(*key, *state) {
+                    if e.entity.process_keyboard(*key, *state) {
                         consumed = true;
                     }
                 }
@@ -436,19 +458,16 @@ impl State {
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
-        // Update game entities
-        // TODO: Research how best to compact our multiple arrays together, because Vec::retain will only
-        // affect one at a time. We'd need to run a pass collecting indices first, then use the indices in multiple
-        // calls to retain. Or we can package up entities/sprites/uniforms into a single struct :)
-        for i in 0..self.entities.len() {
-            if self.entities[i].is_alive() {
-                self.entities[i].update(
-                    dt,
-                    &mut self.collision_space,
-                    &mut self.collision_dispatcher,
-                    &mut self.entity_uniforms[i],
-                );
-                self.entity_uniforms[i].write(&mut self.queue);
+        //
+        //  Update entities
+        //
+
+        for e in &mut self.entities {
+            if e.entity.is_alive() {
+                e.entity
+                    .update(dt, &mut self.collision_space, &mut self.message_dispatcher);
+                e.entity.update_uniforms(&mut e.uniforms);
+                e.uniforms.write(&mut self.queue);
             }
         }
 
@@ -464,18 +483,23 @@ impl State {
 
         if self.camera_tracks_character {
             let cp = self.camera.position();
-            let p = self.entities[self.firebrand_entity_id as usize].position();
+            let p = self.entities[self.firebrand_entity_id as usize]
+                .entity
+                .position();
             self.camera
                 .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
         }
 
         self.camera_uniforms.write(&mut self.queue);
 
-        // Dispatch collisions
-        for m in &self.collision_dispatcher.messages {
-            self.entities[m.entity_id as usize].handle_collision(m);
+        //
+        // Dispatch collected messages
+        //
+
+        for m in &self.message_dispatcher.messages {
+            self.entities[m.entity_id as usize].entity.handle_message(m);
         }
-        self.collision_dispatcher.clear();
+        self.message_dispatcher.clear();
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -550,13 +574,13 @@ impl State {
             // }
 
             // render entities
-            for i in 0..self.entities.len() {
-                if self.entities[i].is_alive() {
-                    self.entity_sprites[i].draw(
+            for e in &self.entities {
+                if e.entity.is_alive() {
+                    e.sprite.draw(
                         &mut render_pass,
                         &self.camera_uniforms,
-                        &self.entity_uniforms[i],
-                        self.entities[i].sprite_cycle(),
+                        &e.uniforms,
+                        e.entity.sprite_cycle(),
                     );
                 }
             }
@@ -670,9 +694,12 @@ impl State {
             camera_tracks_character: self.camera_tracks_character,
             camera_position: self.camera.position(),
             zoom: self.projection.scale(),
-            character_position: self.entities[self.firebrand_entity_id as usize].position(),
+            character_position: self.entities[self.firebrand_entity_id as usize]
+                .entity
+                .position(),
             draw_stage_collision_info: self.draw_stage_collision_info,
             character_cycle: self.entities[self.firebrand_entity_id as usize]
+                .entity
                 .sprite_cycle()
                 .to_string(),
         }

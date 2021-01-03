@@ -63,7 +63,6 @@ impl Entity for FallingBridge {
         dt: Duration,
         collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
-        uniforms: &mut sprite::Uniforms,
     ) {
         let dt = dt.as_secs_f32();
 
@@ -88,7 +87,9 @@ impl Entity for FallingBridge {
                 }
             }
         }
+    }
 
+    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms) {
         uniforms.data.set_model_position(&self.position);
     }
 
@@ -113,7 +114,7 @@ impl Entity for FallingBridge {
         "default"
     }
 
-    fn handle_collision(&mut self, message: &Message) {
+    fn handle_message(&mut self, message: &Message) {
         match message.event {
             Event::CharacterContact => {
                 if self.time_remaining.is_none() {
