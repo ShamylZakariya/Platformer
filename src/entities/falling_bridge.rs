@@ -40,16 +40,18 @@ impl Entity for FallingBridge {
         &mut self,
         sprite: &sprite::SpriteDesc,
         _tile: &tileset::Tile,
-        _map: &map::Map,
+        map: &map::Map,
         collision_space: &mut collision::Space,
-        sprite_size_px: Vector2<f32>,
     ) {
         self.entity_id = sprite
             .entity_id
             .expect("Entity sprites should have an entity_id");
         self.sprite = Some(*sprite);
         self.position = sprite.origin;
-        self.sprite_size_px = sprite_size_px;
+        self.sprite_size_px = vec2(
+            map.tileset.tile_width as f32,
+            map.tileset.tile_height as f32,
+        );
         collision_space.add_sprite(sprite);
     }
 

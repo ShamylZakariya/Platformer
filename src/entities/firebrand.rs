@@ -286,12 +286,14 @@ impl Entity for Firebrand {
         _tile: &tileset::Tile,
         map: &map::Map,
         _collision_space: &mut collision::Space,
-        sprite_size_px: Vector2<f32>,
     ) {
         self.entity_id = sprite
             .entity_id
             .expect("Entity sprites should have an entity_id");
-        self.sprite_size_px = sprite_size_px;
+        self.sprite_size_px = vec2(
+            map.tileset.tile_width as f32,
+            map.tileset.tile_height as f32,
+        );
         self.map_origin = Point2::new(0.0, 0.0);
         self.map_extent = vec2(map.width as f32, map.height as f32);
         self.character_state.position = Point2::new(sprite.origin.x, sprite.origin.y);

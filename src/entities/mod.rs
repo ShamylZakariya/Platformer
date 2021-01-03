@@ -1,5 +1,4 @@
 use anyhow::Result;
-use cgmath::Vector2;
 
 use crate::{collision, entity::Entity, map, sprite, tileset};
 
@@ -12,7 +11,6 @@ pub fn instantiate(
     tile: &tileset::Tile,
     map: &map::Map,
     collision_space: &mut collision::Space,
-    sprite_size_px: Vector2<f32>,
 ) -> Result<Box<dyn Entity>> {
     if let Some(mut e) = match classname {
         "FallingBridge" => {
@@ -21,7 +19,7 @@ pub fn instantiate(
         "Firebrand" => Some(Box::new(firebrand::Firebrand::default()) as Box<dyn Entity>),
         _ => None,
     } {
-        e.init(sprite, tile, map, collision_space, sprite_size_px);
+        e.init(sprite, tile, map, collision_space);
         Ok(e)
     } else {
         anyhow::bail!("Unrecognized entity class \"{}\"", classname)

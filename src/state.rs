@@ -206,7 +206,6 @@ impl State {
                 entity_layer,
                 &mut collision_space,
                 &mut entity_id_vendor,
-                sprite_size_px,
                 |_, _| 0.9,
             );
 
