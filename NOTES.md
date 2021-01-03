@@ -5,6 +5,7 @@ TODO:
     - implement kickback from contact with spikes, etc
     - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
     - Simplify
+    - Then start adding enemies?
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping

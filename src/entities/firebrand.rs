@@ -5,7 +5,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     collision::{self, ProbeDir, ProbeResult, Space},
-    constants,
+    constants::GRAVITY_VEL,
     entity::{Dispatcher, Entity, Event, Message},
     map::{self, FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER},
     sprite, tileset,
@@ -28,6 +28,23 @@ const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
 const COLLISION_PROBE_STEPS: i32 = 3;
+
+// These constants were determined by examination of recorded gamplay (and fiddling)
+// Units are seconds & tiles-per-second unless otherwise specified.
+
+const WALK_SPEED: f32 = 1.0 / 0.4;
+const JUMP_DURATION: f32 = 0.45;
+const FLIGHT_DURATION: f32 = 1.0;
+const FLIGHT_BOB_CYCLE_PERIOD: f32 = 0.5;
+const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
+const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
+const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
+const WATER_DAMPING: f32 = 0.5;
+
+// Animation timings
+const WALK_CYCLE_DURATION: f32 = 0.2;
+const FLIGHT_CYCLE_DURATION: f32 = 0.1;
+const JUMP_CYCLE_DURATION: f32 = 0.1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -251,7 +268,7 @@ impl Default for Firebrand {
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
-            flight_time_remaining: constants::FLIGHT_DURATION,
+            flight_time_remaining: FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_time_remaining: 0.0,
             wallgrab_jump_dir: 0.0,
             map_origin: Point2::new(0.0, 0.0),
@@ -266,12 +283,11 @@ impl Entity for Firebrand {
     fn init(
         &mut self,
         sprite: &sprite::SpriteDesc,
-        tile: &tileset::Tile,
+        _tile: &tileset::Tile,
         map: &map::Map,
         _collision_space: &mut collision::Space,
         sprite_size_px: Vector2<f32>,
     ) {
-        println!("Firebrand::init sprite: {:?}, tile: {:?}", sprite, tile);
         self.entity_id = sprite
             .entity_id
             .expect("Entity sprites should have an entity_id");
@@ -305,7 +321,7 @@ impl Entity for Firebrand {
         match self.input_state.jump {
             ButtonState::Pressed => match self.character_state.stance {
                 Stance::Standing => {
-                    self.jump_time_remaining = constants::JUMP_DURATION;
+                    self.jump_time_remaining = JUMP_DURATION;
                     self.set_stance(Stance::InAir);
                 }
                 Stance::InAir => {
@@ -319,8 +335,8 @@ impl Entity for Firebrand {
                 }
                 Stance::WallHold(surface) => {
                     self.wallgrab_jump_lateral_motion_time_remaining =
-                        constants::WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
-                    self.jump_time_remaining = constants::JUMP_DURATION;
+                        WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
+                    self.jump_time_remaining = JUMP_DURATION;
                     self.wallgrab_jump_dir = if surface.origin.x > self.character_state.position.x {
                         -1.0
                     } else {
@@ -342,7 +358,7 @@ impl Entity for Firebrand {
         //
 
         let (position, contacting_ground) = {
-            let gravity_delta_position = vec2(0.0, constants::GRAVITY_VEL) * dt;
+            let gravity_delta_position = vec2(0.0, GRAVITY_VEL) * dt;
             let mut position = self.character_state.position + gravity_delta_position;
 
             let footing_center =
@@ -455,12 +471,10 @@ impl Entity for Firebrand {
         if self.character_state.stance == Stance::Flying {
             // Apply flight bob cycle
             if self.flight_time_remaining > 0.0 {
-                let elapsed = constants::FLIGHT_DURATION - self.flight_time_remaining;
+                let elapsed = FLIGHT_DURATION - self.flight_time_remaining;
                 let bob_cycle =
-                    ((elapsed / constants::FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin()
-                        * 0.5
-                        + 0.5; // remap to [0,1]
-                let bob_offset = bob_cycle * constants::FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
+                    ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
+                let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
                 self.character_state.position_offset =
                     vec2(0.0, bob_offset / self.sprite_size_px.y);
             }
@@ -612,7 +626,7 @@ impl Firebrand {
             match new_stance {
                 // Flight time is reset whenever character touches ground or wallholds
                 Stance::Standing | Stance::WallHold(_) => {
-                    self.flight_time_remaining = constants::FLIGHT_DURATION;
+                    self.flight_time_remaining = FLIGHT_DURATION;
                 }
                 _ => {}
             }
@@ -713,12 +727,12 @@ impl Firebrand {
 
         let mut delta_x =
             input_accumulator(self.input_state.move_left, self.input_state.move_right)
-                * constants::WALK_SPEED
+                * WALK_SPEED
                 * dt;
 
         // walljump overrides user input vel birefly.
         if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
-            delta_x = constants::WALLGRAB_JUMP_LATERAL_VEL
+            delta_x = WALLGRAB_JUMP_LATERAL_VEL
                 * self.wallgrab_jump_lateral_motion_time_remaining
                 * dt
                 * self.wallgrab_jump_dir;
@@ -857,18 +871,19 @@ impl Firebrand {
             }
             Stance::InAir => {
                 if self.jump_time_remaining > 0.0 {
-                    let elapsed = constants::JUMP_DURATION - self.jump_time_remaining;
-                    let jump_completion = elapsed / constants::JUMP_DURATION;
-                    self.vertical_velocity = lerp(jump_completion, -constants::GRAVITY_VEL, 0.0);
+                    let elapsed = JUMP_DURATION - self.jump_time_remaining;
+                    let jump_completion = elapsed / JUMP_DURATION;
+                    self.vertical_velocity = lerp(jump_completion, -GRAVITY_VEL, 0.0);
                 } else {
-                    self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
+                    self.vertical_velocity =
+                        crate::constants::apply_gravity(self.vertical_velocity, dt);
                 }
             }
         }
 
         let mut delta = vec2(0.0, self.vertical_velocity * dt);
         if self.in_water && self.vertical_velocity < 0.0 {
-            delta.y *= constants::WATER_DAMPING;
+            delta.y *= WATER_DAMPING;
         }
 
         //
@@ -936,7 +951,7 @@ impl Firebrand {
                     }
                     let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                    let frame = ((elapsed / constants::WALK_CYCLE_DURATION).floor() as i32) % 4;
+                    let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                     match frame {
@@ -957,7 +972,7 @@ impl Firebrand {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / constants::JUMP_CYCLE_DURATION).floor() as i32) % 4;
+                let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
@@ -974,7 +989,7 @@ impl Firebrand {
                 }
                 let elapsed = self.cycle_animation_time_elapsed.unwrap();
 
-                let frame = ((elapsed / constants::FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
+                let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
                 self.cycle_animation_time_elapsed = Some(elapsed + dt);
 
                 match frame {
