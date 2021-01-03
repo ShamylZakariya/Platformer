@@ -552,26 +552,27 @@ impl State {
                 &self.stage_uniforms,
             );
 
-            // TODO: How do we expose this info from Firebrand entity?
-            // if self.draw_stage_collision_info {
-            //     if !self.character_controller.overlapping_sprites.is_empty() {
-            //         self.stage_sprite_collection.draw_sprites(
-            //             &self.character_controller.overlapping_sprites,
-            //             &mut render_pass,
-            //             &self.camera_uniforms,
-            //             &self.stage_debug_draw_overlap_uniforms,
-            //         );
-            //     }
+            if self.draw_stage_collision_info {
+                for e in &self.entities {
+                    if let Some(overlapping) = e.entity.overlapping_sprites() {
+                        self.stage_sprite_collection.draw_sprites(
+                            overlapping,
+                            &mut render_pass,
+                            &self.camera_uniforms,
+                            &self.stage_debug_draw_overlap_uniforms,
+                        );
+                    }
 
-            //     if !self.character_controller.contacting_sprites.is_empty() {
-            //         self.stage_sprite_collection.draw_sprites(
-            //             &self.character_controller.contacting_sprites,
-            //             &mut render_pass,
-            //             &self.camera_uniforms,
-            //             &self.stage_debug_draw_contact_uniforms,
-            //         );
-            //     }
-            // }
+                    if let Some(contacting) = e.entity.contacting_sprites() {
+                        self.stage_sprite_collection.draw_sprites(
+                            contacting,
+                            &mut render_pass,
+                            &self.camera_uniforms,
+                            &self.stage_debug_draw_contact_uniforms,
+                        );
+                    }
+                }
+            }
 
             // render entities
             for e in &self.entities {

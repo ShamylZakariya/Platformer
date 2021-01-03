@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use cgmath::{Point2, Vector2};
 use winit::event::{ElementState, VirtualKeyCode};
@@ -54,6 +54,9 @@ pub trait Entity {
     fn sprite_name(&self) -> &str;
     fn sprite_cycle(&self) -> &str;
     fn handle_message(&mut self, message: &Message);
+
+    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>>;
+    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

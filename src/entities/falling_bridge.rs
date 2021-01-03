@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use cgmath::{vec2, Point2, Point3, Vector2};
 use winit::event::{ElementState, VirtualKeyCode};
@@ -123,5 +123,12 @@ impl Entity for FallingBridge {
                 }
             }
         }
+    }
+
+    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+        None
+    }
+    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+        None
     }
 }

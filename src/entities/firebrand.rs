@@ -572,6 +572,14 @@ impl Entity for Firebrand {
     }
 
     fn handle_message(&mut self, _message: &Message) {}
+
+    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+        Some(&self.overlapping_sprites)
+    }
+
+    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+        Some(&self.contacting_sprites)
+    }
 }
 
 impl Firebrand {
