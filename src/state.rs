@@ -7,9 +7,9 @@ use winit::{
 };
 
 use crate::camera;
-use crate::collision;
 use crate::entity;
 use crate::map;
+use crate::sprite::collision;
 use crate::texture;
 use crate::tileset;
 

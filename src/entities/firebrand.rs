@@ -4,12 +4,10 @@ use cgmath::{vec2, Point2, Vector2, Zero};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    collision::{self, ProbeDir, ProbeResult, Space},
     constants::GRAVITY_VEL,
     entity::{Dispatcher, Entity, Event, Message},
     map::{self, FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER},
-    sprite::core::Sprite,
-    sprite::rendering::Uniforms,
+    sprite::{self, collision, rendering},
     tileset,
 };
 
@@ -64,8 +62,8 @@ pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
     }
 }
 
-fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &Sprite) -> bool {
-    move |_dist: f32, sprite: &Sprite| -> bool {
+fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
+    move |_dist: f32, sprite: &sprite::Sprite| -> bool {
         if position.y < sprite.top() && sprite.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
             false
         } else {
@@ -81,7 +79,7 @@ pub enum Stance {
     Standing,
     InAir,
     Flying,
-    WallHold(Sprite),
+    WallHold(sprite::Sprite),
 }
 
 impl Eq for Stance {}
@@ -242,10 +240,10 @@ pub struct Firebrand {
     character_state: CharacterState,
 
     // sprites the character is overlapping and might collide with
-    pub overlapping_sprites: HashSet<Sprite>,
+    pub overlapping_sprites: HashSet<sprite::Sprite>,
 
     // sprites the character is contacting
-    pub contacting_sprites: HashSet<Sprite>,
+    pub contacting_sprites: HashSet<sprite::Sprite>,
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
@@ -284,7 +282,7 @@ impl Default for Firebrand {
 impl Entity for Firebrand {
     fn init(
         &mut self,
-        sprite: &Sprite,
+        sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
         map: &map::Map,
         _collision_space: &mut collision::Space,
@@ -530,7 +528,7 @@ impl Entity for Firebrand {
         self.input_state.update();
     }
 
-    fn update_uniforms(&self, uniforms: &mut Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         //
         //  Write state into uniform storage
         //
@@ -577,11 +575,11 @@ impl Entity for Firebrand {
 
     fn handle_message(&mut self, _message: &Message) {}
 
-    fn overlapping_sprites(&self) -> Option<&HashSet<Sprite>> {
+    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
         Some(&self.overlapping_sprites)
     }
 
-    fn contacting_sprites(&self) -> Option<&HashSet<Sprite>> {
+    fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
         Some(&self.contacting_sprites)
     }
 }
@@ -658,11 +656,11 @@ impl Firebrand {
     /// If player is contacting any surfaces, they will be passed to handle_collision_with()
     fn find_character_footing(
         &mut self,
-        collision_space: &Space,
+        collision_space: &collision::Space,
         position: Point2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
-    ) -> (Point2<f32>, Option<Sprite>) {
+    ) -> (Point2<f32>, Option<sprite::Sprite>) {
         let mut position = position;
         let mut tracking = None;
 
@@ -676,7 +674,7 @@ impl Firebrand {
         let inset = 0.0 as f32;
         let contacts_are_collision = !may_apply_correction;
 
-        let can_collide_width = |p: &Point2<f32>, s: &Sprite| -> bool {
+        let can_collide_width = |p: &Point2<f32>, s: &sprite::Sprite| -> bool {
             // if character is more than 75% up a ratchet block consider it a collision
             if s.mask & FLAG_MAP_TILE_IS_RATCHET != 0 && p.y < (s.top() - 0.25) {
                 false
@@ -728,10 +726,12 @@ impl Firebrand {
     /// y coord, so this returns the one closer to the character's y position)
     fn apply_lateral_movement(
         &mut self,
-        collision_space: &Space,
+        collision_space: &collision::Space,
         position: Point2<f32>,
         dt: f32,
-    ) -> (Point2<f32>, Option<Sprite>) {
+    ) -> (Point2<f32>, Option<sprite::Sprite>) {
+        use collision::{ProbeDir, ProbeResult};
+
         // this is a no-op while wallholding
         if self.is_wallholding() {
             return (position, None);
@@ -753,7 +753,7 @@ impl Firebrand {
                 * self.wallgrab_jump_dir;
         }
 
-        let mut contacted: Option<Sprite> = None;
+        let mut contacted: Option<sprite::Sprite> = None;
 
         //
         // Check if moving left or right would cause a collision, and adjust distance accordingly
@@ -874,10 +874,12 @@ impl Firebrand {
 
     fn apply_vertical_movement(
         &mut self,
-        collision_space: &Space,
+        collision_space: &collision::Space,
         position: Point2<f32>,
         dt: f32,
     ) -> Point2<f32> {
+        use collision::{ProbeDir, ProbeResult};
+
         match self.character_state.stance {
             Stance::Standing | Stance::Flying | Stance::WallHold(_) => {
                 if self.vertical_velocity.abs() != 0.0 {
@@ -942,7 +944,7 @@ impl Firebrand {
     }
 
     /// Callback for handling collision with scene geometry.
-    fn handle_collision_with(&mut self, sprite: &Sprite) {
+    fn handle_collision_with(&mut self, sprite: &sprite::Sprite) {
         self.contacting_sprites.insert(*sprite);
     }
 
@@ -1040,7 +1042,7 @@ impl Firebrand {
         }
     }
 
-    fn is_in_water(&self, collision_space: &Space, position: Point2<f32>) -> bool {
+    fn is_in_water(&self, collision_space: &collision::Space, position: Point2<f32>) -> bool {
         let a = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
         let b = Point2::new(a.x + 1, a.y);
         let c = Point2::new(a.x, a.y + 1);

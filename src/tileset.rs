@@ -5,7 +5,7 @@ use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
-use crate::sprite::core::*;
+use crate::sprite;
 
 #[derive(Clone, Debug)]
 pub struct Tile {
@@ -21,7 +21,9 @@ impl Tile {
         }
     }
 
-    pub fn shape(&self) -> CollisionShape {
+    pub fn shape(&self) -> sprite::CollisionShape {
+        use sprite::CollisionShape;
+
         let collision_shape = self.properties.get("collision_shape");
         if let Some(collision_shape) = collision_shape {
             match collision_shape.as_str() {

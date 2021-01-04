@@ -6,9 +6,9 @@ use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
 
 use crate::entities;
-use crate::sprite;
+use crate::entity;
+use crate::sprite::{self, collision};
 use crate::tileset;
-use crate::{collision, entity};
 
 pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
 pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;

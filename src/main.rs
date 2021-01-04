@@ -7,7 +7,6 @@ use winit::{
     window::WindowBuilder,
 };
 mod camera;
-mod collision;
 mod constants;
 mod entities;
 mod entity;

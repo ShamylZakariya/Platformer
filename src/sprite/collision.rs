@@ -1,7 +1,7 @@
 use cgmath::{vec2, Point2};
 use std::{collections::HashMap, unimplemented};
 
-use crate::sprite::core::{CollisionShape, Sprite};
+use crate::sprite::core::*;
 
 #[derive(Clone, Copy, Debug)]
 pub enum ProbeDir {
