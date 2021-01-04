@@ -1,7 +1,7 @@
 use cgmath::{vec2, Point2};
 use std::{collections::HashMap, unimplemented};
 
-use crate::sprite::{CollisionShape, SpriteDesc};
+use crate::sprite::core::{CollisionShape, Sprite};
 
 #[derive(Clone, Copy, Debug)]
 pub enum ProbeDir {
@@ -16,23 +16,23 @@ pub enum ProbeResult {
     None,
     OneHit {
         dist: f32,
-        sprite: SpriteDesc,
+        sprite: Sprite,
     },
     TwoHits {
         dist: f32,
-        sprite_0: SpriteDesc,
-        sprite_1: SpriteDesc,
+        sprite_0: Sprite,
+        sprite_1: Sprite,
     },
 }
 
 pub struct Space {
-    unit_sprites: HashMap<Point2<i32>, SpriteDesc>,
+    unit_sprites: HashMap<Point2<i32>, Sprite>,
 }
 
 const HASH_MAP_SCALE: i32 = 1000;
 
 impl Space {
-    pub fn new(sprites: &[SpriteDesc]) -> Self {
+    pub fn new(sprites: &[Sprite]) -> Self {
         let mut unit_sprite_map = HashMap::new();
 
         for sprite in sprites {
@@ -55,14 +55,14 @@ impl Space {
         }
     }
 
-    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<Sprite> {
         self.unit_sprites
             .get(&(point * HASH_MAP_SCALE))
             .filter(|s| s.mask & mask != 0)
             .map(|s| *s)
     }
 
-    pub fn add_sprite(&mut self, sprite: &SpriteDesc) {
+    pub fn add_sprite(&mut self, sprite: &Sprite) {
         let coord = Point2::new(
             sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
             sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
@@ -70,7 +70,7 @@ impl Space {
         self.unit_sprites.insert(coord, *sprite);
     }
 
-    pub fn remove_sprite(&mut self, sprite: &SpriteDesc) {
+    pub fn remove_sprite(&mut self, sprite: &Sprite) {
         let coord = Point2::new(
             sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
             sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
@@ -86,7 +86,7 @@ impl Space {
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, there is no guarantee which will be returned,
     /// except that unit sprites will be tested before non-unit sprites.
-    pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<SpriteDesc> {
+    pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<Sprite> {
         self.unit_sprites
             .get(&Point2::new(
                 point.x.floor() as i32 * HASH_MAP_SCALE,
@@ -109,7 +109,7 @@ impl Space {
         test: F,
     ) -> ProbeResult
     where
-        F: Fn(f32, &SpriteDesc) -> bool,
+        F: Fn(f32, &Sprite) -> bool,
     {
         let (offset, should_probe_offset) = match dir {
             ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
@@ -162,7 +162,7 @@ impl Space {
         dir: ProbeDir,
         max_steps: i32,
         mask: u32,
-    ) -> Option<(f32, SpriteDesc)> {
+    ) -> Option<(f32, Sprite)> {
         let position_snapped = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
         let mut result = None;
         match dir {
@@ -227,7 +227,7 @@ mod sprite_hit_tester {
         let tce = vec2(1.0, 1.0);
         let color = vec4(1.0, 1.0, 1.0, 1.0);
 
-        let unit_0 = SpriteDesc::unit(
+        let unit_0 = Sprite::unit(
             CollisionShape::Square,
             Point2::new(0, 0),
             0.0,
@@ -236,7 +236,7 @@ mod sprite_hit_tester {
             color,
             0,
         );
-        let unit_1 = SpriteDesc::unit(
+        let unit_1 = Sprite::unit(
             CollisionShape::Square,
             Point2::new(11, -33),
             0.0,
@@ -279,7 +279,7 @@ mod sprite_hit_tester {
         let tce = vec2(1.0, 1.0);
         let color = vec4(1.0, 1.0, 1.0, 1.0);
 
-        let sb1 = SpriteDesc::unit(
+        let sb1 = Sprite::unit(
             CollisionShape::Square,
             Point2::new(0, 0),
             10.0,
@@ -289,7 +289,7 @@ mod sprite_hit_tester {
             square_mask,
         );
 
-        let sb2 = SpriteDesc::unit(
+        let sb2 = Sprite::unit(
             CollisionShape::Square,
             Point2::new(-1, -1),
             10.0,
@@ -299,7 +299,7 @@ mod sprite_hit_tester {
             square_mask,
         );
 
-        let tr0 = SpriteDesc::unit(
+        let tr0 = Sprite::unit(
             CollisionShape::NorthEast,
             Point2::new(0, 4),
             10.0,
@@ -309,7 +309,7 @@ mod sprite_hit_tester {
             triangle_mask,
         );
 
-        let tr1 = SpriteDesc::unit(
+        let tr1 = Sprite::unit(
             CollisionShape::NorthWest,
             Point2::new(-1, 4),
             10.0,
@@ -319,7 +319,7 @@ mod sprite_hit_tester {
             triangle_mask,
         );
 
-        let tr2 = SpriteDesc::unit(
+        let tr2 = Sprite::unit(
             CollisionShape::SouthWest,
             Point2::new(-1, 3),
             10.0,
@@ -329,7 +329,7 @@ mod sprite_hit_tester {
             triangle_mask,
         );
 
-        let tr3 = SpriteDesc::unit(
+        let tr3 = Sprite::unit(
             CollisionShape::SouthEast,
             Point2::new(0, 3),
             10.0,

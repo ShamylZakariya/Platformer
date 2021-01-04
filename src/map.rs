@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use sprite::SpriteDesc;
+use sprite::core::*;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -258,12 +258,12 @@ impl Map {
         None
     }
 
-    /// Generates a vector of SpriteDesc for the contents of the specified layer
-    pub fn generate_sprites<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<sprite::SpriteDesc>
+    /// Generates a vector of Sprite for the contents of the specified layer
+    pub fn generate_sprites<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<Sprite>
     where
-        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
+        Z: Fn(&Sprite, &tileset::Tile) -> f32,
     {
-        let mut sprites: Vec<sprite::SpriteDesc> = vec![];
+        let mut sprites: Vec<Sprite> = vec![];
 
         self.generate(
             layer,
@@ -287,7 +287,7 @@ impl Map {
         z_depth: Z,
     ) -> Vec<Box<dyn entity::Entity>>
     where
-        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
+        Z: Fn(&Sprite, &tileset::Tile) -> f32,
     {
         let mut entities: Vec<Box<dyn entity::Entity>> = vec![];
 
@@ -311,9 +311,9 @@ impl Map {
 
     fn generate<Z, C, E>(&self, layer: &Layer, mut entity_id_vendor: E, z_depth: Z, mut consumer: C)
     where
-        Z: Fn(&SpriteDesc, &tileset::Tile) -> f32,
-        C: FnMut(&SpriteDesc, &tileset::Tile),
-        E: FnMut(&SpriteDesc, &tileset::Tile) -> u32,
+        Z: Fn(&Sprite, &tileset::Tile) -> f32,
+        C: FnMut(&Sprite, &tileset::Tile),
+        E: FnMut(&Sprite, &tileset::Tile) -> u32,
     {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
         let flipped_horizontally_flag = 0x80000000 as u32;
@@ -356,7 +356,7 @@ impl Map {
                         mask |= FLAG_MAP_TILE_IS_ENTITY;
                     }
 
-                    let mut sd = sprite::SpriteDesc::unit(
+                    let mut sd = Sprite::unit(
                         tile.shape(),
                         cgmath::Point2::new(x as i32, (layer.height - y) as i32),
                         0.0,

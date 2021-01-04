@@ -6,14 +6,16 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     collision, constants,
     entity::{Dispatcher, Entity, Event, Message},
-    map, sprite, tileset,
+    map,
+    sprite::{core::Sprite, rendering::Uniforms},
+    tileset,
 };
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
 pub struct FallingBridge {
     entity_id: u32,
-    sprite: Option<sprite::SpriteDesc>,
+    sprite: Option<Sprite>,
     position: Point3<f32>,
     time_remaining: Option<f32>,
     is_falling: bool,
@@ -38,7 +40,7 @@ impl Default for FallingBridge {
 impl Entity for FallingBridge {
     fn init(
         &mut self,
-        sprite: &sprite::SpriteDesc,
+        sprite: &Sprite,
         _tile: &tileset::Tile,
         map: &map::Map,
         collision_space: &mut collision::Space,
@@ -91,7 +93,7 @@ impl Entity for FallingBridge {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut Uniforms) {
         uniforms.data.set_model_position(&self.position);
     }
 
@@ -127,10 +129,10 @@ impl Entity for FallingBridge {
         }
     }
 
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+    fn overlapping_sprites(&self) -> Option<&HashSet<Sprite>> {
         None
     }
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+    fn contacting_sprites(&self) -> Option<&HashSet<Sprite>> {
         None
     }
 }

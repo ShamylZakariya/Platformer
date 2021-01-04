@@ -8,7 +8,9 @@ use crate::{
     constants::GRAVITY_VEL,
     entity::{Dispatcher, Entity, Event, Message},
     map::{self, FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER},
-    sprite, tileset,
+    sprite::core::Sprite,
+    sprite::rendering::Uniforms,
+    tileset,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -62,8 +64,8 @@ pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
     }
 }
 
-fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::SpriteDesc) -> bool {
-    move |_dist: f32, sprite: &sprite::SpriteDesc| -> bool {
+fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &Sprite) -> bool {
+    move |_dist: f32, sprite: &Sprite| -> bool {
         if position.y < sprite.top() && sprite.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
             false
         } else {
@@ -79,7 +81,7 @@ pub enum Stance {
     Standing,
     InAir,
     Flying,
-    WallHold(sprite::SpriteDesc),
+    WallHold(Sprite),
 }
 
 impl Eq for Stance {}
@@ -240,10 +242,10 @@ pub struct Firebrand {
     character_state: CharacterState,
 
     // sprites the character is overlapping and might collide with
-    pub overlapping_sprites: HashSet<sprite::SpriteDesc>,
+    pub overlapping_sprites: HashSet<Sprite>,
 
     // sprites the character is contacting
-    pub contacting_sprites: HashSet<sprite::SpriteDesc>,
+    pub contacting_sprites: HashSet<Sprite>,
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
@@ -282,7 +284,7 @@ impl Default for Firebrand {
 impl Entity for Firebrand {
     fn init(
         &mut self,
-        sprite: &sprite::SpriteDesc,
+        sprite: &Sprite,
         _tile: &tileset::Tile,
         map: &map::Map,
         _collision_space: &mut collision::Space,
@@ -528,7 +530,7 @@ impl Entity for Firebrand {
         self.input_state.update();
     }
 
-    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut Uniforms) {
         //
         //  Write state into uniform storage
         //
@@ -575,11 +577,11 @@ impl Entity for Firebrand {
 
     fn handle_message(&mut self, _message: &Message) {}
 
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+    fn overlapping_sprites(&self) -> Option<&HashSet<Sprite>> {
         Some(&self.overlapping_sprites)
     }
 
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>> {
+    fn contacting_sprites(&self) -> Option<&HashSet<Sprite>> {
         Some(&self.contacting_sprites)
     }
 }
@@ -660,7 +662,7 @@ impl Firebrand {
         position: Point2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
-    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+    ) -> (Point2<f32>, Option<Sprite>) {
         let mut position = position;
         let mut tracking = None;
 
@@ -674,7 +676,7 @@ impl Firebrand {
         let inset = 0.0 as f32;
         let contacts_are_collision = !may_apply_correction;
 
-        let can_collide_width = |p: &Point2<f32>, s: &sprite::SpriteDesc| -> bool {
+        let can_collide_width = |p: &Point2<f32>, s: &Sprite| -> bool {
             // if character is more than 75% up a ratchet block consider it a collision
             if s.mask & FLAG_MAP_TILE_IS_RATCHET != 0 && p.y < (s.top() - 0.25) {
                 false
@@ -684,10 +686,12 @@ impl Firebrand {
         };
 
         for test_point in [below_center, center].iter() {
+            use crate::sprite::core::CollisionShape;
+
             if let Some(s) = collision_space.get_sprite_at(*test_point, FLAG_MAP_TILE_IS_COLLIDER) {
                 if can_collide_width(&position, &s) {
                     match s.collision_shape {
-                        sprite::CollisionShape::Square => {
+                        CollisionShape::Square => {
                             if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
                                 self.handle_collision_with(&s);
                                 tracking = Some(s);
@@ -696,7 +700,7 @@ impl Firebrand {
                                 }
                             }
                         }
-                        sprite::CollisionShape::NorthEast | sprite::CollisionShape::NorthWest => {
+                        CollisionShape::NorthEast | CollisionShape::NorthWest => {
                             if let Some(intersection) = s.line_intersection(
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
@@ -727,7 +731,7 @@ impl Firebrand {
         collision_space: &Space,
         position: Point2<f32>,
         dt: f32,
-    ) -> (Point2<f32>, Option<sprite::SpriteDesc>) {
+    ) -> (Point2<f32>, Option<Sprite>) {
         // this is a no-op while wallholding
         if self.is_wallholding() {
             return (position, None);
@@ -749,7 +753,7 @@ impl Firebrand {
                 * self.wallgrab_jump_dir;
         }
 
-        let mut contacted: Option<sprite::SpriteDesc> = None;
+        let mut contacted: Option<Sprite> = None;
 
         //
         // Check if moving left or right would cause a collision, and adjust distance accordingly
@@ -938,7 +942,7 @@ impl Firebrand {
     }
 
     /// Callback for handling collision with scene geometry.
-    fn handle_collision_with(&mut self, sprite: &sprite::SpriteDesc) {
+    fn handle_collision_with(&mut self, sprite: &Sprite) {
         self.contacting_sprites.insert(*sprite);
     }
 

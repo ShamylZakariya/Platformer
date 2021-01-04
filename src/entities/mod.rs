@@ -1,15 +1,15 @@
 use anyhow::Result;
 
-use crate::{collision, entity::Entity, map, sprite, tileset};
+use crate::{collision, entity::Entity, map::Map, sprite::core::Sprite, tileset::Tile};
 
 pub mod falling_bridge;
 pub mod firebrand;
 
 pub fn instantiate(
     classname: &str,
-    sprite: &sprite::SpriteDesc,
-    tile: &tileset::Tile,
-    map: &map::Map,
+    sprite: &Sprite,
+    tile: &Tile,
+    map: &Map,
     collision_space: &mut collision::Space,
 ) -> Result<Box<dyn Entity>> {
     if let Some(mut e) = match classname {

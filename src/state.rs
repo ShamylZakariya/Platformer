@@ -10,7 +10,6 @@ use crate::camera;
 use crate::collision;
 use crate::entity;
 use crate::map;
-use crate::sprite;
 use crate::texture;
 use crate::tileset;
 
@@ -49,15 +48,15 @@ struct UiInputState {
 
 struct EntityComponents {
     entity: Box<dyn entity::Entity>,
-    sprite: sprite::SpriteEntity,
-    uniforms: sprite::Uniforms,
+    sprite: crate::sprite::rendering::SpriteEntity,
+    uniforms: crate::sprite::rendering::Uniforms,
 }
 
 impl EntityComponents {
     fn new(
         entity: Box<dyn entity::Entity>,
-        sprite: sprite::SpriteEntity,
-        uniforms: sprite::Uniforms,
+        sprite: crate::sprite::rendering::SpriteEntity,
+        uniforms: crate::sprite::rendering::Uniforms,
     ) -> Self {
         Self {
             entity,
@@ -93,10 +92,10 @@ pub struct State {
     sprite_render_pipeline: wgpu::RenderPipeline,
 
     // Stage rendering
-    stage_uniforms: sprite::Uniforms,
-    stage_debug_draw_overlap_uniforms: sprite::Uniforms,
-    stage_debug_draw_contact_uniforms: sprite::Uniforms,
-    stage_sprite_collection: sprite::SpriteCollection,
+    stage_uniforms: crate::sprite::rendering::Uniforms,
+    stage_debug_draw_overlap_uniforms: crate::sprite::rendering::Uniforms,
+    stage_debug_draw_contact_uniforms: crate::sprite::rendering::Uniforms,
+    stage_sprite_collection: crate::sprite::rendering::MeshCollection,
     map: map::Map,
 
     // Collision detection and dispatch
@@ -104,7 +103,7 @@ pub struct State {
     message_dispatcher: entity::Dispatcher,
 
     // Entity rendering
-    entity_material: Rc<sprite::SpriteMaterial>,
+    entity_material: Rc<crate::sprite::rendering::Material>,
     entities: Vec<EntityComponents>,
     firebrand_entity_id: usize,
 
@@ -165,13 +164,14 @@ impl State {
             map.tileset.tile_height as f32,
         );
 
-        let material_bind_group_layout = sprite::SpriteMaterial::bind_group_layout(&device);
+        let material_bind_group_layout =
+            crate::sprite::rendering::Material::bind_group_layout(&device);
         let (stage_sprite_collection, stage_hit_tester, entities) = {
             let mat = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
                     texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
-                sprite::SpriteMaterial::new(
+                crate::sprite::rendering::Material::new(
                     &device,
                     "Sprite Material",
                     spritesheet,
@@ -213,9 +213,9 @@ impl State {
             all_sprites.extend(bg_sprites);
             all_sprites.extend(level_sprites.clone());
 
-            let sm = sprite::SpriteMesh::new(&all_sprites, 0, &device, "Sprite Mesh");
+            let sm = crate::sprite::rendering::Mesh::new(&all_sprites, 0, &device, "Sprite Mesh");
             (
-                sprite::SpriteCollection::new(vec![sm], vec![mat]),
+                crate::sprite::rendering::MeshCollection::new(vec![sm], vec![mat]),
                 collision_space,
                 entities,
             )
@@ -233,9 +233,11 @@ impl State {
 
         // Build the sprite render pipeline
 
-        let stage_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_overlap_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_contact_uniforms = sprite::Uniforms::new(&device, sprite_size_px);
+        let stage_uniforms = crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_overlap_uniforms =
+            crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_contact_uniforms =
+            crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -248,7 +250,7 @@ impl State {
                 push_constant_ranges: &[],
             });
 
-        let sprite_render_pipeline = sprite::create_render_pipeline(
+        let sprite_render_pipeline = crate::sprite::rendering::create_render_pipeline(
             &device,
             &sprite_render_pipeline_layout,
             sc_desc.format,
@@ -265,7 +267,7 @@ impl State {
             let spritesheet =
                 texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
 
-            sprite::SpriteMaterial::new(
+            crate::sprite::rendering::Material::new(
                 &device,
                 "Sprite Material",
                 spritesheet,
@@ -284,14 +286,14 @@ impl State {
             let name = e.sprite_name().to_string();
             entity_components.push(EntityComponents::new(
                 e,
-                sprite::SpriteEntity::load(
+                crate::sprite::rendering::SpriteEntity::load(
                     &entity_tileset,
                     entity_material.clone(),
                     &device,
                     &name,
                     0,
                 ),
-                sprite::Uniforms::new(&device, sprite_size_px),
+                crate::sprite::rendering::Uniforms::new(&device, sprite_size_px),
             ));
         }
 

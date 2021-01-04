@@ -3,7 +3,8 @@ use std::{collections::HashSet, time::Duration};
 use cgmath::Point2;
 use winit::event::{ElementState, VirtualKeyCode};
 
-use crate::sprite;
+use crate::sprite::core::Sprite;
+use crate::sprite::rendering::*;
 use crate::tileset;
 use crate::{collision, map};
 
@@ -40,7 +41,7 @@ pub trait Entity {
     ///
     fn init(
         &mut self,
-        sprite: &sprite::SpriteDesc,
+        sprite: &Sprite,
         tile: &tileset::Tile,
         map: &map::Map,
         collision_space: &mut collision::Space,
@@ -62,7 +63,7 @@ pub trait Entity {
     );
 
     /// Write updated state into this entity's uniform buffer for rendering.
-    fn update_uniforms(&self, uniforms: &mut sprite::Uniforms);
+    fn update_uniforms(&self, uniforms: &mut Uniforms);
 
     /// The unique id for this Entity, a value from [0,u32::MAX]
     fn entity_id(&self) -> u32;
@@ -83,10 +84,10 @@ pub trait Entity {
     fn handle_message(&mut self, message: &Message);
 
     /// Return a set of overlapping sprites used for debug visualization, or None if not applicable.
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>>;
+    fn overlapping_sprites(&self) -> Option<&HashSet<Sprite>>;
 
     /// Return a set of contacting sprites used for debug visualization, or None if not applicable.
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::SpriteDesc>>;
+    fn contacting_sprites(&self) -> Option<&HashSet<Sprite>>;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
