@@ -1,4 +1,5 @@
-use cgmath::{prelude::*, vec2, vec3};
+use cgmath::{prelude::*, vec2, vec3, Vector2, Vector3, Vector4};
+use core::panic;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -8,7 +9,7 @@ use crate::texture;
 use crate::tileset;
 use wgpu::util::DeviceExt;
 
-use super::core::Vertex;
+// --------------------------------------------------------------------------------------------------------------------
 
 pub fn create_render_pipeline(
     device: &wgpu::Device,
@@ -72,6 +73,58 @@ pub fn create_render_pipeline(
             vertex_buffers: vertex_descs,
         },
     })
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
+pub trait VertexBufferDescription {
+    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a>;
+}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct Vertex {
+    pub position: Vector3<f32>,
+    pub tex_coord: Vector2<f32>,
+    pub color: Vector4<f32>,
+}
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
+
+impl Vertex {
+    pub fn new(position: Vector3<f32>, tex_coord: Vector2<f32>, color: Vector4<f32>) -> Self {
+        Self {
+            position,
+            tex_coord,
+            color,
+        }
+    }
+}
+
+impl VertexBufferDescription for Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
+        wgpu::VertexBufferDescriptor {
+            stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::InputStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttributeDescriptor {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float3,
+                },
+                wgpu::VertexAttributeDescriptor {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float2,
+                },
+                wgpu::VertexAttributeDescriptor {
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float4,
+                },
+            ],
+        }
+    }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -387,15 +440,28 @@ impl Mesh {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-/// MeshCollection manages a vec of Mesh and Material, such that each Mesh's material index can point to a
-/// specific Material.
-pub struct MeshCollection {
+/// Drawable manages a vec of Mesh and Material, such that each Mesh's material index can point to a
+/// specific Material. The common case is for a Drawable to be made with a single mesh and material pair.
+pub struct Drawable {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
 }
 
-impl MeshCollection {
+impl Drawable {
+    pub fn with(mesh: Mesh, material: Material) -> Self {
+        Self::new(vec![mesh], vec![material])
+    }
+
     pub fn new(meshes: Vec<Mesh>, materials: Vec<Material>) -> Self {
+        if materials.is_empty() {
+            panic!("Attempted to create Drawable without materials")
+        }
+        for m in &meshes {
+            if m.material > materials.len() {
+                panic!("Material index {} is out of range", m.material);
+            }
+        }
+
         Self { meshes, materials }
     }
 
@@ -434,7 +500,7 @@ impl MeshCollection {
     }
 }
 
-impl Default for MeshCollection {
+impl Default for Drawable {
     fn default() -> Self {
         Self {
             meshes: vec![],
@@ -445,15 +511,18 @@ impl Default for MeshCollection {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub struct SpriteEntity {
+/// EntityDrawable is a Drawable for entities which will draw from res/entities.tsx tileset.
+/// EntityDrawable allows for an entity to specify a subset name, e.g., "firebrand" and then a
+/// specific cycle, e.g., "walk_0" to display when draw() is called.
+pub struct EntityDrawable {
     // maps a string, e.g., "face_right" to a renderable mesh
     meshes_by_cycle: HashMap<String, Mesh>,
 
-    // TODO: this should be &sprite::SPriteMaterial so multiple entities can share a single spritesheet?
+    // TODO: this should be &Material so multiple entities can share a single spritesheet?
     material: Rc<Material>,
 }
 
-impl SpriteEntity {
+impl EntityDrawable {
     // Loads all tiles with the specified name from the tileset, gathering them by "cycle", populating
     // meshes_by_cycle accordingly.
     // REQUISITES:
@@ -529,7 +598,7 @@ impl SpriteEntity {
             sprite_states.insert(key.to_string(), mesh);
         }
 
-        SpriteEntity {
+        EntityDrawable {
             meshes_by_cycle: sprite_states,
             material,
         }

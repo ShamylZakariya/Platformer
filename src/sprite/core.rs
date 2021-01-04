@@ -34,58 +34,6 @@ fn hash_vec4<H: std::hash::Hasher>(v: &Vector4<f32>, state: &mut H) {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub trait VertexBufferDescription {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a>;
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct Vertex {
-    pub position: Vector3<f32>,
-    pub tex_coord: Vector2<f32>,
-    pub color: Vector4<f32>,
-}
-unsafe impl bytemuck::Zeroable for Vertex {}
-unsafe impl bytemuck::Pod for Vertex {}
-
-impl Vertex {
-    pub fn new(position: Vector3<f32>, tex_coord: Vector2<f32>, color: Vector4<f32>) -> Self {
-        Self {
-            position,
-            tex_coord,
-            color,
-        }
-    }
-}
-
-impl VertexBufferDescription for Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float3,
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float2,
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float4,
-                },
-            ],
-        }
-    }
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-
 /// Represents the shape of a sprite, where Square represents a standard, square, sprite and the remainder
 /// are triangles, with the surface normal facing in the specqified direction. E.g., NorthEast would be a triangle
 /// with the edge normal facing up and to the right.
@@ -138,8 +86,7 @@ impl CollisionShape {
 }
 
 /// Sprite represents a sprite in CPU terms, e.g., sprite is for collision detection,
-/// positioning, representing a level or entity in memory. For rendering, See SpriteMesh
-/// SpriteMaterial
+/// positioning, representing a level or entity in memory. For rendering, See sprite::rendering::Drawable
 #[derive(Copy, Clone, Debug)]
 pub struct Sprite {
     pub collision_shape: CollisionShape,

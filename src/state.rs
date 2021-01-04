@@ -13,6 +13,10 @@ use crate::map;
 use crate::texture;
 use crate::tileset;
 
+use crate::camera::Uniforms as CameraUniforms;
+use crate::sprite::rendering::Drawable as SpriteDrawable;
+use crate::sprite::rendering::Uniforms as SpriteUniforms;
+
 // --------------------------------------------------------------------------------------------------------------------
 
 #[derive(Clone, Debug)]
@@ -48,15 +52,15 @@ struct UiInputState {
 
 struct EntityComponents {
     entity: Box<dyn entity::Entity>,
-    sprite: crate::sprite::rendering::SpriteEntity,
-    uniforms: crate::sprite::rendering::Uniforms,
+    sprite: crate::sprite::rendering::EntityDrawable,
+    uniforms: SpriteUniforms,
 }
 
 impl EntityComponents {
     fn new(
         entity: Box<dyn entity::Entity>,
-        sprite: crate::sprite::rendering::SpriteEntity,
-        uniforms: crate::sprite::rendering::Uniforms,
+        sprite: crate::sprite::rendering::EntityDrawable,
+        uniforms: SpriteUniforms,
     ) -> Self {
         Self {
             entity,
@@ -86,16 +90,16 @@ pub struct State {
     // Camera
     camera: camera::Camera,
     projection: camera::Projection,
-    camera_uniforms: camera::Uniforms,
+    camera_uniforms: CameraUniforms,
 
     // Pipelines
     sprite_render_pipeline: wgpu::RenderPipeline,
 
     // Stage rendering
-    stage_uniforms: crate::sprite::rendering::Uniforms,
-    stage_debug_draw_overlap_uniforms: crate::sprite::rendering::Uniforms,
-    stage_debug_draw_contact_uniforms: crate::sprite::rendering::Uniforms,
-    stage_sprite_collection: crate::sprite::rendering::MeshCollection,
+    stage_uniforms: SpriteUniforms,
+    stage_debug_draw_overlap_uniforms: SpriteUniforms,
+    stage_debug_draw_contact_uniforms: SpriteUniforms,
+    stage_sprite_drawable: SpriteDrawable,
     map: map::Map,
 
     // Collision detection and dispatch
@@ -166,7 +170,7 @@ impl State {
 
         let material_bind_group_layout =
             crate::sprite::rendering::Material::bind_group_layout(&device);
-        let (stage_sprite_collection, stage_hit_tester, entities) = {
+        let (stage_sprite_drawable, stage_hit_tester, entities) = {
             let mat = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
@@ -214,11 +218,7 @@ impl State {
             all_sprites.extend(level_sprites.clone());
 
             let sm = crate::sprite::rendering::Mesh::new(&all_sprites, 0, &device, "Sprite Mesh");
-            (
-                crate::sprite::rendering::MeshCollection::new(vec![sm], vec![mat]),
-                collision_space,
-                entities,
-            )
+            (SpriteDrawable::with(sm, mat), collision_space, entities)
         };
 
         // Build camera, and camera uniform storage
@@ -228,16 +228,14 @@ impl State {
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0, map_origin, map_extent);
 
-        let mut camera_uniforms = camera::Uniforms::new(&device);
+        let mut camera_uniforms = CameraUniforms::new(&device);
         camera_uniforms.data.update_view_proj(&camera, &projection);
 
         // Build the sprite render pipeline
 
-        let stage_uniforms = crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_overlap_uniforms =
-            crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_contact_uniforms =
-            crate::sprite::rendering::Uniforms::new(&device, sprite_size_px);
+        let stage_uniforms = SpriteUniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&device, sprite_size_px);
+        let stage_debug_draw_contact_uniforms = SpriteUniforms::new(&device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -286,14 +284,14 @@ impl State {
             let name = e.sprite_name().to_string();
             entity_components.push(EntityComponents::new(
                 e,
-                crate::sprite::rendering::SpriteEntity::load(
+                crate::sprite::rendering::EntityDrawable::load(
                     &entity_tileset,
                     entity_material.clone(),
                     &device,
                     &name,
                     0,
                 ),
-                crate::sprite::rendering::Uniforms::new(&device, sprite_size_px),
+                SpriteUniforms::new(&device, sprite_size_px),
             ));
         }
 
@@ -351,7 +349,7 @@ impl State {
             stage_uniforms,
             stage_debug_draw_overlap_uniforms,
             stage_debug_draw_contact_uniforms,
-            stage_sprite_collection,
+            stage_sprite_drawable,
             map,
 
             collision_space: stage_hit_tester,
@@ -547,7 +545,7 @@ impl State {
             render_pass.set_pipeline(&self.sprite_render_pipeline);
 
             // Render stage
-            self.stage_sprite_collection.draw(
+            self.stage_sprite_drawable.draw(
                 &mut render_pass,
                 &self.camera_uniforms,
                 &self.stage_uniforms,
@@ -556,7 +554,7 @@ impl State {
             if self.draw_stage_collision_info {
                 for e in &self.entities {
                     if let Some(overlapping) = e.entity.overlapping_sprites() {
-                        self.stage_sprite_collection.draw_sprites(
+                        self.stage_sprite_drawable.draw_sprites(
                             overlapping,
                             &mut render_pass,
                             &self.camera_uniforms,
@@ -565,7 +563,7 @@ impl State {
                     }
 
                     if let Some(contacting) = e.entity.contacting_sprites() {
-                        self.stage_sprite_collection.draw_sprites(
+                        self.stage_sprite_drawable.draw_sprites(
                             contacting,
                             &mut render_pass,
                             &self.camera_uniforms,
