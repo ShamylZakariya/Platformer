@@ -213,6 +213,9 @@ impl State {
                 |_, _| 0.9,
             );
 
+            // generate animations
+            let sprite_animation_sequences = map.generate_animations(bg_layer, |_, _| 0.9);
+
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);
             all_sprites.extend(level_sprites.clone());

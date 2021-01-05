@@ -1,4 +1,9 @@
 CURRENTLY:
+    Animated background tiles
+        - DONE: Added a tex offset uniform
+        - DONE: Method on map which returns vec of animation sequence objects
+        - Make a mechanism to consume that sequence info and draw the current frame, updating a time field, etc to rewrite the animation frame
+            - maybe a kind of entity?
 
 TODO:
     - implement kickback from contact with spikes, etc

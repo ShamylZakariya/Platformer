@@ -1,4 +1,4 @@
-use cgmath::{prelude::*, vec2, vec3, Vector2, Vector3, Vector4};
+use cgmath::{prelude::*, vec2, vec3, vec4, Point2, Point3, Vector2, Vector3, Vector4};
 use core::panic;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -132,10 +132,11 @@ impl VertexBufferDescription for Vertex {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct UniformData {
-    model_position: cgmath::Vector4<f32>,
-    color: cgmath::Vector4<f32>,
-    sprite_scale: cgmath::Vector2<f32>,
-    sprite_size_px: cgmath::Vector2<f32>,
+    model_position: Vector4<f32>,
+    color: Vector4<f32>,
+    sprite_scale: Vector2<f32>,
+    sprite_size_px: Vector2<f32>,
+    tex_coord_offset: Vector2<f32>,
 }
 
 unsafe impl bytemuck::Pod for UniformData {}
@@ -144,19 +145,20 @@ unsafe impl bytemuck::Zeroable for UniformData {}
 impl UniformData {
     pub fn new() -> Self {
         Self {
-            model_position: cgmath::Vector4::zero(),
-            color: cgmath::vec4(1.0, 1.0, 1.0, 1.0),
-            sprite_scale: cgmath::vec2(1.0, 1.0),
-            sprite_size_px: cgmath::vec2(1.0, 1.0),
+            model_position: Vector4::zero(),
+            color: vec4(1.0, 1.0, 1.0, 1.0),
+            sprite_scale: vec2(1.0, 1.0),
+            sprite_size_px: vec2(1.0, 1.0),
+            tex_coord_offset: vec2(0.0, 0.0),
         }
     }
 
-    pub fn set_color(&mut self, color: &cgmath::Vector4<f32>) -> &mut Self {
+    pub fn set_color(&mut self, color: &Vector4<f32>) -> &mut Self {
         self.color = *color;
         self
     }
 
-    pub fn set_model_position(&mut self, position: &cgmath::Point3<f32>) -> &mut Self {
+    pub fn set_model_position(&mut self, position: &Point3<f32>) -> &mut Self {
         self.model_position.x = position.x;
         self.model_position.y = position.y;
         self.model_position.z = position.z;
@@ -164,13 +166,18 @@ impl UniformData {
         self
     }
 
-    pub fn set_sprite_scale(&mut self, sprite_scale: cgmath::Vector2<f32>) -> &mut Self {
+    pub fn set_sprite_scale(&mut self, sprite_scale: Vector2<f32>) -> &mut Self {
         self.sprite_scale = sprite_scale;
         self
     }
 
-    pub fn set_sprite_size_px(&mut self, sprite_size_px: cgmath::Vector2<f32>) -> &mut Self {
+    pub fn set_sprite_size_px(&mut self, sprite_size_px: Vector2<f32>) -> &mut Self {
         self.sprite_size_px = sprite_size_px;
+        self
+    }
+
+    pub fn set_tex_coord_offset(&mut self, tex_coord_offset: Vector2<f32>) -> &mut Self {
+        self.tex_coord_offset = tex_coord_offset;
         self
     }
 }
@@ -185,7 +192,7 @@ pub struct Uniforms {
 }
 
 impl Uniforms {
-    pub fn new(device: &wgpu::Device, sprite_size_px: cgmath::Vector2<f32>) -> Self {
+    pub fn new(device: &wgpu::Device, sprite_size_px: Vector2<f32>) -> Self {
         let mut data = UniformData::new();
         data.set_sprite_size_px(sprite_size_px);
 
@@ -566,11 +573,11 @@ impl EntityDrawable {
                 // now create a Sprite at this position
                 let sprite = Sprite::unit(
                     tile.shape(),
-                    cgmath::Point2::new(sprite_position.x, -sprite_position.y),
+                    Point2::new(sprite_position.x, -sprite_position.y),
                     0.0,
                     tex_coords,
                     tex_extents,
-                    cgmath::vec4(1.0, 1.0, 1.0, 1.0),
+                    vec4(1.0, 1.0, 1.0, 1.0),
                     mask,
                 );
 

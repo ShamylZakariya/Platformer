@@ -17,10 +17,11 @@ layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_color;
   vec2 u_sprite_scale;
   vec2 u_sprite_size_px;
+  vec2 u_tex_coord_offset;
 };
 
 void main() {
-  v_tex_coords = a_tex_coords;
+  v_tex_coords = a_tex_coords + u_tex_coord_offset;
   v_color = a_color * u_color;
 
   vec2 position = (u_sprite_scale * a_position.xy) + u_model_position.xy;

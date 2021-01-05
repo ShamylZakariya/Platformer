@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use sprite::core::*;
-use std::fs::File;
-use std::io::BufReader;
 use std::path::Path;
+use std::{collections::HashMap, io::BufReader};
+use std::{fs::File, time::Duration};
 use xml::reader::{EventReader, XmlEvent};
 
 use crate::entities;
@@ -35,6 +35,71 @@ impl Default for Layer {
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/// Represents a collection of identical sprites sharing a common animation sequence
+/// In the game data, this is used only for the animated burning window fire sprites, which
+/// are all the same sprite, animated simultaneously through the same keyframes.
+#[derive(Debug, Clone)]
+pub struct SpriteAnimationSequence {
+    pub sprites: Vec<Sprite>,
+    pub name: String,
+    pub offsets: Vec<cgmath::Vector2<f32>>,
+    pub durations: Vec<Duration>,
+}
+
+impl SpriteAnimationSequence {
+    fn new(
+        name: &str,
+        sprite: Sprite,
+        sequence: Vec<&tileset::Tile>,
+        tileset: &tileset::TileSet,
+    ) -> Self {
+        let mut offsets = vec![];
+        let mut durations = vec![];
+
+        // ensure our frame sequence is in order by "animation_frame" property
+        let mut sequence: Vec<&tileset::Tile> = sequence.iter().map(|t| *t).collect();
+        sequence.sort_by(|a, b| {
+            let a_frame = a.get_property("animation_frame").expect(
+                "Tiles passed to SpriteAnimationSequence must have \"animation_frame\" property",
+            ).parse::<i32>()
+            .expect("Expect \"animation_frame\" to parse to i32");
+
+            let b_frame = b.get_property("animation_frame").expect(
+                "Tiles passed to SpriteAnimationSequence must have \"animation_frame\" property",
+            ).parse::<i32>()
+            .expect("Expect \"animation_frame\" to parse to i32");
+
+            a_frame.partial_cmp(&b_frame).unwrap()
+        });
+
+        let first_tile = sequence
+            .first()
+            .expect("Animation sequence must not be empty");
+        let first_tile_tex_coords = tileset.get_tex_coords_for_tile(&first_tile);
+
+        for tile in sequence {
+            let tex_coords = tileset.get_tex_coords_for_tile(tile);
+            offsets.push(tex_coords.0 - first_tile_tex_coords.0);
+
+            let duration = tile.get_property("animation_duration").expect("Tiles passed to SpriteAnimationSequence must have \"animation_duration\" property")
+                .parse::<f32>()
+                .expect("Expect \"animation_duration\" to parse as f32");
+            durations.push(Duration::from_secs_f32(duration));
+        }
+
+        Self {
+            name: name.to_string(),
+            sprites: vec![sprite],
+            offsets,
+            durations,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
 pub struct Map {
@@ -258,6 +323,51 @@ impl Map {
         None
     }
 
+    /// Returns a vector of all animated sprite names
+    pub fn generate_animations<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<SpriteAnimationSequence>
+    where
+        Z: Fn(&Sprite, &tileset::Tile) -> f32,
+    {
+        let mut animations_by_name: HashMap<String, SpriteAnimationSequence> = HashMap::new();
+
+        self.generate(
+            layer,
+            |_, _| 0, // sprites always have entity_id of zero
+            z_depth,
+            |sprite, tile| {
+                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
+                    if let Some(animation_name) = tile.get_property("animation") {
+                        if !animations_by_name.contains_key(animation_name) {
+                            // only generate the animation once, because all sprites with this animation name will
+                            // share the same animation sequence
+                            let animation_sequence = self
+                                .tileset
+                                .get_tiles_with_property("animation", animation_name);
+
+                            animations_by_name.insert(
+                                animation_name.to_string(),
+                                SpriteAnimationSequence::new(
+                                    animation_name,
+                                    *sprite,
+                                    animation_sequence,
+                                    &self.tileset,
+                                ),
+                            );
+                        } else if let Some(animation) = animations_by_name.get_mut(animation_name) {
+                            animation.sprites.push(*sprite);
+                        }
+                    }
+                }
+            },
+        );
+
+        let mut animations: Vec<SpriteAnimationSequence> = vec![];
+        for v in animations_by_name.values() {
+            animations.push(v.clone());
+        }
+        animations
+    }
+
     /// Generates a vector of Sprite for the contents of the specified layer
     pub fn generate_sprites<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<Sprite>
     where
@@ -269,8 +379,8 @@ impl Map {
             layer,
             |_, _| 0, // sprites always have entity_id of zero
             z_depth,
-            |sprite, _tile| {
-                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
+            |sprite, tile| {
+                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 && !tile.has_property("animation") {
                     sprites.push(sprite.clone());
                 }
             },
