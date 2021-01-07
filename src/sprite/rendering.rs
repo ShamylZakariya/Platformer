@@ -1,7 +1,7 @@
 use cgmath::{prelude::*, vec2, vec3, vec4, Point2, Point3, Vector2, Vector3, Vector4};
 use core::panic;
-use std::collections::HashMap;
 use std::rc::Rc;
+use std::{collections::HashMap, time::Duration};
 
 use crate::camera;
 use crate::sprite::core::*;
@@ -451,15 +451,15 @@ impl Mesh {
 /// specific Material. The common case is for a Drawable to be made with a single mesh and material pair.
 pub struct Drawable {
     pub meshes: Vec<Mesh>,
-    pub materials: Vec<Material>,
+    pub materials: Vec<Rc<Material>>,
 }
 
 impl Drawable {
-    pub fn with(mesh: Mesh, material: Material) -> Self {
+    pub fn with(mesh: Mesh, material: Rc<Material>) -> Self {
         Self::new(vec![mesh], vec![material])
     }
 
-    pub fn new(meshes: Vec<Mesh>, materials: Vec<Material>) -> Self {
+    pub fn new(meshes: Vec<Mesh>, materials: Vec<Rc<Material>>) -> Self {
         if materials.is_empty() {
             panic!("Attempted to create Drawable without materials")
         }
@@ -629,5 +629,59 @@ impl EntityDrawable {
             render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
             render_pass.draw_indexed(0..mesh.num_elements, 0, 0..1);
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+pub struct FlipbookAnimationDrawable {
+    sequence: crate::map::SpriteFlipbookAnimation,
+    mesh: Mesh,
+    material: Rc<Material>,
+}
+
+impl FlipbookAnimationDrawable {
+    pub fn new(
+        sequence: crate::map::SpriteFlipbookAnimation,
+        material: Rc<Material>,
+        device: &wgpu::Device,
+    ) -> Self {
+        let mesh = Mesh::new(&sequence.sprites, 0, device, "Flipbook");
+
+        Self {
+            sequence,
+            mesh,
+            material,
+        }
+    }
+
+    pub fn num_frames(&self) -> usize {
+        self.sequence.offsets.len()
+    }
+
+    pub fn duration_for_frame(&self, frame: usize) -> Duration {
+        self.sequence.durations[frame % self.sequence.durations.len()]
+    }
+
+    pub fn set_frame(&self, sprite_uniforms: &mut Uniforms, frame: usize) {
+        sprite_uniforms
+            .data
+            .set_tex_coord_offset(self.sequence.offsets[frame % self.sequence.offsets.len()]);
+    }
+
+    pub fn draw<'a, 'b>(
+        &'a self,
+        render_pass: &'b mut wgpu::RenderPass<'a>,
+        camera_uniforms: &'a camera::Uniforms,
+        sprite_uniforms: &'a Uniforms,
+    ) where
+        'a: 'b,
+    {
+        render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.mesh.index_buffer.slice(..));
+        render_pass.set_bind_group(0, &self.material.bind_group, &[]);
+        render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
+        render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
+        render_pass.draw_indexed(0..self.mesh.num_elements, 0, 0..1);
     }
 }

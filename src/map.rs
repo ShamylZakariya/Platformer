@@ -38,18 +38,20 @@ impl Default for Layer {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// Represents a collection of identical sprites sharing a common animation sequence
-/// In the game data, this is used only for the animated burning window fire sprites, which
-/// are all the same sprite, animated simultaneously through the same keyframes.
+/// Represents a collection of identical sprites sharing a common animation sequence.
+/// In the GGQ level 1, this is used only for the animated burning window fire sprites, which
+/// are all the same sprite, animated simultaneously through the same keyframes. Animation is
+/// represented as a vec of offsets, representing the offset in the texture to apply to index
+/// to a particular sprite image.
 #[derive(Debug, Clone)]
-pub struct SpriteAnimationSequence {
+pub struct SpriteFlipbookAnimation {
     pub sprites: Vec<Sprite>,
     pub name: String,
     pub offsets: Vec<cgmath::Vector2<f32>>,
     pub durations: Vec<Duration>,
 }
 
-impl SpriteAnimationSequence {
+impl SpriteFlipbookAnimation {
     fn new(
         name: &str,
         sprite: Sprite,
@@ -324,11 +326,11 @@ impl Map {
     }
 
     /// Returns a vector of all animated sprite names
-    pub fn generate_animations<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<SpriteAnimationSequence>
+    pub fn generate_animations<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<SpriteFlipbookAnimation>
     where
         Z: Fn(&Sprite, &tileset::Tile) -> f32,
     {
-        let mut animations_by_name: HashMap<String, SpriteAnimationSequence> = HashMap::new();
+        let mut animations_by_name: HashMap<String, SpriteFlipbookAnimation> = HashMap::new();
 
         self.generate(
             layer,
@@ -346,7 +348,7 @@ impl Map {
 
                             animations_by_name.insert(
                                 animation_name.to_string(),
-                                SpriteAnimationSequence::new(
+                                SpriteFlipbookAnimation::new(
                                     animation_name,
                                     *sprite,
                                     animation_sequence,
@@ -361,7 +363,7 @@ impl Map {
             },
         );
 
-        let mut animations: Vec<SpriteAnimationSequence> = vec![];
+        let mut animations: Vec<SpriteFlipbookAnimation> = vec![];
         for v in animations_by_name.values() {
             animations.push(v.clone());
         }

@@ -1,5 +1,5 @@
-use std::path::Path;
 use std::rc::Rc;
+use std::{path::Path, time::Duration};
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -10,6 +10,7 @@ use crate::camera;
 use crate::entity;
 use crate::map;
 use crate::sprite::collision;
+use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
 
@@ -72,6 +73,42 @@ impl EntityComponents {
 
 // --------------------------------------------------------------------------------------------------------------------
 
+struct FlipbookAnimationComponents {
+    flipbook_animation: rendering::FlipbookAnimationDrawable,
+    uniforms: SpriteUniforms,
+    seconds_until_next_frame: f32,
+    current_frame: usize,
+}
+
+impl FlipbookAnimationComponents {
+    fn new(flipbook: rendering::FlipbookAnimationDrawable, uniforms: SpriteUniforms) -> Self {
+        let seconds_until_next_frame = flipbook.duration_for_frame(0).as_secs_f32();
+        Self {
+            flipbook_animation: flipbook,
+            uniforms,
+            seconds_until_next_frame,
+            current_frame: 0,
+        }
+    }
+
+    fn update(&mut self, dt: Duration) {
+        let dt = dt.as_secs_f32();
+        self.seconds_until_next_frame -= dt;
+        if self.seconds_until_next_frame <= 0.0 {
+            self.current_frame += 1;
+            self.seconds_until_next_frame = self
+                .flipbook_animation
+                .duration_for_frame(self.current_frame)
+                .as_secs_f32();
+
+            self.flipbook_animation
+                .set_frame(&mut self.uniforms, self.current_frame);
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
 pub struct State {
     // Basic mechanism
     surface: wgpu::Surface,
@@ -110,6 +147,9 @@ pub struct State {
     entity_material: Rc<crate::sprite::rendering::Material>,
     entities: Vec<EntityComponents>,
     firebrand_entity_id: usize,
+
+    // Flipbook animations
+    flipbook_animations: Vec<FlipbookAnimationComponents>,
 
     // Imgui
     winit_platform: imgui_winit_support::WinitPlatform,
@@ -170,17 +210,23 @@ impl State {
 
         let material_bind_group_layout =
             crate::sprite::rendering::Material::bind_group_layout(&device);
-        let (stage_sprite_drawable, stage_hit_tester, entities) = {
-            let mat = {
+        let (
+            stage_sprite_material,
+            stage_sprite_drawable,
+            stage_hit_tester,
+            entities,
+            stage_animation_flipbooks,
+        ) = {
+            let stage_sprite_material = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
                     texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
-                crate::sprite::rendering::Material::new(
+                Rc::new(crate::sprite::rendering::Material::new(
                     &device,
                     "Sprite Material",
                     spritesheet,
                     &material_bind_group_layout,
-                )
+                ))
             };
 
             let bg_layer = map
@@ -214,14 +260,20 @@ impl State {
             );
 
             // generate animations
-            let sprite_animation_sequences = map.generate_animations(bg_layer, |_, _| 0.9);
+            let stage_animation_flipbooks = map.generate_animations(bg_layer, |_, _| 0.9);
 
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);
             all_sprites.extend(level_sprites.clone());
 
             let sm = crate::sprite::rendering::Mesh::new(&all_sprites, 0, &device, "Sprite Mesh");
-            (SpriteDrawable::with(sm, mat), collision_space, entities)
+            (
+                stage_sprite_material.clone(),
+                SpriteDrawable::with(sm, stage_sprite_material.clone()),
+                collision_space,
+                entities,
+                stage_animation_flipbooks,
+            )
         };
 
         // Build camera, and camera uniform storage
@@ -298,6 +350,16 @@ impl State {
             ));
         }
 
+        let flipbook_animations = stage_animation_flipbooks
+            .into_iter()
+            .map(|a| {
+                rendering::FlipbookAnimationDrawable::new(a, stage_sprite_material.clone(), &device)
+            })
+            .map(|a| {
+                FlipbookAnimationComponents::new(a, SpriteUniforms::new(&device, sprite_size_px))
+            })
+            .collect::<Vec<_>>();
+
         //
         // set up imgui
         //
@@ -361,6 +423,8 @@ impl State {
             entity_material,
             entities: entity_components,
             firebrand_entity_id,
+
+            flipbook_animations,
 
             winit_platform,
             imgui,
@@ -474,6 +538,15 @@ impl State {
         }
 
         //
+        //  Update flipbook animations
+        //
+
+        for a in &mut self.flipbook_animations {
+            a.update(dt);
+            a.uniforms.write(&mut self.queue);
+        }
+
+        //
         // Update camera state
         //
 
@@ -553,6 +626,12 @@ impl State {
                 &self.camera_uniforms,
                 &self.stage_uniforms,
             );
+
+            // Render flipbook animations
+            for a in &self.flipbook_animations {
+                a.flipbook_animation
+                    .draw(&mut render_pass, &self.camera_uniforms, &a.uniforms);
+            }
 
             if self.draw_stage_collision_info {
                 for e in &self.entities {
