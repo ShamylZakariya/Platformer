@@ -611,7 +611,7 @@ impl EntityDrawable {
         }
     }
 
-    /// draws the mesh corresponding to "cycle"
+    /// draws the mesh corresponding to "cycle". If no cycle by that name is found nothing will be drawn.
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,

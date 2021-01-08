@@ -25,6 +25,15 @@ const CHARACTER_CYCLE_JUMP_2: &str = "jump_2";
 const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
 const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
 const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
+const CHARACTER_CYCLE_SHOOT_0: &str = "shoot_0";
+const CHARACTER_CYCLE_SHOOT_1: &str = "shoot_1";
+const CHARACTER_CYCLE_SHOOT_2: &str = "shoot_2";
+
+// Firebrand's injury cycle is a flipbook between the shoot_1 sprite, a single-frame injury sprite, and an empty blink
+const CHARACTER_CYCLE_INJURY_0: &str = "shoot_1";
+const CHARACTER_CYCLE_INJURY_1: &str = "injured";
+const CHARACTER_CYCLE_INJURY_2: &str = "";
+
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
 const COLLISION_PROBE_STEPS: i32 = 3;
@@ -558,6 +567,11 @@ impl Entity for Firebrand {
     }
 
     fn is_alive(&self) -> bool {
+        true
+    }
+
+    fn should_draw(&self) -> bool {
+        // TODO: Implement injury blink cycle here
         true
     }
 

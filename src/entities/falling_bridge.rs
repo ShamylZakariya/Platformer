@@ -106,6 +106,10 @@ impl Entity for FallingBridge {
         self.position.y > -1.0
     }
 
+    fn should_draw(&self) -> bool {
+        true
+    }
+
     fn position(&self) -> Point2<f32> {
         Point2::new(self.position.x, self.position.y)
     }

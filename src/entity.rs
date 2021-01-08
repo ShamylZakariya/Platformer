@@ -70,6 +70,9 @@ pub trait Entity {
     /// An entity should return true here so long as it needs to be updated and drawn.
     fn is_alive(&self) -> bool;
 
+    /// Return true if you want this entity to draw right now. Entity will still be updated.
+    fn should_draw(&self) -> bool;
+
     /// The current position of the entity
     fn position(&self) -> Point2<f32>;
 

@@ -1,13 +1,18 @@
 CURRENTLY:
-    Animated background tiles
-        - DONE: Added a tex offset uniform
-        - DONE: Method on map which returns vec of animation sequence objects
-        - Make a mechanism to consume that sequence info and draw the current frame, updating a time field, etc to rewrite the animation frame
-            - maybe a kind of entity?
+    - implement kickback from contact with spikes, etc
+        - kickback is away and up from direction facing, has nothing to do with direction of injury
+    - Injury starts at 6:649 -> 7:549 ( duration 0.9 seconds)
+        Sprites:
+            - 6:649 - shoot_2
+            - 6:749 - injured
+            - 6:816 - shoot_1
+            - 6:883 - injured
+            - 6:949 - flight 3 (because falling?)
+        Movement:
+            - 6:649 to 6:816 traveling diagonal up-back, approx 0.5 sprite distance x&y
+            - 6:816 -> on is falling
 
 TODO:
-    - implement kickback from contact with spikes, etc
-    - missing animated background. Can make an alternate bg layer with just the flickering fire tiles and show/hide on a timer
     - Simplify
     - Then start adding enemies?
 
@@ -22,4 +27,3 @@ TODO:
         - https://doc.rust-lang.org/book/ch07-04-bringing-paths-into-scope-with-the-use-keyword.html
     - SpriteDesc can have integerial position, and drop extent because we only support 1x1 sprites?
     - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms.
-

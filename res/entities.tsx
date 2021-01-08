@@ -201,7 +201,9 @@
  </tile>
  <tile id="31">
   <properties>
-   <property name="collision_shape" value="none"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="falling_bridge"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="32">
@@ -440,6 +442,60 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="70">
+  <properties>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="71">
+  <properties>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="72">
+  <properties>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="73">
+  <properties>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="74">
+  <properties>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="75">
+  <properties>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="76">
+  <properties>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="77">
+  <properties>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="78">
+  <properties>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
  <tile id="80">
   <properties>
    <property name="cycle" value="fly_2"/>
@@ -480,11 +536,102 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
- <tile id="240">
+ <tile id="86">
   <properties>
-   <property name="cycle" value="default"/>
-   <property name="name" value="falling_bridge"/>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="87">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
    <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="88">
+  <properties>
+   <property name="cycle" value="shoot_0"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="89">
+  <properties>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="90">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="91">
+  <properties>
+   <property name="cycle" value="shoot_1"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="92">
+  <properties>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="93">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="94">
+  <properties>
+   <property name="cycle" value="shoot_2"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="96">
+  <properties>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="97">
+  <properties>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="98">
+  <properties>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="112">
+  <properties>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="113">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="114">
+  <properties>
+   <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
   </properties>
  </tile>
 </tileset>

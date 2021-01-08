@@ -657,7 +657,7 @@ impl State {
 
             // render entities
             for e in &self.entities {
-                if e.entity.is_alive() {
+                if e.entity.is_alive() && e.entity.should_draw() {
                     e.sprite.draw(
                         &mut render_pass,
                         &self.camera_uniforms,
