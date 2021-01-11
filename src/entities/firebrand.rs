@@ -1,4 +1,4 @@
-use std::{collections::HashSet, f32::consts::PI, time::Duration};
+use std::{collections::HashSet, f32::consts::PI, fmt::Display, time::Duration};
 
 use cgmath::{vec2, Point2, Vector2, Zero};
 use winit::event::{ElementState, VirtualKeyCode};
@@ -32,7 +32,8 @@ const CHARACTER_CYCLE_SHOOT_2: &str = "shoot_2";
 // Firebrand's injury cycle is a flipbook between the shoot_1 sprite, a single-frame injury sprite, and an empty blink
 const CHARACTER_CYCLE_INJURY_0: &str = "shoot_1";
 const CHARACTER_CYCLE_INJURY_1: &str = "injured";
-const CHARACTER_CYCLE_INJURY_2: &str = "";
+const CHARACTER_CYCLE_INJURY_2: &str = "shoot_2";
+const CHARACTER_CYCLE_INJURY_3: &str = "injured";
 
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
@@ -49,11 +50,15 @@ const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
 const WATER_DAMPING: f32 = 0.5;
+const INJURY_DURATION: f32 = 0.9;
+const INJURY_KICKBACK_DURATION: f32 = 0.25;
+const INJURY_KICKBACK_VEL: f32 = 0.5 / INJURY_KICKBACK_DURATION;
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
 const FLIGHT_CYCLE_DURATION: f32 = 0.1;
 const JUMP_CYCLE_DURATION: f32 = 0.1;
+const INJURY_CYCLE_DURATION: f32 = 0.1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -89,9 +94,22 @@ pub enum Stance {
     InAir,
     Flying,
     WallHold(sprite::Sprite),
+    Injury,
 }
 
 impl Eq for Stance {}
+
+impl Display for Stance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Stance::Standing => write!(f, "Standing"),
+            Stance::InAir => write!(f, "InAir"),
+            Stance::Flying => write!(f, "Flying"),
+            Stance::WallHold(_) => write!(f, "WallHold"),
+            Stance::Injury => write!(f, "Injury"),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Facing {
@@ -245,6 +263,7 @@ pub struct Firebrand {
     sprite_size_px: Vector2<f32>,
 
     time: f32,
+    step: usize,
     input_state: InputState,
     character_state: CharacterState,
 
@@ -256,13 +275,14 @@ pub struct Firebrand {
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
-    flight_time_remaining: f32,
-    wallgrab_jump_lateral_motion_time_remaining: f32,
+    flight_countdown: f32,
+    wallgrab_jump_lateral_motion_countdown: f32,
     wallgrab_jump_dir: f32, // -1 for left, +1 for right
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
+    injury_countdown: f32,
 }
 
 impl Default for Firebrand {
@@ -271,19 +291,21 @@ impl Default for Firebrand {
             entity_id: 0,
             sprite_size_px: vec2(0.0, 0.0),
             time: 0.0,
+            step: 0,
             input_state: Default::default(),
             character_state: CharacterState::new(Point2::new(0.0, 0.0)),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
-            flight_time_remaining: FLIGHT_DURATION,
-            wallgrab_jump_lateral_motion_time_remaining: 0.0,
+            flight_countdown: FLIGHT_DURATION,
+            wallgrab_jump_lateral_motion_countdown: 0.0,
             wallgrab_jump_dir: 0.0,
             map_origin: Point2::new(0.0, 0.0),
             map_extent: vec2(0.0, 0.0),
             cycle_animation_time_elapsed: None,
             in_water: false,
+            injury_countdown: 0.0,
         }
     }
 }
@@ -323,42 +345,65 @@ impl Entity for Firebrand {
 
         let dt = dt.as_secs_f32();
         self.time += dt;
+        self.step += 1;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        match self.input_state.fire {
+            ButtonState::Pressed => {
+                self.set_stance(Stance::Injury);
+            }
+            _ => {}
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        //
+        //  No user input processing while in injury state
+        //
+
+        let can_process_input = !self.is_in_injury();
 
         //
         //  Handle jump button
         //
 
-        match self.input_state.jump {
-            ButtonState::Pressed => match self.character_state.stance {
-                Stance::Standing => {
-                    self.jump_time_remaining = JUMP_DURATION;
-                    self.set_stance(Stance::InAir);
-                }
-                Stance::InAir => {
-                    if self.flight_time_remaining > 0.0 {
-                        self.jump_time_remaining = 0.0;
-                        self.set_stance(Stance::Flying);
+        if can_process_input {
+            match self.input_state.jump {
+                ButtonState::Pressed => match self.character_state.stance {
+                    Stance::Standing => {
+                        self.jump_time_remaining = JUMP_DURATION;
+                        self.set_stance(Stance::InAir);
                     }
+                    Stance::InAir => {
+                        if self.flight_countdown > 0.0 {
+                            self.jump_time_remaining = 0.0;
+                            self.set_stance(Stance::Flying);
+                        }
+                    }
+                    Stance::Flying => {
+                        self.set_stance(Stance::InAir);
+                    }
+                    Stance::WallHold(surface) => {
+                        self.wallgrab_jump_lateral_motion_countdown =
+                            WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
+                        self.jump_time_remaining = JUMP_DURATION;
+                        self.wallgrab_jump_dir =
+                            if surface.origin.x > self.character_state.position.x {
+                                -1.0
+                            } else {
+                                1.0
+                            };
+                        self.set_stance(Stance::InAir);
+                    }
+
+                    Stance::Injury => {} // no-op during injury
+                },
+                ButtonState::Released => {
+                    self.jump_time_remaining = 0.0;
                 }
-                Stance::Flying => {
-                    self.set_stance(Stance::InAir);
-                }
-                Stance::WallHold(surface) => {
-                    self.wallgrab_jump_lateral_motion_time_remaining =
-                        WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
-                    self.jump_time_remaining = JUMP_DURATION;
-                    self.wallgrab_jump_dir = if surface.origin.x > self.character_state.position.x {
-                        -1.0
-                    } else {
-                        1.0
-                    };
-                    self.set_stance(Stance::InAir);
-                }
-            },
-            ButtonState::Released => {
-                self.jump_time_remaining = 0.0;
+                _ => {}
             }
-            _ => {}
         }
 
         //
@@ -401,6 +446,7 @@ impl Entity for Firebrand {
             if !contacting_ground
                 && self.character_state.stance != Stance::Flying
                 && !self.is_wallholding()
+                && !self.is_in_injury()
             {
                 self.set_stance(Stance::InAir);
             }
@@ -433,20 +479,22 @@ impl Entity for Firebrand {
 
         let (position, wall_contact) = self.apply_lateral_movement(collision_space, position, dt);
 
-        //
-        //  Note, vertical_velocity may have been changed by apply_gravity, so only
-        //  change stance to Standing iff contacting ground and vertical_vel is not upwards.
-        //
+        if self.character_state.stance != Stance::Injury {
+            //
+            //  Note, vertical_velocity may have been changed by apply_gravity, so only
+            //  change stance to Standing iff contacting ground and vertical_vel is not upwards.
+            //
 
-        if contacting_ground && self.vertical_velocity <= 0.0 {
-            self.set_stance(Stance::Standing);
-        }
+            if contacting_ground && self.vertical_velocity <= 0.0 {
+                self.set_stance(Stance::Standing);
+            }
 
-        if let Some(wall_contact) = wall_contact {
-            if self.character_state.stance == Stance::InAir
-                || self.character_state.stance == Stance::Flying
-            {
-                self.set_stance(Stance::WallHold(wall_contact));
+            if let Some(wall_contact) = wall_contact {
+                if self.character_state.stance == Stance::InAir
+                    || self.character_state.stance == Stance::Flying
+                {
+                    self.set_stance(Stance::WallHold(wall_contact));
+                }
             }
         }
 
@@ -457,46 +505,53 @@ impl Entity for Firebrand {
         self.character_state.position = position;
 
         //
-        //  Track jump and flight timed expirations
+        //  Track jump, flight, injury timed expirations countdowns
         //
 
-        if self.character_state.stance == Stance::InAir {
-            if self.jump_time_remaining > 0.0 {
-                self.jump_time_remaining -= dt;
-            }
+        match self.character_state.stance {
+            Stance::InAir => {
+                if self.jump_time_remaining > 0.0 {
+                    self.jump_time_remaining -= dt;
+                }
+                self.jump_time_remaining = self.jump_time_remaining.max(0.0);
 
-            if self.jump_time_remaining < 0.0 {
-                self.jump_time_remaining = 0.0;
-            }
+                if self.wallgrab_jump_lateral_motion_countdown > 0.0 {
+                    self.wallgrab_jump_lateral_motion_countdown -= dt;
+                }
 
-            if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
-                self.wallgrab_jump_lateral_motion_time_remaining -= dt;
+                if self.wallgrab_jump_lateral_motion_countdown < 0.0 {
+                    self.wallgrab_jump_lateral_motion_countdown = 0.0;
+                }
             }
+            Stance::Flying => {
+                // Apply flight bob cycle
+                if self.flight_countdown > 0.0 {
+                    let elapsed = FLIGHT_DURATION - self.flight_countdown;
+                    let bob_cycle =
+                        ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5
+                            + 0.5; // remap to [0,1]
+                    let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
+                    self.character_state.position_offset =
+                        vec2(0.0, bob_offset / self.sprite_size_px.y);
+                }
 
-            if self.wallgrab_jump_lateral_motion_time_remaining < 0.0 {
-                self.wallgrab_jump_lateral_motion_time_remaining = 0.0;
+                // Decrement remaining flight time
+                self.flight_countdown = self.flight_countdown - dt;
+                if self.flight_countdown <= 0.0 {
+                    self.flight_countdown = 0.0;
+                    self.set_stance(Stance::InAir);
+                }
             }
-        }
-
-        if self.character_state.stance == Stance::Flying {
-            // Apply flight bob cycle
-            if self.flight_time_remaining > 0.0 {
-                let elapsed = FLIGHT_DURATION - self.flight_time_remaining;
-                let bob_cycle =
-                    ((elapsed / FLIGHT_BOB_CYCLE_PERIOD) * 2.0 * PI - PI / 2.0).sin() * 0.5 + 0.5; // remap to [0,1]
-                let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
-                self.character_state.position_offset =
-                    vec2(0.0, bob_offset / self.sprite_size_px.y);
+            Stance::Injury => {
+                if self.injury_countdown > 0.0 {
+                    self.injury_countdown -= dt;
+                }
+                if self.injury_countdown <= 0.0 {
+                    self.injury_countdown = 0.0;
+                    self.set_stance(Stance::InAir);
+                }
             }
-
-            // Decrement remaining flight time
-            self.flight_time_remaining = self.flight_time_remaining - dt;
-            if self.flight_time_remaining <= 0.0 {
-                self.flight_time_remaining = 0.0;
-                self.set_stance(Stance::InAir);
-            }
-        } else {
-            self.character_state.position_offset = Zero::zero();
+            _ => {}
         }
 
         //
@@ -604,7 +659,7 @@ impl Firebrand {
     }
 
     pub fn is_flying(&self) -> bool {
-        self.character_state.stance == Stance::Flying && self.flight_time_remaining > 0.0
+        self.character_state.stance == Stance::Flying && self.flight_countdown > 0.0
     }
 
     pub fn is_wallholding(&self) -> bool {
@@ -614,12 +669,16 @@ impl Firebrand {
         }
     }
 
+    pub fn is_in_injury(&self) -> bool {
+        self.character_state.stance == Stance::Injury
+    }
+
     fn set_stance(&mut self, new_stance: Stance) {
         if new_stance != self.character_state.stance {
-            // println!(
-            //     "Transition from {:?} to {:?}",
-            //     self.character_state.stance, new_stance
-            // );
+            println!(
+                "Transition at {} (@{}) from {} to {}",
+                self.time, self.step, self.character_state.stance, new_stance
+            );
 
             match self.character_state.stance {
                 Stance::Standing => match new_stance {
@@ -627,31 +686,50 @@ impl Firebrand {
                     Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold(_) => {}
+                    Stance::Injury => {}
                 },
                 Stance::InAir => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold(_) => {}
+                    Stance::Injury => {}
                 },
                 Stance::Flying => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold(_) => {}
+                    Stance::Injury => {}
                 },
                 Stance::WallHold(_) => match new_stance {
                     Stance::Standing => {}
                     Stance::InAir => {}
                     Stance::Flying => {}
                     Stance::WallHold(_) => {}
+                    Stance::Injury => {}
                 },
+                Stance::Injury => {
+                    println!("Injured!");
+                    match new_stance {
+                        Stance::Standing => {}
+                        Stance::InAir => {}
+                        Stance::Flying => {}
+                        Stance::WallHold(_) => {}
+                        Stance::Injury => {}
+                    }
+                }
             }
+
+            self.injury_countdown = 0.0;
 
             match new_stance {
                 // Flight time is reset whenever character touches ground or wallholds
                 Stance::Standing | Stance::WallHold(_) => {
-                    self.flight_time_remaining = FLIGHT_DURATION;
+                    self.flight_countdown = FLIGHT_DURATION;
+                }
+                Stance::Injury => {
+                    self.injury_countdown = INJURY_DURATION;
                 }
                 _ => {}
             }
@@ -760,11 +838,26 @@ impl Firebrand {
                 * dt;
 
         // walljump overrides user input vel birefly.
-        if self.wallgrab_jump_lateral_motion_time_remaining > 0.0 {
+        if self.wallgrab_jump_lateral_motion_countdown > 0.0 {
             delta_x = WALLGRAB_JUMP_LATERAL_VEL
-                * self.wallgrab_jump_lateral_motion_time_remaining
+                * self.wallgrab_jump_lateral_motion_countdown
                 * dt
                 * self.wallgrab_jump_dir;
+        }
+
+        // injury overrides user input - during the kickback cycle the character moves in opposite direction
+        // of their facing state, and for the remainder the character simply falls.
+        if self.injury_countdown > 0.0 {
+            let elapsed = INJURY_DURATION - self.injury_countdown;
+            if elapsed < INJURY_KICKBACK_DURATION {
+                delta_x = dt
+                    * match self.character_facing() {
+                        Facing::Left => INJURY_KICKBACK_VEL,
+                        Facing::Right => -INJURY_KICKBACK_VEL,
+                    }
+            } else {
+                delta_x = 0.0;
+            }
         }
 
         let mut contacted: Option<sprite::Sprite> = None;
@@ -900,12 +993,26 @@ impl Firebrand {
                     self.vertical_velocity = 0.0;
                 }
             }
-            Stance::InAir => {
-                if self.jump_time_remaining > 0.0 {
+            Stance::InAir | Stance::Injury => {
+                //
+                // During injury character is kicked upwards, and that overrides normal jump/gravity rules.
+                //
+
+                let mut should_apply_gravity = true;
+                if self.injury_countdown > 0.0 {
+                    let elapsed = INJURY_DURATION - self.injury_countdown;
+                    if elapsed < INJURY_KICKBACK_DURATION {
+                        self.vertical_velocity = INJURY_KICKBACK_VEL;
+                        should_apply_gravity = false;
+                    }
+                } else if self.jump_time_remaining > 0.0 {
                     let elapsed = JUMP_DURATION - self.jump_time_remaining;
                     let jump_completion = elapsed / JUMP_DURATION;
                     self.vertical_velocity = lerp(jump_completion, -GRAVITY_VEL, 0.0);
-                } else {
+                    should_apply_gravity = false;
+                }
+
+                if should_apply_gravity {
                     self.vertical_velocity =
                         crate::constants::apply_gravity(self.vertical_velocity, dt);
                 }
@@ -967,24 +1074,23 @@ impl Firebrand {
         let stance = if self.in_water {
             match self.character_state.stance {
                 Stance::Standing | Stance::InAir | Stance::Flying => Stance::Standing,
-                Stance::WallHold(_) => self.character_state.stance,
+                _ => self.character_state.stance,
             }
         } else {
             self.character_state.stance
         };
 
+        if self.cycle_animation_time_elapsed.is_none() {
+            self.cycle_animation_time_elapsed = Some(0.0);
+        }
+        let elapsed = self.cycle_animation_time_elapsed.unwrap();
+        self.cycle_animation_time_elapsed = Some(elapsed + dt);
+
         match stance {
             Stance::Standing => {
                 if self.input_state.move_left.is_active() || self.input_state.move_right.is_active()
                 {
-                    if self.cycle_animation_time_elapsed.is_none() {
-                        self.cycle_animation_time_elapsed = Some(0.0);
-                    }
-                    let elapsed = self.cycle_animation_time_elapsed.unwrap();
-
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
-                    self.cycle_animation_time_elapsed = Some(elapsed + dt);
-
                     match frame {
                         0 => CHARACTER_CYCLE_WALK_0,
                         1 => CHARACTER_CYCLE_WALK_1,
@@ -998,14 +1104,7 @@ impl Firebrand {
                 }
             }
             Stance::InAir => {
-                if self.cycle_animation_time_elapsed.is_none() {
-                    self.cycle_animation_time_elapsed = Some(0.0);
-                }
-                let elapsed = self.cycle_animation_time_elapsed.unwrap();
-
                 let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
-                self.cycle_animation_time_elapsed = Some(elapsed + dt);
-
                 match frame {
                     0 => CHARACTER_CYCLE_JUMP_0,
                     1 => CHARACTER_CYCLE_JUMP_1,
@@ -1015,14 +1114,7 @@ impl Firebrand {
                 }
             }
             Stance::Flying => {
-                if self.cycle_animation_time_elapsed.is_none() {
-                    self.cycle_animation_time_elapsed = Some(0.0);
-                }
-                let elapsed = self.cycle_animation_time_elapsed.unwrap();
-
                 let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
-                self.cycle_animation_time_elapsed = Some(elapsed + dt);
-
                 match frame {
                     0 => CHARACTER_CYCLE_FLY_0,
                     1 => CHARACTER_CYCLE_FLY_1,
@@ -1032,12 +1124,22 @@ impl Firebrand {
                 }
             }
             Stance::WallHold(_) => CHARACTER_CYCLE_WALL,
+            Stance::Injury => {
+                let frame = ((elapsed / INJURY_CYCLE_DURATION).floor() as i32) % 4;
+                match frame {
+                    0 => CHARACTER_CYCLE_INJURY_0,
+                    1 => CHARACTER_CYCLE_INJURY_1,
+                    2 => CHARACTER_CYCLE_INJURY_2,
+                    3 => CHARACTER_CYCLE_INJURY_3,
+                    _ => unimplemented!("This shouldn't be reached"),
+                }
+            }
         }
     }
 
     fn character_facing(&self) -> Facing {
         match self.character_state.stance {
-            Stance::Standing | Stance::InAir | Stance::Flying => {
+            Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
                 if self.input_state.move_left.is_active() {
                     Facing::Left
                 } else if self.input_state.move_right.is_active() {
