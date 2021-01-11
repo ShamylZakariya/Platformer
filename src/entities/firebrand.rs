@@ -50,9 +50,9 @@ const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
 const WATER_DAMPING: f32 = 0.5;
-const INJURY_DURATION: f32 = 0.9;
-const INJURY_KICKBACK_DURATION: f32 = 0.25;
-const INJURY_KICKBACK_VEL: f32 = 0.5 / INJURY_KICKBACK_DURATION;
+const INJURY_DURATION: f32 = 0.25;
+const INJURY_INVULNERABILITY_DURATION: f32 = 0.9;
+const INJURY_KICKBACK_VEL: f32 = 0.5 / INJURY_DURATION;
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
@@ -413,54 +413,60 @@ impl Entity for Firebrand {
         //
 
         let (position, contacting_ground) = {
-            let gravity_delta_position = vec2(0.0, GRAVITY_VEL) * dt;
-            let mut position = self.character_state.position + gravity_delta_position;
-
-            let footing_center =
-                self.find_character_footing(collision_space, position, Zero::zero(), true);
-            position = footing_center.0;
-
-            let footing_right = self.find_character_footing(
-                collision_space,
-                position,
-                vec2(1.0, 0.0),
-                footing_center.1.is_none(),
-            );
-            position = footing_right.0;
-
-            let footing_left = self.find_character_footing(
-                collision_space,
-                position,
-                vec2(-1.0, 0.0),
-                footing_center.1.is_none() && footing_right.1.is_none(),
-            );
-            position = footing_left.0;
-
-            let contacting_ground =
-                footing_center.1.is_some() || footing_right.1.is_some() || footing_left.1.is_some();
-
-            //
-            //  If character just walked off a ledge start falling
-            //
-
-            if !contacting_ground
-                && self.character_state.stance != Stance::Flying
-                && !self.is_wallholding()
-                && !self.is_in_injury()
-            {
-                self.set_stance(Stance::InAir);
-            }
-
-            if self.character_state.stance == Stance::Flying
-                || (self.character_state.stance == Stance::InAir && self.vertical_velocity > 0.0)
-                || self.is_wallholding()
-            {
-                (self.character_state.position, contacting_ground)
+            if self.character_state.stance == Stance::Injury {
+                (self.character_state.position, false)
             } else {
-                if self.character_state.stance == Stance::InAir {
+                let gravity_delta_position = vec2(0.0, GRAVITY_VEL) * dt;
+                let mut position = self.character_state.position + gravity_delta_position;
+
+                let footing_center =
+                    self.find_character_footing(collision_space, position, Zero::zero(), true);
+                position = footing_center.0;
+
+                let footing_right = self.find_character_footing(
+                    collision_space,
+                    position,
+                    vec2(1.0, 0.0),
+                    footing_center.1.is_none(),
+                );
+                position = footing_right.0;
+
+                let footing_left = self.find_character_footing(
+                    collision_space,
+                    position,
+                    vec2(-1.0, 0.0),
+                    footing_center.1.is_none() && footing_right.1.is_none(),
+                );
+                position = footing_left.0;
+
+                let contacting_ground = footing_center.1.is_some()
+                    || footing_right.1.is_some()
+                    || footing_left.1.is_some();
+
+                //
+                //  If character just walked off a ledge start falling
+                //
+
+                if !contacting_ground
+                    && self.character_state.stance != Stance::Flying
+                    && !self.is_wallholding()
+                    && !self.is_in_injury()
+                {
+                    self.set_stance(Stance::InAir);
+                }
+
+                if self.character_state.stance == Stance::Flying
+                    || (self.character_state.stance == Stance::InAir
+                        && self.vertical_velocity > 0.0)
+                    || self.is_wallholding()
+                {
                     (self.character_state.position, contacting_ground)
                 } else {
-                    (position, contacting_ground)
+                    if self.character_state.stance == Stance::InAir {
+                        (self.character_state.position, contacting_ground)
+                    } else {
+                        (position, contacting_ground)
+                    }
                 }
             }
         };
@@ -676,10 +682,11 @@ impl Firebrand {
     fn set_stance(&mut self, new_stance: Stance) {
         if new_stance != self.character_state.stance {
             println!(
-                "Transition at {} (@{}) from {} to {}",
+                "Transition at {} (@{}) from {} -> {}",
                 self.time, self.step, self.character_state.stance, new_stance
             );
 
+            // NOTE This is a useless match block, but is useful to set breakpoints for specific transitions
             match self.character_state.stance {
                 Stance::Standing => match new_stance {
                     Stance::Standing => {}
@@ -709,16 +716,13 @@ impl Firebrand {
                     Stance::WallHold(_) => {}
                     Stance::Injury => {}
                 },
-                Stance::Injury => {
-                    println!("Injured!");
-                    match new_stance {
-                        Stance::Standing => {}
-                        Stance::InAir => {}
-                        Stance::Flying => {}
-                        Stance::WallHold(_) => {}
-                        Stance::Injury => {}
-                    }
-                }
+                Stance::Injury => match new_stance {
+                    Stance::Standing => {}
+                    Stance::InAir => {}
+                    Stance::Flying => {}
+                    Stance::WallHold(_) => {}
+                    Stance::Injury => {}
+                },
             }
 
             self.injury_countdown = 0.0;
@@ -848,16 +852,11 @@ impl Firebrand {
         // injury overrides user input - during the kickback cycle the character moves in opposite direction
         // of their facing state, and for the remainder the character simply falls.
         if self.injury_countdown > 0.0 {
-            let elapsed = INJURY_DURATION - self.injury_countdown;
-            if elapsed < INJURY_KICKBACK_DURATION {
-                delta_x = dt
-                    * match self.character_facing() {
-                        Facing::Left => INJURY_KICKBACK_VEL,
-                        Facing::Right => -INJURY_KICKBACK_VEL,
-                    }
-            } else {
-                delta_x = 0.0;
-            }
+            delta_x = dt
+                * match self.character_facing() {
+                    Facing::Left => INJURY_KICKBACK_VEL,
+                    Facing::Right => -INJURY_KICKBACK_VEL,
+                }
         }
 
         let mut contacted: Option<sprite::Sprite> = None;
@@ -1000,11 +999,8 @@ impl Firebrand {
 
                 let mut should_apply_gravity = true;
                 if self.injury_countdown > 0.0 {
-                    let elapsed = INJURY_DURATION - self.injury_countdown;
-                    if elapsed < INJURY_KICKBACK_DURATION {
-                        self.vertical_velocity = INJURY_KICKBACK_VEL;
-                        should_apply_gravity = false;
-                    }
+                    self.vertical_velocity = INJURY_KICKBACK_VEL;
+                    should_apply_gravity = false;
                 } else if self.jump_time_remaining > 0.0 {
                     let elapsed = JUMP_DURATION - self.jump_time_remaining;
                     let jump_completion = elapsed / JUMP_DURATION;
