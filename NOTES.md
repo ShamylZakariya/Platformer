@@ -1,7 +1,9 @@
 CURRENTLY:
     - implement kickback from contact with spikes, etc
+    - kickback vel feels weird (too slow?)
 
 TODO:
+    - Store Entities in a HashMap<usize, Box<dyn Entity>
     - Simplify
     - Then start adding enemies?
 

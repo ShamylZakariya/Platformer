@@ -43,6 +43,10 @@ impl Tile {
         self.properties.get(name).is_some()
     }
 
+    pub fn boolean_property(&self, name: &str) -> bool {
+        self.get_property(name) == Some("true")
+    }
+
     pub fn get_property(&self, name: &str) -> Option<&str> {
         self.properties.get(name).map(|p| p.as_str())
     }

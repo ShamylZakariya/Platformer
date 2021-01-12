@@ -4,9 +4,9 @@ use cgmath::{vec2, Point2, Vector2, Zero};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    constants::GRAVITY_VEL,
+    constants::{sprite_masks::*, GRAVITY_VEL},
     entity::{Dispatcher, Entity, Event, Message},
-    map::{self, FLAG_MAP_TILE_IS_COLLIDER, FLAG_MAP_TILE_IS_RATCHET, FLAG_MAP_TILE_IS_WATER},
+    map,
     sprite::{self, collision, rendering},
     tileset,
 };
@@ -79,7 +79,7 @@ pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
 
 fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
     move |_dist: f32, sprite: &sprite::Sprite| -> bool {
-        if position.y < sprite.top() && sprite.mask & FLAG_MAP_TILE_IS_RATCHET != 0 {
+        if position.y < sprite.top() && sprite.mask & RATCHET != 0 {
             false
         } else {
             true
@@ -593,14 +593,10 @@ impl Entity for Firebrand {
         }
 
         //
-        //  Dispatch any collisions with entities
+        //  Process contacts
         //
 
-        for s in &self.contacting_sprites {
-            if let Some(entity_id) = s.entity_id {
-                message_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
-            }
-        }
+        self.process_contacts(message_dispatcher);
 
         //
         //  Update input state *after* all input has been processed.
@@ -706,6 +702,22 @@ impl Firebrand {
         self.invulnerability_countdown > 0.0
     }
 
+    fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
+        let mut contact_damage = false;
+        for s in &self.contacting_sprites {
+            if s.mask & CONTACT_DAMAGE != 0 {
+                contact_damage = true;
+            }
+            if let Some(entity_id) = s.entity_id {
+                message_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
+            }
+        }
+
+        if contact_damage {
+            self.set_stance(Stance::Injury);
+        }
+    }
+
     fn set_stance(&mut self, new_stance: Stance) {
         // Discard any injuries while invulnerabile
         if new_stance == Stance::Injury && self.invulnerability_countdown > 0.0 {
@@ -807,26 +819,38 @@ impl Firebrand {
         );
 
         let below_center = Point2::new(center.x, center.y - 1);
-        let inset = 0.0 as f32;
         let contacts_are_collision = !may_apply_correction;
 
         let can_collide_width = |p: &Point2<f32>, s: &sprite::Sprite| -> bool {
             // if character is more than 75% up a ratchet block consider it a collision
-            if s.mask & FLAG_MAP_TILE_IS_RATCHET != 0 && p.y < (s.top() - 0.25) {
+            if s.mask & RATCHET != 0 && p.y < (s.top() - 0.25) {
                 false
             } else {
                 true
             }
         };
 
+        let sprite_size_px = self.sprite_size_px.x;
+        let inset_for_sprite = |s: &sprite::Sprite| -> f32 {
+            if s.mask & CONTACT_DAMAGE != 0 {
+                2.0 / sprite_size_px
+            } else {
+                0.0
+            }
+        };
+
         for test_point in [below_center, center].iter() {
             use crate::sprite::core::CollisionShape;
 
-            if let Some(s) = collision_space.get_sprite_at(*test_point, FLAG_MAP_TILE_IS_COLLIDER) {
+            if let Some(s) = collision_space.get_sprite_at(*test_point, COLLIDER) {
                 if can_collide_width(&position, &s) {
                     match s.collision_shape {
                         CollisionShape::Square => {
-                            if s.unit_rect_intersection(&position, inset, contacts_are_collision) {
+                            if s.unit_rect_intersection(
+                                &position,
+                                inset_for_sprite(&s),
+                                contacts_are_collision,
+                            ) {
                                 self.handle_collision_with(&s);
                                 tracking = Some(s);
                                 if may_apply_correction {
@@ -873,7 +897,7 @@ impl Firebrand {
             return (position, None);
         }
 
-        let mask = FLAG_MAP_TILE_IS_COLLIDER;
+        let mask = COLLIDER;
         let probe_test = create_collision_probe_test(position);
 
         let mut delta_x =
@@ -1061,7 +1085,7 @@ impl Firebrand {
         //
 
         if delta.y > 0.0 {
-            let mask = FLAG_MAP_TILE_IS_COLLIDER;
+            let mask = COLLIDER;
             let probe_test = create_collision_probe_test(position);
             match collision_space.probe(
                 position,
@@ -1197,10 +1221,7 @@ impl Firebrand {
         let d = Point2::new(a.x + 1, a.y + 1);
 
         for p in [a, b, c, d].iter() {
-            if collision_space
-                .get_sprite_at(*p, FLAG_MAP_TILE_IS_WATER)
-                .is_some()
-            {
+            if collision_space.get_sprite_at(*p, WATER).is_some() {
                 return true;
             }
         }

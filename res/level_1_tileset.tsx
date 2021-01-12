@@ -35,11 +35,13 @@
  <tile id="6">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="contact_damage" value="true"/>
   </properties>
  </tile>
  <tile id="7">
   <properties>
    <property name="collision_shape" value="square"/>
+   <property name="contact_damage" value="true"/>
   </properties>
  </tile>
  <tile id="8">

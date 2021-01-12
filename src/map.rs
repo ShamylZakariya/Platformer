@@ -5,15 +5,11 @@ use std::{collections::HashMap, io::BufReader};
 use std::{fs::File, time::Duration};
 use xml::reader::{EventReader, XmlEvent};
 
+use crate::constants::sprite_masks::*;
 use crate::entities;
 use crate::entity;
 use crate::sprite::{self, collision};
 use crate::tileset;
-
-pub const FLAG_MAP_TILE_IS_COLLIDER: u32 = 1 << 31;
-pub const FLAG_MAP_TILE_IS_WATER: u32 = 1 << 30;
-pub const FLAG_MAP_TILE_IS_RATCHET: u32 = 1 << 29;
-pub const FLAG_MAP_TILE_IS_ENTITY: u32 = 1 << 28;
 
 #[derive(Clone, Debug)]
 pub struct Layer {
@@ -337,7 +333,7 @@ impl Map {
             |_, _| 0, // sprites always have entity_id of zero
             z_depth,
             |sprite, tile| {
-                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 {
+                if sprite.mask & ENTITY == 0 {
                     if let Some(animation_name) = tile.get_property("animation") {
                         if !animations_by_name.contains_key(animation_name) {
                             // only generate the animation once, because all sprites with this animation name will
@@ -382,7 +378,7 @@ impl Map {
             |_, _| 0, // sprites always have entity_id of zero
             z_depth,
             |sprite, tile| {
-                if sprite.mask & FLAG_MAP_TILE_IS_ENTITY == 0 && !tile.has_property("animation") {
+                if sprite.mask & ENTITY == 0 && !tile.has_property("animation") {
                     sprites.push(sprite.clone());
                 }
             },
@@ -456,16 +452,19 @@ impl Map {
                     let mut mask = 0;
 
                     if tile.has_property("collision_shape") {
-                        mask |= FLAG_MAP_TILE_IS_COLLIDER;
+                        mask |= COLLIDER;
                     }
-                    if tile.get_property("water") == Some("true") {
-                        mask |= FLAG_MAP_TILE_IS_WATER;
+                    if tile.boolean_property("water") {
+                        mask |= WATER;
                     }
-                    if tile.get_property("ratchet") == Some("true") {
-                        mask |= FLAG_MAP_TILE_IS_RATCHET;
+                    if tile.boolean_property("ratchet") {
+                        mask |= RATCHET;
                     }
                     if tile.has_property("entity_class") {
-                        mask |= FLAG_MAP_TILE_IS_ENTITY;
+                        mask |= ENTITY;
+                    }
+                    if tile.boolean_property("contact_damage") {
+                        mask |= CONTACT_DAMAGE;
                     }
 
                     let mut sd = Sprite::unit(
@@ -478,7 +477,7 @@ impl Map {
                         mask,
                     );
 
-                    if mask & FLAG_MAP_TILE_IS_ENTITY != 0 {
+                    if mask & ENTITY != 0 {
                         sd.entity_id = Some(entity_id_vendor(&sd, tile));
                     }
 
