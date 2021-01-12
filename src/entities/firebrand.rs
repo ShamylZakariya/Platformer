@@ -283,6 +283,7 @@ pub struct Firebrand {
     map_extent: Vector2<f32>,
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
+    injury_kickback_vel: f32,
     injury_countdown: f32,
     invulnerability_countdown: f32,
 }
@@ -307,6 +308,7 @@ impl Default for Firebrand {
             map_extent: vec2(0.0, 0.0),
             cycle_animation_time_elapsed: None,
             in_water: false,
+            injury_kickback_vel: 1.0,
             injury_countdown: 0.0,
             invulnerability_countdown: 0.0,
         }
@@ -765,6 +767,13 @@ impl Firebrand {
                 Stance::Injury => {
                     self.injury_countdown = INJURY_DURATION;
                     self.invulnerability_countdown = INVULNERABILITY_DURATION;
+
+                    let sign = if self.is_wallholding() { -1.0 } else { 1.0 };
+                    self.injury_kickback_vel = sign
+                        * match self.character_facing() {
+                            Facing::Left => INJURY_KICKBACK_VEL,
+                            Facing::Right => -INJURY_KICKBACK_VEL,
+                        };
                 }
                 _ => {}
             }
@@ -883,11 +892,7 @@ impl Firebrand {
         // injury overrides user input - during the kickback cycle the character moves in opposite direction
         // of their facing state, and for the remainder the character simply falls.
         if self.injury_countdown > 0.0 {
-            delta_x = dt
-                * match self.character_facing() {
-                    Facing::Left => INJURY_KICKBACK_VEL,
-                    Facing::Right => -INJURY_KICKBACK_VEL,
-                }
+            delta_x = self.injury_kickback_vel * dt;
         }
 
         let mut contacted: Option<sprite::Sprite> = None;
