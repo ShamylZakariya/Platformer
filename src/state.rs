@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 use std::{path::Path, time::Duration};
 use winit::{
     dpi::PhysicalPosition,
@@ -145,8 +145,8 @@ pub struct State {
 
     // Entity rendering
     entity_material: Rc<crate::sprite::rendering::Material>,
-    entities: Vec<EntityComponents>,
-    firebrand_entity_id: usize,
+    entities: HashMap<u32, EntityComponents>,
+    firebrand_entity_id: u32,
 
     // Flipbook animations
     flipbook_animations: Vec<FlipbookAnimationComponents>,
@@ -328,26 +328,29 @@ impl State {
             )
         });
 
-        let mut entity_components = vec![];
-        let mut firebrand_entity_id: usize = 0;
+        let mut entity_components = HashMap::new();
+        let mut firebrand_entity_id: u32 = 0;
 
-        for (i, e) in entities.into_iter().enumerate() {
+        for e in entities.into_iter() {
             if e.sprite_name() == "firebrand" {
-                firebrand_entity_id = i;
+                firebrand_entity_id = e.entity_id();
             }
 
             let name = e.sprite_name().to_string();
-            entity_components.push(EntityComponents::new(
-                e,
-                crate::sprite::rendering::EntityDrawable::load(
-                    &entity_tileset,
-                    entity_material.clone(),
-                    &device,
-                    &name,
-                    0,
+            entity_components.insert(
+                e.entity_id(),
+                EntityComponents::new(
+                    e,
+                    crate::sprite::rendering::EntityDrawable::load(
+                        &entity_tileset,
+                        entity_material.clone(),
+                        &device,
+                        &name,
+                        0,
+                    ),
+                    SpriteUniforms::new(&device, sprite_size_px),
                 ),
-                SpriteUniforms::new(&device, sprite_size_px),
-            ));
+            );
         }
 
         let flipbook_animations = stage_animation_flipbooks
@@ -462,7 +465,7 @@ impl State {
                 ..
             } => {
                 let mut consumed = false;
-                for e in &mut self.entities {
+                for e in self.entities.values_mut() {
                     if e.entity.process_keyboard(*key, *state) {
                         consumed = true;
                     }
@@ -528,7 +531,7 @@ impl State {
         //  Update entities
         //
 
-        for e in &mut self.entities {
+        for e in self.entities.values_mut() {
             if e.entity.is_alive() {
                 e.entity
                     .update(dt, &mut self.collision_space, &mut self.message_dispatcher);
@@ -558,7 +561,10 @@ impl State {
 
         if self.camera_tracks_character {
             let cp = self.camera.position();
-            let p = self.entities[self.firebrand_entity_id as usize]
+            let p = self
+                .entities
+                .get(&self.firebrand_entity_id)
+                .expect("There should be a player entity")
                 .entity
                 .position();
             self.camera
@@ -572,7 +578,9 @@ impl State {
         //
 
         for m in &self.message_dispatcher.messages {
-            self.entities[m.entity_id as usize].entity.handle_message(m);
+            if let Some(e) = self.entities.get_mut(&m.entity_id) {
+                e.entity.handle_message(m);
+            }
         }
         self.message_dispatcher.clear();
     }
@@ -634,7 +642,7 @@ impl State {
             }
 
             if self.draw_stage_collision_info {
-                for e in &self.entities {
+                for e in self.entities.values() {
                     if let Some(overlapping) = e.entity.overlapping_sprites() {
                         self.stage_sprite_drawable.draw_sprites(
                             overlapping,
@@ -656,7 +664,7 @@ impl State {
             }
 
             // render entities
-            for e in &self.entities {
+            for e in self.entities.values() {
                 if e.entity.is_alive() && e.entity.should_draw() {
                     e.sprite.draw(
                         &mut render_pass,
@@ -772,18 +780,18 @@ impl State {
     }
 
     fn current_ui_display_state(&self) -> UiDisplayState {
+        let firebrand = self
+            .entities
+            .get(&self.firebrand_entity_id)
+            .expect("Expect player entity");
+
         UiDisplayState {
             camera_tracks_character: self.camera_tracks_character,
             camera_position: self.camera.position(),
             zoom: self.projection.scale(),
-            character_position: self.entities[self.firebrand_entity_id as usize]
-                .entity
-                .position(),
+            character_position: firebrand.entity.position(),
             draw_stage_collision_info: self.draw_stage_collision_info,
-            character_cycle: self.entities[self.firebrand_entity_id as usize]
-                .entity
-                .sprite_cycle()
-                .to_string(),
+            character_cycle: firebrand.entity.sprite_cycle().to_string(),
         }
     }
 
