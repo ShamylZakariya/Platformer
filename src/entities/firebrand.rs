@@ -50,15 +50,16 @@ const FLIGHT_BOB_CYCLE_PIXELS_OFFSET: i32 = -2;
 const WALLGRAB_JUMP_LATERAL_MOTION_DURATION: f32 = 0.17;
 const WALLGRAB_JUMP_LATERAL_VEL: f32 = 20.0;
 const WATER_DAMPING: f32 = 0.5;
-const INJURY_DURATION: f32 = 0.25;
-const INJURY_INVULNERABILITY_DURATION: f32 = 0.9;
+const INJURY_DURATION: f32 = 0.5;
 const INJURY_KICKBACK_VEL: f32 = 0.5 / INJURY_DURATION;
+const INVULNERABILITY_DURATION: f32 = 2.3;
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
 const FLIGHT_CYCLE_DURATION: f32 = 0.1;
 const JUMP_CYCLE_DURATION: f32 = 0.1;
 const INJURY_CYCLE_DURATION: f32 = 0.1;
+const INVULNERABILITY_BLINK_PERIOD: f32 = 0.1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -283,6 +284,7 @@ pub struct Firebrand {
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
     injury_countdown: f32,
+    invulnerability_countdown: f32,
 }
 
 impl Default for Firebrand {
@@ -306,6 +308,7 @@ impl Default for Firebrand {
             cycle_animation_time_elapsed: None,
             in_water: false,
             injury_countdown: 0.0,
+            invulnerability_countdown: 0.0,
         }
     }
 }
@@ -561,6 +564,12 @@ impl Entity for Firebrand {
         }
 
         //
+        //  Track invulnerability countdown - it's not tied to Stance so we always track it.
+        //
+
+        self.invulnerability_countdown = (self.invulnerability_countdown - dt).max(0.0);
+
+        //
         //  Determine if character is in water
         //
 
@@ -632,8 +641,20 @@ impl Entity for Firebrand {
     }
 
     fn should_draw(&self) -> bool {
-        // TODO: Implement injury blink cycle here
-        true
+        if self.invulnerability_countdown > 0.0 {
+            if self.injury_countdown > 0.0 {
+                // if playing injury stance cycle, we're visible
+                true
+            } else {
+                // after injury cycle animation finishes, we blink until invuln period ends
+                let elapsed = INVULNERABILITY_DURATION - self.invulnerability_countdown;
+                let cycle = (elapsed / INVULNERABILITY_BLINK_PERIOD) as i32 % 2;
+                cycle == 0
+            }
+        } else {
+            // by default we're visible
+            true
+        }
     }
 
     fn position(&self) -> Point2<f32> {
@@ -679,7 +700,16 @@ impl Firebrand {
         self.character_state.stance == Stance::Injury
     }
 
+    pub fn is_invulnerable(&self) -> bool {
+        self.invulnerability_countdown > 0.0
+    }
+
     fn set_stance(&mut self, new_stance: Stance) {
+        // Discard any injuries while invulnerabile
+        if new_stance == Stance::Injury && self.invulnerability_countdown > 0.0 {
+            return;
+        }
+
         if new_stance != self.character_state.stance {
             println!(
                 "Transition at {} (@{}) from {} -> {}",
@@ -734,6 +764,7 @@ impl Firebrand {
                 }
                 Stance::Injury => {
                     self.injury_countdown = INJURY_DURATION;
+                    self.invulnerability_countdown = INVULNERABILITY_DURATION;
                 }
                 _ => {}
             }

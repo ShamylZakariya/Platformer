@@ -1,16 +1,5 @@
 CURRENTLY:
     - implement kickback from contact with spikes, etc
-        - kickback is away and up from direction facing, has nothing to do with direction of injury
-    - Injury starts at 6:649 -> 7:549 ( duration 0.9 seconds)
-        Sprites:
-            - 6:649 - shoot_2
-            - 6:749 - injured
-            - 6:816 - shoot_1
-            - 6:883 - injured
-            - 6:949 - flight 3 (because falling?)
-        Movement:
-            - 6:649 to 6:816 traveling diagonal up-back, approx 0.5 sprite distance x&y
-            - 6:816 -> on is falling
 
 TODO:
     - Simplify
