@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use cgmath::{vec2, Point2, Point3, Vector2};
+use cgmath::{vec2, Point3, Vector2};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -38,7 +38,7 @@ impl Default for FallingBridge {
 }
 
 impl Entity for FallingBridge {
-    fn init(
+    fn init_from_map_sprite(
         &mut self,
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
@@ -55,6 +55,10 @@ impl Entity for FallingBridge {
             map.tileset.tile_height as f32,
         );
         collision_space.add_sprite(sprite);
+    }
+
+    fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {
+        panic!("FallingBridge must be initialized using init_from_map_sprite")
     }
 
     fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
@@ -110,8 +114,12 @@ impl Entity for FallingBridge {
         true
     }
 
-    fn position(&self) -> Point2<f32> {
-        Point2::new(self.position.x, self.position.y)
+    fn position(&self) -> Point3<f32> {
+        Point3::new(
+            self.position.x,
+            self.position.y,
+            self.sprite.unwrap().origin.z,
+        )
     }
 
     fn sprite_name(&self) -> &str {
@@ -130,6 +138,7 @@ impl Entity for FallingBridge {
                     self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
                 }
             }
+            _ => {}
         }
     }
 

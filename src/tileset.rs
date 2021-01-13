@@ -258,6 +258,11 @@ impl TileSet {
         })
     }
 
+    /// Returns the size of a sprite tile
+    pub fn get_sprite_size(&self) -> cgmath::Vector2<u32> {
+        (self.tile_width, self.tile_height).into()
+    }
+
     pub fn get_tile(&self, id: u32) -> Option<&Tile> {
         self.tiles.get(&id)
     }

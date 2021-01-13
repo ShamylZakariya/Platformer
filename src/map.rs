@@ -312,6 +312,12 @@ impl Map {
         })
     }
 
+    /// Returns bounds of map as tuple of (origin,extent)
+    pub fn bounds(&self) -> (cgmath::Point2<u32>, cgmath::Vector2<u32>) {
+        ((0, 0).into(), (self.width, self.height).into())
+    }
+
+    /// Returns the layer by the provided name, or None if not found
     pub fn layer_named(&self, name: &str) -> Option<&Layer> {
         for layer in &self.layers {
             if layer.name == name {
@@ -406,9 +412,11 @@ impl Map {
             |sprite, tile| {
                 if let Some(name) = tile.get_property("entity_class") {
                     let entity =
-                        entities::instantiate(name, sprite, tile, self, collision_space).expect(
-                            &format!("Unable to instantiate Entity with class name \"{}\"", name),
-                        );
+                        entities::instantiate_from_map(name, sprite, tile, self, collision_space)
+                            .expect(&format!(
+                                "Unable to instantiate Entity with class name \"{}\"",
+                                name
+                            ));
                     entities.push(entity);
                 }
             },

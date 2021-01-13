@@ -1,6 +1,6 @@
 use std::{collections::HashSet, f32::consts::PI, fmt::Display, time::Duration};
 
-use cgmath::{vec2, Point2, Vector2, Zero};
+use cgmath::{vec2, Point2, Point3, Vector2, Zero};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -261,6 +261,7 @@ fn input_accumulator(negative: ButtonState, positive: ButtonState) -> f32 {
 
 pub struct Firebrand {
     entity_id: u32,
+    sprite: Option<sprite::Sprite>,
     sprite_size_px: Vector2<f32>,
 
     time: f32,
@@ -292,11 +293,12 @@ impl Default for Firebrand {
     fn default() -> Self {
         Self {
             entity_id: 0,
+            sprite: None,
             sprite_size_px: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
             input_state: Default::default(),
-            character_state: CharacterState::new(Point2::new(0.0, 0.0)),
+            character_state: CharacterState::new((0.0, 0.0).into()),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
@@ -304,8 +306,8 @@ impl Default for Firebrand {
             flight_countdown: FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_countdown: 0.0,
             wallgrab_jump_dir: 0.0,
-            map_origin: Point2::new(0.0, 0.0),
-            map_extent: vec2(0.0, 0.0),
+            map_origin: (0.0, 0.0).into(),
+            map_extent: (0.0, 0.0).into(),
             cycle_animation_time_elapsed: None,
             in_water: false,
             injury_kickback_vel: 1.0,
@@ -316,7 +318,7 @@ impl Default for Firebrand {
 }
 
 impl Entity for Firebrand {
-    fn init(
+    fn init_from_map_sprite(
         &mut self,
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
@@ -326,13 +328,18 @@ impl Entity for Firebrand {
         self.entity_id = sprite
             .entity_id
             .expect("Entity sprites should have an entity_id");
+        self.sprite = Some(*sprite);
         self.sprite_size_px = vec2(
             map.tileset.tile_width as f32,
             map.tileset.tile_height as f32,
         );
-        self.map_origin = Point2::new(0.0, 0.0);
-        self.map_extent = vec2(map.width as f32, map.height as f32);
+        self.map_origin = map.bounds().0.cast().unwrap();
+        self.map_extent = map.bounds().1.cast().unwrap();
         self.character_state.position = Point2::new(sprite.origin.x, sprite.origin.y);
+    }
+
+    fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {
+        panic!("Firebrand must be initialized using init_from_map_sprite")
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -352,16 +359,10 @@ impl Entity for Firebrand {
         self.time += dt;
         self.step += 1;
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
         match self.input_state.fire {
-            ButtonState::Pressed => {
-                self.set_stance(Stance::Injury);
-            }
+            ButtonState::Pressed => self.shoot_fireball(message_dispatcher),
             _ => {}
         }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         //
         //  No user input processing while in injury state
@@ -655,8 +656,12 @@ impl Entity for Firebrand {
         }
     }
 
-    fn position(&self) -> Point2<f32> {
-        self.character_state.position
+    fn position(&self) -> Point3<f32> {
+        Point3::new(
+            self.character_state.position.x,
+            self.character_state.position.y,
+            self.sprite.unwrap().origin.z,
+        )
     }
 
     fn sprite_name(&self) -> &str {
@@ -702,6 +707,22 @@ impl Firebrand {
         self.invulnerability_countdown > 0.0
     }
 
+    fn shoot_fireball(&self, message_dispatcher: &mut Dispatcher) {
+        // 1: Can we shoot? IIRC only one fireball can be visible on screen in-game, but since
+        // we dont' have the same viewport limitations, I should just measure the longest time a
+        // fireball can take to traverse screen, and use that as rate limiter
+
+        // 2: Send a message to something (what? the stage?) which spawns a fireball and adds it to Entity set
+        let origin = self.character_state.position;
+        let direction = match self.character_facing() {
+            Facing::Left => -1.0,
+            Facing::Right => 1.0,
+        };
+        let velocity = (direction, 0.0).into();
+
+        message_dispatcher.enqueue(Message::global(Event::ShootFireball { origin, velocity }));
+    }
+
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
         let mut contact_damage = false;
         for s in &self.contacting_sprites {
@@ -709,7 +730,7 @@ impl Firebrand {
                 contact_damage = true;
             }
             if let Some(entity_id) = s.entity_id {
-                message_dispatcher.enqueue(Message::new(entity_id, Event::CharacterContact));
+                message_dispatcher.enqueue(Message::routed_to(entity_id, Event::CharacterContact));
             }
         }
 

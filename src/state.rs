@@ -1,3 +1,4 @@
+use entity::Message;
 use std::{collections::HashMap, rc::Rc};
 use std::{path::Path, time::Duration};
 use winit::{
@@ -6,13 +7,13 @@ use winit::{
     window::Window,
 };
 
-use crate::camera;
 use crate::entity;
 use crate::map;
 use crate::sprite::collision;
 use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
+use crate::{camera, entities};
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
@@ -68,6 +69,10 @@ impl EntityComponents {
             sprite,
             uniforms,
         }
+    }
+
+    pub fn id(&self) -> u32 {
+        self.entity.entity_id()
     }
 }
 
@@ -144,6 +149,8 @@ pub struct State {
     message_dispatcher: entity::Dispatcher,
 
     // Entity rendering
+    entity_id_vendor: entity::IdVendor,
+    entity_tileset: tileset::TileSet,
     entity_material: Rc<crate::sprite::rendering::Material>,
     entities: HashMap<u32, EntityComponents>,
     firebrand_entity_id: u32,
@@ -201,6 +208,7 @@ impl State {
             texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
 
         // Load the stage map
+        let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
         let sprite_size_px = cgmath::vec2(
@@ -250,7 +258,6 @@ impl State {
             });
 
             // generate level entities
-            let mut entity_id_vendor = entity::IdVendor::default();
             let mut collision_space = collision::Space::new(&level_sprites);
             let entities = map.generate_entities(
                 entity_layer,
@@ -423,6 +430,8 @@ impl State {
             collision_space: stage_hit_tester,
             message_dispatcher: entity::Dispatcher::default(),
 
+            entity_id_vendor,
+            entity_tileset,
             entity_material,
             entities: entity_components,
             firebrand_entity_id,
@@ -528,15 +537,24 @@ impl State {
             .write(&mut self.queue);
 
         //
-        //  Update entities
+        //  Update entities - if any are expired, remove them.
         //
 
-        for e in self.entities.values_mut() {
-            if e.entity.is_alive() {
+        {
+            let mut expired_count = 0;
+            for e in self.entities.values_mut() {
                 e.entity
                     .update(dt, &mut self.collision_space, &mut self.message_dispatcher);
                 e.entity.update_uniforms(&mut e.uniforms);
                 e.uniforms.write(&mut self.queue);
+
+                if !e.entity.is_alive() {
+                    expired_count += 1;
+                }
+            }
+
+            if expired_count > 0 {
+                self.entities.retain(|_, e| e.entity.is_alive())
             }
         }
 
@@ -577,9 +595,14 @@ impl State {
         // Dispatch collected messages
         //
 
-        for m in &self.message_dispatcher.messages {
-            if let Some(e) = self.entities.get_mut(&m.entity_id) {
-                e.entity.handle_message(m);
+        for m in &self.message_dispatcher.messages.clone() {
+            if let Some(entity_id) = m.entity_id {
+                if let Some(e) = self.entities.get_mut(&entity_id) {
+                    e.entity.handle_message(&m);
+                }
+            } else {
+                // The message has no destination, so it is processed by self
+                self.handle_message(m);
             }
         }
         self.message_dispatcher.clear();
@@ -784,12 +807,13 @@ impl State {
             .entities
             .get(&self.firebrand_entity_id)
             .expect("Expect player entity");
+        let position = firebrand.entity.position();
 
         UiDisplayState {
             camera_tracks_character: self.camera_tracks_character,
             camera_position: self.camera.position(),
             zoom: self.projection.scale(),
-            character_position: firebrand.entity.position(),
+            character_position: (position.x, position.y).into(),
             draw_stage_collision_info: self.draw_stage_collision_info,
             character_cycle: firebrand.entity.sprite_cycle().to_string(),
         }
@@ -804,6 +828,46 @@ impl State {
         }
         if let Some(ctp) = ui_input_state.camera_tracks_character {
             self.camera_tracks_character = ctp;
+        }
+    }
+
+    fn handle_message(&mut self, message: &Message) {
+        if let Some(mut entity) = match message.event {
+            entity::Event::ShootFireball { origin, velocity } => {
+                //
+                // Spawn a Fireball entity with given velocity and origin
+                //
+
+                Some(Box::new(entities::fireball::Fireball::new(
+                    (origin.x, origin.y, 0.0).into(),
+                    velocity,
+                )) as Box<dyn entity::Entity>)
+            }
+            _ => None,
+        } {
+            entity.init(
+                self.entity_id_vendor.next_id(),
+                &self.map,
+                &mut self.collision_space,
+            );
+
+            let sprite_name = entity.sprite_name().to_string();
+            let components = EntityComponents::new(
+                entity,
+                crate::sprite::rendering::EntityDrawable::load(
+                    &self.entity_tileset,
+                    self.entity_material.clone(),
+                    &self.device,
+                    &sprite_name,
+                    0,
+                ),
+                SpriteUniforms::new(
+                    &self.device,
+                    self.map.tileset.get_sprite_size().cast().unwrap(),
+                ),
+            );
+
+            self.entities.insert(components.id(), components);
         }
     }
 }

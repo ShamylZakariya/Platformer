@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use cgmath::Point2;
+use cgmath::Point3;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::map;
@@ -31,20 +31,24 @@ impl IdVendor {
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub trait Entity {
-    /// Create a new Entity
+    /// Initializes a new Entity using a sprite/tile template loaded from the level map.
     /// # Arguments
     /// * `sprite` The sprite created from the tile from the level map which instantiated this Entity instance
     /// * `tile` the Tile from the level map which instantiated this Entity instance
     /// * `map` the map from which the Tile was loaded.
     /// * `collision_space` the shared collision space
     ///
-    fn init(
+    fn init_from_map_sprite(
         &mut self,
         sprite: &sprite::Sprite,
         tile: &tileset::Tile,
         map: &map::Map,
         collision_space: &mut collision::Space,
     );
+
+    /// Initializes an entity whcih is not loaded from the level map. This is generally for dynamic
+    /// entity creation not based on map tiles, such as fireballs, etc.
+    fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space);
 
     /// Handle keyboard input, returning true iff said input was consumed.
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool;
@@ -74,7 +78,7 @@ pub trait Entity {
     fn should_draw(&self) -> bool;
 
     /// The current position of the entity
-    fn position(&self) -> Point2<f32>;
+    fn position(&self) -> Point3<f32>;
 
     /// The name identifying the entity's sprites in the Entity spritesheet. E.g., "firebrand" or "falling_bridge"
     fn sprite_name(&self) -> &str;
@@ -99,20 +103,39 @@ pub trait Entity {
 pub enum Event {
     /// Received by an Entity when contacted by the character
     CharacterContact,
+
+    /// Recevied by the global handler to signal ;aunching a fireball.
+    ShootFireball {
+        origin: cgmath::Point2<f32>,
+        velocity: cgmath::Vector2<f32>,
+    },
 }
 
 /// A Message to be sent to an Entity instance.
 #[derive(Debug, Clone, Copy)]
 pub struct Message {
-    /// The entity to which to route this Message
-    pub entity_id: u32,
+    /// The entity to which to route this Message.
+    /// If None, the Stage will process the message
+    pub entity_id: Option<u32>,
     /// The event payload describing whatever happened
     pub event: Event,
 }
 
 impl Message {
-    pub fn new(entity_id: u32, event: Event) -> Self {
-        Message { entity_id, event }
+    /// Creates a message to be processed by the global handler
+    pub fn global(event: Event) -> Self {
+        Message {
+            entity_id: None,
+            event,
+        }
+    }
+
+    /// Creates a message to be routed to a specific Entity
+    pub fn routed_to(entity_id: u32, event: Event) -> Self {
+        Message {
+            entity_id: Some(entity_id),
+            event,
+        }
     }
 }
 

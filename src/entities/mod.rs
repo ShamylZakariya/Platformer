@@ -6,9 +6,10 @@ use crate::sprite::{self, collision};
 use crate::tileset;
 
 pub mod falling_bridge;
+pub mod fireball;
 pub mod firebrand;
 
-pub fn instantiate(
+pub fn instantiate_from_map(
     classname: &str,
     sprite: &sprite::Sprite,
     tile: &tileset::Tile,
@@ -22,7 +23,7 @@ pub fn instantiate(
         "Firebrand" => Some(Box::new(firebrand::Firebrand::default()) as Box<dyn entity::Entity>),
         _ => None,
     } {
-        e.init(sprite, tile, map, collision_space);
+        e.init_from_map_sprite(sprite, tile, map, collision_space);
         Ok(e)
     } else {
         anyhow::bail!("Unrecognized entity class \"{}\"", classname)
