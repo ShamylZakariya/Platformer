@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.4" tiledversion="1.4.2" name="GGQ" tilewidth="16" tileheight="16" spacing="1" tilecount="64" columns="8">
+<tileset version="1.4" tiledversion="1.4.3" name="GGQ" tilewidth="16" tileheight="16" spacing="1" tilecount="64" columns="8">
  <image source="level_1_tileset.png" width="135" height="135"/>
  <tile id="0">
   <properties>

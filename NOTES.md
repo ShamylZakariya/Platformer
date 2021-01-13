@@ -1,5 +1,5 @@
 CURRENTLY:
-    - kickback vel feels weird (too slow?)
+    - Add fireball sprite entity
 
 TODO:
     - Simplify
