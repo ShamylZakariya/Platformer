@@ -5,7 +5,9 @@ CURRENTLY:
             - if less than a second since last shot, are any fireballs active? Then no shoot.
 
     - firebrand needs to show "shooot" sprites when firing (what's the timing for that sprite)
-        - is there a shoot while flying? yes?
+        MISSING WALLGRAB SHOOT SPRITE
+        DOES FIREBRAND STAND STILL WHILE SHOOTING OR IS THERE A WALK_SHOOT SPRITE
+
 
 TODO:
     - Then start adding enemies?

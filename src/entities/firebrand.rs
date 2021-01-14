@@ -26,12 +26,12 @@ const CYCLE_JUMP_2: &str = "jump_2";
 const CYCLE_FLY_0: &str = "fly_0";
 const CYCLE_FLY_1: &str = "fly_1";
 const CYCLE_FLY_2: &str = "fly_2";
-const CYCLE_SHOOT_0: &str = "shoot_0";
-const CYCLE_SHOOT_1: &str = "shoot_1";
-const CYCLE_SHOOT_2: &str = "shoot_2";
-const CYCLE_INJURY_0: &str = "shoot_1";
+const CYCLE_FLY_SHOOT_0: &str = "fly_shoot_0";
+const CYCLE_FLY_SHOOT_1: &str = "fly_shoot_1";
+const CYCLE_FLY_SHOOT_2: &str = "fly_shoot_2";
+const CYCLE_INJURY_0: &str = "fly_shoot_1";
 const CYCLE_INJURY_1: &str = "injured";
-const CYCLE_INJURY_2: &str = "shoot_2";
+const CYCLE_INJURY_2: &str = "fly_shoot_2";
 const CYCLE_INJURY_3: &str = "injured";
 const CYCLE_WALL: &str = "wall";
 
@@ -62,6 +62,7 @@ const FLIGHT_CYCLE_DURATION: f32 = 0.1;
 const JUMP_CYCLE_DURATION: f32 = 0.1;
 const INJURY_CYCLE_DURATION: f32 = 0.1;
 const INVULNERABILITY_BLINK_PERIOD: f32 = 0.1;
+const FIREBALL_CYCLE_DURATION: f32 = 0.3;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -289,7 +290,7 @@ pub struct Firebrand {
     injury_kickback_vel: f32,
     injury_countdown: f32,
     invulnerability_countdown: f32,
-    next_shot_countdown: f32,
+    last_shoot_time: f32,
 }
 
 impl Default for Firebrand {
@@ -316,7 +317,7 @@ impl Default for Firebrand {
             injury_kickback_vel: 1.0,
             injury_countdown: 0.0,
             invulnerability_countdown: 0.0,
-            next_shot_countdown: 0.0,
+            last_shoot_time: 0.0,
         }
     }
 }
@@ -571,11 +572,10 @@ impl Entity for Firebrand {
         }
 
         //
-        //  Track invulnerability and shot countdowns countdown - they're not tied to Stance so we always track it.
+        //  Track countdowns which don't affect stance
         //
 
         self.invulnerability_countdown = (self.invulnerability_countdown - dt).max(0.0);
-        self.next_shot_countdown = (self.next_shot_countdown - dt).max(0.0);
 
         //
         //  Determine if character is in water
@@ -713,11 +713,11 @@ impl Firebrand {
     }
 
     fn shoot_fireball(&mut self, message_dispatcher: &mut Dispatcher) {
-        if self.next_shot_countdown > 0.0 {
+        if self.time - self.last_shoot_time < FIREBALL_SHOOT_RATE {
             return;
         }
 
-        self.next_shot_countdown = FIREBALL_SHOOT_RATE;
+        self.last_shoot_time = self.time;
         let origin = self.character_state.position;
         let direction = match self.character_facing() {
             Facing::Left => Direction::West,
@@ -1164,6 +1164,8 @@ impl Firebrand {
             self.character_state.stance
         };
 
+        let is_shooting = self.time - self.last_shoot_time < FIREBALL_CYCLE_DURATION;
+
         if self.cycle_animation_time_elapsed.is_none() {
             self.cycle_animation_time_elapsed = Some(0.0);
         }
@@ -1172,7 +1174,10 @@ impl Firebrand {
 
         match stance {
             Stance::Standing => {
-                if self.input_state.move_left.is_active() || self.input_state.move_right.is_active()
+                if is_shooting {
+                    CYCLE_SHOOT
+                } else if self.input_state.move_left.is_active()
+                    || self.input_state.move_right.is_active()
                 {
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     match frame {
@@ -1189,22 +1194,42 @@ impl Firebrand {
             }
             Stance::InAir => {
                 let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
-                match frame {
-                    0 => CYCLE_JUMP_0,
-                    1 => CYCLE_JUMP_1,
-                    2 => CYCLE_JUMP_2,
-                    3 => CYCLE_JUMP_1,
-                    _ => unimplemented!("This shouldn't be reached"),
+                if is_shooting {
+                    match frame {
+                        0 => CYCLE_FLY_SHOOT_0,
+                        1 => CYCLE_FLY_SHOOT_1,
+                        2 => CYCLE_FLY_SHOOT_2,
+                        3 => CYCLE_FLY_SHOOT_1,
+                        _ => unimplemented!("This shouldn't be reached"),
+                    }
+                } else {
+                    match frame {
+                        0 => CYCLE_JUMP_0,
+                        1 => CYCLE_JUMP_1,
+                        2 => CYCLE_JUMP_2,
+                        3 => CYCLE_JUMP_1,
+                        _ => unimplemented!("This shouldn't be reached"),
+                    }
                 }
             }
             Stance::Flying => {
                 let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
-                match frame {
-                    0 => CYCLE_FLY_0,
-                    1 => CYCLE_FLY_1,
-                    2 => CYCLE_FLY_2,
-                    3 => CYCLE_FLY_1,
-                    _ => unimplemented!("This shouldn't be reached"),
+                if is_shooting {
+                    match frame {
+                        0 => CYCLE_FLY_SHOOT_0,
+                        1 => CYCLE_FLY_SHOOT_1,
+                        2 => CYCLE_FLY_SHOOT_2,
+                        3 => CYCLE_FLY_SHOOT_1,
+                        _ => unimplemented!("This shouldn't be reached"),
+                    }
+                } else {
+                    match frame {
+                        0 => CYCLE_FLY_0,
+                        1 => CYCLE_FLY_1,
+                        2 => CYCLE_FLY_2,
+                        3 => CYCLE_FLY_1,
+                        _ => unimplemented!("This shouldn't be reached"),
+                    }
                 }
             }
             Stance::WallHold(_) => CYCLE_WALL,
