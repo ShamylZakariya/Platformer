@@ -97,42 +97,42 @@
  <tile id="40">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="0"/>
   </properties>
  </tile>
  <tile id="41">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="1"/>
   </properties>
  </tile>
  <tile id="42">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="2"/>
   </properties>
  </tile>
  <tile id="43">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="3"/>
   </properties>
  </tile>
  <tile id="44">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="4"/>
   </properties>
  </tile>
  <tile id="45">
   <properties>
    <property name="animation" value="fire_window"/>
-   <property name="animation_duration" value="0.2"/>
+   <property name="animation_duration" value="0.1"/>
    <property name="animation_frame" value="5"/>
   </properties>
  </tile>

@@ -28,13 +28,10 @@ const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
 const CHARACTER_CYCLE_SHOOT_0: &str = "shoot_0";
 const CHARACTER_CYCLE_SHOOT_1: &str = "shoot_1";
 const CHARACTER_CYCLE_SHOOT_2: &str = "shoot_2";
-
-// Firebrand's injury cycle is a flipbook between the shoot_1 sprite, a single-frame injury sprite, and an empty blink
 const CHARACTER_CYCLE_INJURY_0: &str = "shoot_1";
 const CHARACTER_CYCLE_INJURY_1: &str = "injured";
 const CHARACTER_CYCLE_INJURY_2: &str = "shoot_2";
 const CHARACTER_CYCLE_INJURY_3: &str = "injured";
-
 const CHARACTER_CYCLE_WALL: &str = "wall";
 
 const COLLISION_PROBE_STEPS: i32 = 3;
@@ -53,6 +50,10 @@ const WATER_DAMPING: f32 = 0.5;
 const INJURY_DURATION: f32 = 0.3;
 const INJURY_KICKBACK_VEL: f32 = 0.5 / INJURY_DURATION;
 const INVULNERABILITY_DURATION: f32 = 2.3;
+const FIREBALL_VELOCITY: f32 = 1.0 / 0.166;
+const FIREBALL_SHOOT_RATE: f32 = 1.0; // in the game only one fireball was visible
+                                      // on screen at a time. It took 1 second to
+                                      // go off screen and then could shoot again.
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
@@ -287,6 +288,7 @@ pub struct Firebrand {
     injury_kickback_vel: f32,
     injury_countdown: f32,
     invulnerability_countdown: f32,
+    next_shot_countdown: f32,
 }
 
 impl Default for Firebrand {
@@ -313,6 +315,7 @@ impl Default for Firebrand {
             injury_kickback_vel: 1.0,
             injury_countdown: 0.0,
             invulnerability_countdown: 0.0,
+            next_shot_countdown: 0.0,
         }
     }
 }
@@ -567,10 +570,11 @@ impl Entity for Firebrand {
         }
 
         //
-        //  Track invulnerability countdown - it's not tied to Stance so we always track it.
+        //  Track invulnerability and shot countdowns countdown - they're not tied to Stance so we always track it.
         //
 
         self.invulnerability_countdown = (self.invulnerability_countdown - dt).max(0.0);
+        self.next_shot_countdown = (self.next_shot_countdown - dt).max(0.0);
 
         //
         //  Determine if character is in water
@@ -707,20 +711,21 @@ impl Firebrand {
         self.invulnerability_countdown > 0.0
     }
 
-    fn shoot_fireball(&self, message_dispatcher: &mut Dispatcher) {
-        // 1: Can we shoot? IIRC only one fireball can be visible on screen in-game, but since
-        // we dont' have the same viewport limitations, I should just measure the longest time a
-        // fireball can take to traverse screen, and use that as rate limiter
+    fn shoot_fireball(&mut self, message_dispatcher: &mut Dispatcher) {
+        if self.next_shot_countdown > 0.0 {
+            return;
+        }
 
-        // 2: Send a message to something (what? the stage?) which spawns a fireball and adds it to Entity set
+        self.next_shot_countdown = FIREBALL_SHOOT_RATE;
         let origin = self.character_state.position;
-        let direction = match self.character_facing() {
-            Facing::Left => -1.0,
-            Facing::Right => 1.0,
+        let vel = match self.character_facing() {
+            Facing::Left => -FIREBALL_VELOCITY,
+            Facing::Right => FIREBALL_VELOCITY,
         };
-        let velocity = (direction, 0.0).into();
-
-        message_dispatcher.enqueue(Message::global(Event::ShootFireball { origin, velocity }));
+        message_dispatcher.enqueue(Message::global(Event::ShootFireball {
+            origin,
+            velocity: (vel, 0.0).into(),
+        }));
     }
 
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {

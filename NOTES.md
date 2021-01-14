@@ -1,8 +1,9 @@
 CURRENTLY:
-    - Add fireball sprite entity
+    - fireball needs collision detection against map
+    - firebrand needs to show "shooot" sprites when firing (what's the timing for that sprite)
+        - is there a shoot while flying? yes?
 
 TODO:
-    - Simplify
     - Then start adding enemies?
 
 BUGS:
