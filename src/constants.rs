@@ -7,6 +7,7 @@ pub mod sprite_masks {
     pub const RATCHET: u32 = 1 << 29;
     pub const ENTITY: u32 = 1 << 28;
     pub const CONTACT_DAMAGE: u32 = 1 << 27;
+    pub const SHOOTABLE: u32 = 1 << 26;
 }
 
 pub const GRAVITY_VEL: f32 = -1.0 / 0.12903225806451613;

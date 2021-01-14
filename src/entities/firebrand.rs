@@ -5,6 +5,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     constants::{sprite_masks::*, GRAVITY_VEL},
+    entities::fireball::Direction,
     entity::{Dispatcher, Entity, Event, Message},
     map,
     sprite::{self, collision, rendering},
@@ -13,26 +14,26 @@ use crate::{
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const CHARACTER_CYCLE_DEFAULT: &str = "default";
-pub const CHARACTER_CYCLE_DEBUG: &str = "debug";
-const CHARACTER_CYCLE_SHOOT: &str = "shoot";
-const CHARACTER_CYCLE_WALK_0: &str = "walk_0";
-const CHARACTER_CYCLE_WALK_1: &str = "walk_1";
-const CHARACTER_CYCLE_WALK_2: &str = "walk_2";
-const CHARACTER_CYCLE_JUMP_0: &str = "jump_0";
-const CHARACTER_CYCLE_JUMP_1: &str = "jump_1";
-const CHARACTER_CYCLE_JUMP_2: &str = "jump_2";
-const CHARACTER_CYCLE_FLY_0: &str = "fly_0";
-const CHARACTER_CYCLE_FLY_1: &str = "fly_1";
-const CHARACTER_CYCLE_FLY_2: &str = "fly_2";
-const CHARACTER_CYCLE_SHOOT_0: &str = "shoot_0";
-const CHARACTER_CYCLE_SHOOT_1: &str = "shoot_1";
-const CHARACTER_CYCLE_SHOOT_2: &str = "shoot_2";
-const CHARACTER_CYCLE_INJURY_0: &str = "shoot_1";
-const CHARACTER_CYCLE_INJURY_1: &str = "injured";
-const CHARACTER_CYCLE_INJURY_2: &str = "shoot_2";
-const CHARACTER_CYCLE_INJURY_3: &str = "injured";
-const CHARACTER_CYCLE_WALL: &str = "wall";
+const CYCLE_DEFAULT: &str = "default";
+pub const CYCLE_DEBUG: &str = "debug";
+const CYCLE_SHOOT: &str = "shoot";
+const CYCLE_WALK_0: &str = "walk_0";
+const CYCLE_WALK_1: &str = "walk_1";
+const CYCLE_WALK_2: &str = "walk_2";
+const CYCLE_JUMP_0: &str = "jump_0";
+const CYCLE_JUMP_1: &str = "jump_1";
+const CYCLE_JUMP_2: &str = "jump_2";
+const CYCLE_FLY_0: &str = "fly_0";
+const CYCLE_FLY_1: &str = "fly_1";
+const CYCLE_FLY_2: &str = "fly_2";
+const CYCLE_SHOOT_0: &str = "shoot_0";
+const CYCLE_SHOOT_1: &str = "shoot_1";
+const CYCLE_SHOOT_2: &str = "shoot_2";
+const CYCLE_INJURY_0: &str = "shoot_1";
+const CYCLE_INJURY_1: &str = "injured";
+const CYCLE_INJURY_2: &str = "shoot_2";
+const CYCLE_INJURY_3: &str = "injured";
+const CYCLE_WALL: &str = "wall";
 
 const COLLISION_PROBE_STEPS: i32 = 3;
 
@@ -130,7 +131,7 @@ pub struct CharacterState {
     // and is not part of collision detection.
     pub position_offset: Vector2<f32>,
 
-    // The current display cycle of the character, will be one of the CHARACTER_CYCLE_* constants.
+    // The current display cycle of the character, will be one of the CYCLE_* constants.
     pub cycle: &'static str,
 
     // the character's current stance state
@@ -145,7 +146,7 @@ impl CharacterState {
         CharacterState {
             position: position,
             position_offset: Zero::zero(),
-            cycle: CHARACTER_CYCLE_DEFAULT,
+            cycle: CYCLE_DEFAULT,
             stance: Stance::Standing,
             facing: Facing::Left,
         }
@@ -718,13 +719,14 @@ impl Firebrand {
 
         self.next_shot_countdown = FIREBALL_SHOOT_RATE;
         let origin = self.character_state.position;
-        let vel = match self.character_facing() {
-            Facing::Left => -FIREBALL_VELOCITY,
-            Facing::Right => FIREBALL_VELOCITY,
+        let direction = match self.character_facing() {
+            Facing::Left => Direction::West,
+            Facing::Right => Direction::East,
         };
         message_dispatcher.enqueue(Message::global(Event::ShootFireball {
             origin,
-            velocity: (vel, 0.0).into(),
+            direction,
+            velocity: FIREBALL_VELOCITY,
         }));
     }
 
@@ -1174,45 +1176,45 @@ impl Firebrand {
                 {
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     match frame {
-                        0 => CHARACTER_CYCLE_WALK_0,
-                        1 => CHARACTER_CYCLE_WALK_1,
-                        2 => CHARACTER_CYCLE_WALK_0,
-                        3 => CHARACTER_CYCLE_WALK_2,
+                        0 => CYCLE_WALK_0,
+                        1 => CYCLE_WALK_1,
+                        2 => CYCLE_WALK_0,
+                        3 => CYCLE_WALK_2,
                         _ => unimplemented!("This shouldn't be reached"),
                     }
                 } else {
                     self.cycle_animation_time_elapsed = None;
-                    CHARACTER_CYCLE_WALK_0
+                    CYCLE_WALK_0
                 }
             }
             Stance::InAir => {
                 let frame = ((elapsed / JUMP_CYCLE_DURATION).floor() as i32) % 4;
                 match frame {
-                    0 => CHARACTER_CYCLE_JUMP_0,
-                    1 => CHARACTER_CYCLE_JUMP_1,
-                    2 => CHARACTER_CYCLE_JUMP_2,
-                    3 => CHARACTER_CYCLE_JUMP_1,
+                    0 => CYCLE_JUMP_0,
+                    1 => CYCLE_JUMP_1,
+                    2 => CYCLE_JUMP_2,
+                    3 => CYCLE_JUMP_1,
                     _ => unimplemented!("This shouldn't be reached"),
                 }
             }
             Stance::Flying => {
                 let frame = ((elapsed / FLIGHT_CYCLE_DURATION).floor() as i32) % 4;
                 match frame {
-                    0 => CHARACTER_CYCLE_FLY_0,
-                    1 => CHARACTER_CYCLE_FLY_1,
-                    2 => CHARACTER_CYCLE_FLY_2,
-                    3 => CHARACTER_CYCLE_FLY_1,
+                    0 => CYCLE_FLY_0,
+                    1 => CYCLE_FLY_1,
+                    2 => CYCLE_FLY_2,
+                    3 => CYCLE_FLY_1,
                     _ => unimplemented!("This shouldn't be reached"),
                 }
             }
-            Stance::WallHold(_) => CHARACTER_CYCLE_WALL,
+            Stance::WallHold(_) => CYCLE_WALL,
             Stance::Injury => {
                 let frame = ((elapsed / INJURY_CYCLE_DURATION).floor() as i32) % 4;
                 match frame {
-                    0 => CHARACTER_CYCLE_INJURY_0,
-                    1 => CHARACTER_CYCLE_INJURY_1,
-                    2 => CHARACTER_CYCLE_INJURY_2,
-                    3 => CHARACTER_CYCLE_INJURY_3,
+                    0 => CYCLE_INJURY_0,
+                    1 => CYCLE_INJURY_1,
+                    2 => CYCLE_INJURY_2,
+                    3 => CYCLE_INJURY_3,
                     _ => unimplemented!("This shouldn't be reached"),
                 }
             }

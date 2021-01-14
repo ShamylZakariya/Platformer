@@ -866,9 +866,14 @@ impl entity::MessageHandler for State {
             //
 
             match message.event {
-                entity::Event::ShootFireball { origin, velocity } => {
+                entity::Event::ShootFireball {
+                    origin,
+                    direction,
+                    velocity,
+                } => {
                     self.add_entity(Box::new(entities::fireball::Fireball::new(
                         (origin.x, origin.y, 0.0).into(),
+                        direction,
                         velocity,
                     )));
                 }

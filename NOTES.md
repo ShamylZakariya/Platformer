@@ -1,5 +1,9 @@
 CURRENTLY:
-    - fireball needs collision detection against map
+    - currently, firebrand is "rate limited" in firing. But in game, firebrand can shoot
+        rapidly when the fireball hits something close. So we need, instead a new approach:
+            - keep rate limiting for upper bound, e.g., if it's been more than 1 second, can shoot
+            - if less than a second since last shot, are any fireballs active? Then no shoot.
+
     - firebrand needs to show "shooot" sprites when firing (what's the timing for that sprite)
         - is there a shoot while flying? yes?
 

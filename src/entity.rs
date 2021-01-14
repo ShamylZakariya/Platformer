@@ -107,8 +107,11 @@ pub enum Event {
     /// Recevied by the global handler to signal ;aunching a fireball.
     ShootFireball {
         origin: cgmath::Point2<f32>,
-        velocity: cgmath::Vector2<f32>,
+        direction: crate::entities::fireball::Direction,
+        velocity: f32,
     },
+
+    HitByFireball,
 }
 
 /// A Message to be sent to an Entity instance.

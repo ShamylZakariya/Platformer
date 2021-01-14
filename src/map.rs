@@ -474,6 +474,9 @@ impl Map {
                     if tile.boolean_property("contact_damage") {
                         mask |= CONTACT_DAMAGE;
                     }
+                    if tile.boolean_property("shootable") {
+                        mask |= SHOOTABLE;
+                    }
 
                     let mut sd = Sprite::unit(
                         tile.shape(),
