@@ -595,17 +595,7 @@ impl State {
         // Dispatch collected messages
         //
 
-        for m in &self.message_dispatcher.messages.clone() {
-            if let Some(entity_id) = m.entity_id {
-                if let Some(e) = self.entities.get_mut(&entity_id) {
-                    e.entity.handle_message(&m);
-                }
-            } else {
-                // The message has no destination, so it is processed by self
-                self.handle_message(m);
-            }
-        }
-        self.message_dispatcher.clear();
+        entity::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -831,43 +821,60 @@ impl State {
         }
     }
 
+    /// Adds this entity to the simulation state
+    fn add_entity(&mut self, mut entity: Box<dyn entity::Entity>) {
+        entity.init(
+            self.entity_id_vendor.next_id(),
+            &self.map,
+            &mut self.collision_space,
+        );
+
+        let sprite_name = entity.sprite_name().to_string();
+        let components = EntityComponents::new(
+            entity,
+            crate::sprite::rendering::EntityDrawable::load(
+                &self.entity_tileset,
+                self.entity_material.clone(),
+                &self.device,
+                &sprite_name,
+                0,
+            ),
+            SpriteUniforms::new(
+                &self.device,
+                self.map.tileset.get_sprite_size().cast().unwrap(),
+            ),
+        );
+
+        self.entities.insert(components.id(), components);
+    }
+}
+
+impl entity::MessageHandler for State {
     fn handle_message(&mut self, message: &Message) {
-        if let Some(mut entity) = match message.event {
-            entity::Event::ShootFireball { origin, velocity } => {
-                //
-                // Spawn a Fireball entity with given velocity and origin
-                //
+        if let Some(entity_id) = message.entity_id {
+            //
+            // if the message has a destination entity, route it - if no destination
+            // entity is found that's OK, it might be expired.
+            //
 
-                Some(Box::new(entities::fireball::Fireball::new(
-                    (origin.x, origin.y, 0.0).into(),
-                    velocity,
-                )) as Box<dyn entity::Entity>)
+            if let Some(e) = self.entities.get_mut(&entity_id) {
+                e.entity.handle_message(&message);
             }
-            _ => None,
-        } {
-            entity.init(
-                self.entity_id_vendor.next_id(),
-                &self.map,
-                &mut self.collision_space,
-            );
+        } else {
+            //
+            //  The message has no destination, so we handle it
+            //
 
-            let sprite_name = entity.sprite_name().to_string();
-            let components = EntityComponents::new(
-                entity,
-                crate::sprite::rendering::EntityDrawable::load(
-                    &self.entity_tileset,
-                    self.entity_material.clone(),
-                    &self.device,
-                    &sprite_name,
-                    0,
-                ),
-                SpriteUniforms::new(
-                    &self.device,
-                    self.map.tileset.get_sprite_size().cast().unwrap(),
-                ),
-            );
+            match message.event {
+                entity::Event::ShootFireball { origin, velocity } => {
+                    self.add_entity(Box::new(entities::fireball::Fireball::new(
+                        (origin.x, origin.y, 0.0).into(),
+                        velocity,
+                    )));
+                }
 
-            self.entities.insert(components.id(), components);
+                _ => {}
+            }
         }
     }
 }

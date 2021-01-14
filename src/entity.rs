@@ -139,6 +139,10 @@ impl Message {
     }
 }
 
+pub trait MessageHandler {
+    fn handle_message(&mut self, message: &Message);
+}
+
 pub struct Dispatcher {
     pub messages: Vec<Message>,
 }
@@ -154,7 +158,16 @@ impl Dispatcher {
         self.messages.push(message);
     }
 
-    pub fn clear(&mut self) {
-        self.messages.clear();
+    // TODO: I would prefer dispatch to be a member fn, not static. But State owns
+    // the dispatcher, and as such can't be a message handler too since
+    pub fn dispatch(messages: &Vec<Message>, handler: &mut dyn MessageHandler) {
+        for m in messages {
+            handler.handle_message(m);
+        }
+    }
+
+    /// Returns the current message buffer, and clears it.
+    pub fn drain(&mut self) -> Vec<Message> {
+        std::mem::take(&mut self.messages)
     }
 }

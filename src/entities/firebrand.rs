@@ -746,10 +746,10 @@ impl Firebrand {
         }
 
         if new_stance != self.character_state.stance {
-            println!(
-                "Transition at {} (@{}) from {} -> {}",
-                self.time, self.step, self.character_state.stance, new_stance
-            );
+            // println!(
+            //     "Transition at {} (@{}) from {} -> {}",
+            //     self.time, self.step, self.character_state.stance, new_stance
+            // );
 
             // NOTE This is a useless match block, but is useful to set breakpoints for specific transitions
             match self.character_state.stance {
