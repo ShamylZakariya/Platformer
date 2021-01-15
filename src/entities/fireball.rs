@@ -1,13 +1,11 @@
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 
 use cgmath::{vec3, Point2, Point3, Vector2};
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     entity::{Dispatcher, Entity, Event, Message},
     map,
-    sprite::{self, collision, rendering},
-    tileset,
+    sprite::{collision, rendering},
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -87,6 +85,10 @@ impl Entity for Fireball {
 
     fn entity_id(&self) -> u32 {
         self.entity_id
+    }
+
+    fn entity_class(&self) -> crate::entities::EntityClass {
+        crate::entities::EntityClass::Fireball
     }
 
     fn is_alive(&self) -> bool {

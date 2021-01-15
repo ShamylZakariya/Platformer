@@ -9,6 +9,13 @@ pub mod falling_bridge;
 pub mod fireball;
 pub mod firebrand;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EntityClass {
+    Firebrand,
+    Fireball,
+    FallingBridge,
+}
+
 pub fn instantiate_from_map(
     classname: &str,
     sprite: &sprite::Sprite,

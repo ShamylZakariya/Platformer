@@ -638,6 +638,10 @@ impl Entity for Firebrand {
         self.entity_id
     }
 
+    fn entity_class(&self) -> crate::entities::EntityClass {
+        crate::entities::EntityClass::Firebrand
+    }
+
     fn is_alive(&self) -> bool {
         true
     }

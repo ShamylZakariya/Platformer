@@ -40,18 +40,19 @@ pub trait Entity {
     ///
     fn init_from_map_sprite(
         &mut self,
-        sprite: &sprite::Sprite,
-        tile: &tileset::Tile,
-        map: &map::Map,
-        collision_space: &mut collision::Space,
-    ) {}
+        _sprite: &sprite::Sprite,
+        _tile: &tileset::Tile,
+        _map: &map::Map,
+        _collision_space: &mut collision::Space,
+    ) {
+    }
 
     /// Initializes an entity whcih is not loaded from the level map. This is generally for dynamic
     /// entity creation not based on map tiles, such as fireballs, etc.
-    fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {}
+    fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {}
 
     /// Handle keyboard input, returning true iff said input was consumed.
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
         false
     }
 
@@ -62,22 +63,30 @@ pub trait Entity {
     /// * `message_dispatcher` the dispatcher for queing messages to be processed by entities at end of update loop.
     fn update(
         &mut self,
-        dt: Duration,
-        collision_space: &mut collision::Space,
-        message_dispatcher: &mut Dispatcher,
-    ) {}
+        _dt: Duration,
+        _collision_space: &mut collision::Space,
+        _message_dispatcher: &mut Dispatcher,
+    ) {
+    }
 
     /// Write updated state into this entity's uniform buffer for rendering.
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {}
+    fn update_uniforms(&self, _uniforms: &mut rendering::Uniforms) {}
 
     /// The unique id for this Entity, a value from [0,u32::MAX]
     fn entity_id(&self) -> u32;
 
+    /// The class represented by this Entity
+    fn entity_class(&self) -> crate::entities::EntityClass;
+
     /// An entity should return true here so long as it needs to be updated and drawn.
-    fn is_alive(&self) -> bool { true }
+    fn is_alive(&self) -> bool {
+        true
+    }
 
     /// Return true if you want this entity to draw right now. Entity will still be updated.
-    fn should_draw(&self) -> bool { true }
+    fn should_draw(&self) -> bool {
+        true
+    }
 
     /// The current position of the entity
     fn position(&self) -> Point3<f32>;
@@ -89,13 +98,17 @@ pub trait Entity {
     fn sprite_cycle(&self) -> &str;
 
     /// Handle receipt of a dispatched message.
-    fn handle_message(&mut self, message: &Message) {}
+    fn handle_message(&mut self, _message: &Message) {}
 
     /// Return a set of overlapping sprites used for debug visualization, or None if not applicable.
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> { None }
+    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
+        None
+    }
 
     /// Return a set of contacting sprites used for debug visualization, or None if not applicable.
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> { None }
+    fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

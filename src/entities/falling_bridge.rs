@@ -1,7 +1,6 @@
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 
 use cgmath::{vec2, Point3, Vector2};
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     constants,
@@ -94,6 +93,10 @@ impl Entity for FallingBridge {
 
     fn entity_id(&self) -> u32 {
         self.entity_id
+    }
+
+    fn entity_class(&self) -> crate::entities::EntityClass {
+        crate::entities::EntityClass::FallingBridge
     }
 
     fn is_alive(&self) -> bool {
