@@ -104,12 +104,17 @@ pub enum Event {
     /// Received by an Entity when contacted by the character
     CharacterContact,
 
-    /// Recevied by the global handler to signal ;aunching a fireball.
-    ShootFireball {
+    /// Sent by Firebrand to State to signal request to shoot fireball.
+    /// If State determines a fireball may be shot (there is some rate limiting)
+    /// State will reply with DidShootFireball
+    TryShootFireball {
         origin: cgmath::Point2<f32>,
         direction: crate::entities::fireball::Direction,
         velocity: f32,
     },
+
+    /// Sent to Firebrand when a fireball was successfully shot
+    DidShootFireball,
 
     HitByFireball,
 }

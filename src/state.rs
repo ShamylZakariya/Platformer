@@ -1,4 +1,4 @@
-use entity::Message;
+use entity::{Event, Message};
 use std::{collections::HashMap, rc::Rc};
 use std::{path::Path, time::Duration};
 use winit::{
@@ -866,7 +866,7 @@ impl entity::MessageHandler for State {
             //
 
             match message.event {
-                entity::Event::ShootFireball {
+                entity::Event::TryShootFireball {
                     origin,
                     direction,
                     velocity,
@@ -876,6 +876,12 @@ impl entity::MessageHandler for State {
                         direction,
                         velocity,
                     )));
+
+                    // Reply to firebrand that a shot was fired
+                    self.message_dispatcher.enqueue(Message::routed_to(
+                        self.firebrand_entity_id,
+                        Event::DidShootFireball,
+                    ));
                 }
 
                 _ => {}

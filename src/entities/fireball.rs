@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use cgmath::{Point2, Point3, Vector2, vec2, vec3};
+use cgmath::{vec3, Point2, Point3, Vector2};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -95,7 +95,9 @@ impl Entity for Fireball {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(&(self.position - vec3(0.5, 0.5, 0.0)));
+        uniforms
+            .data
+            .set_model_position(&(self.position - vec3(0.5, 0.5, 0.0)));
     }
 
     fn entity_id(&self) -> u32 {

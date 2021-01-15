@@ -1,12 +1,8 @@
 CURRENTLY:
     - currently, firebrand is "rate limited" in firing. But in game, firebrand can shoot
         rapidly when the fireball hits something close. So we need, instead a new approach:
-            - keep rate limiting for upper bound, e.g., if it's been more than 1 second, can shoot
-            - if less than a second since last shot, are any fireballs active? Then no shoot.
-
-    - firebrand needs to show "shooot" sprites when firing (what's the timing for that sprite)
-        MISSING WALLGRAB SHOOT SPRITE
-
+            - don't fire until there are no active fireballs less than DISTANCE from firebrand
+            - In the game Firebrand could shoot ~1 per sec, so it's FIREBALL_VEL * 1
 
 TODO:
     - traits can have default/overridable implementations. THis can clean up Entity a LOT
@@ -14,6 +10,7 @@ TODO:
     - Then start adding enemies?
 
 BUGS:
+    - I can wallhold on a vertical spike, lol.
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
         - could outset sprites a half pixel (what's apixel at different scales?)
         - could make each "layer" an indexed mesh

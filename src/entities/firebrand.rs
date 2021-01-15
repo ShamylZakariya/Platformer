@@ -679,7 +679,14 @@ impl Entity for Firebrand {
         self.character_state.cycle
     }
 
-    fn handle_message(&mut self, _message: &Message) {}
+    fn handle_message(&mut self, message: &Message) {
+        match message.event {
+            Event::DidShootFireball => {
+                self.last_shoot_time = self.time;
+            }
+            _ => {}
+        }
+    }
 
     fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
         Some(&self.overlapping_sprites)
@@ -715,17 +722,12 @@ impl Firebrand {
     }
 
     fn shoot_fireball(&mut self, message_dispatcher: &mut Dispatcher) {
-        if self.time - self.last_shoot_time < FIREBALL_SHOOT_RATE {
-            return;
-        }
-
-        self.last_shoot_time = self.time;
         let origin = self.character_state.position + vec2(0.5, 0.7);
         let direction = match self.character_facing() {
             Facing::Left => Direction::West,
             Facing::Right => Direction::East,
         };
-        message_dispatcher.enqueue(Message::global(Event::ShootFireball {
+        message_dispatcher.enqueue(Message::global(Event::TryShootFireball {
             origin,
             direction,
             velocity: FIREBALL_VELOCITY,
@@ -1247,7 +1249,7 @@ impl Firebrand {
                 } else {
                     CYCLE_WALL
                 }
-            },
+            }
             Stance::Injury => {
                 let frame = ((elapsed / INJURY_CYCLE_DURATION).floor() as i32) % 4;
                 match frame {
