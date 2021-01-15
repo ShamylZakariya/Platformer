@@ -1,3 +1,4 @@
+use entities::EntityClass;
 use entity::{Event, Message};
 use std::{collections::HashMap, rc::Rc};
 use std::{path::Path, time::Duration};
@@ -73,6 +74,10 @@ impl EntityComponents {
 
     pub fn id(&self) -> u32 {
         self.entity.entity_id()
+    }
+
+    pub fn class(&self) -> EntityClass {
+        self.entity.entity_class()
     }
 }
 
@@ -847,6 +852,30 @@ impl State {
 
         self.entities.insert(components.id(), components);
     }
+
+    /// Returns true iff the player can shoot. The original game only allows one fireball on screen
+    /// at a time; we have dynamic viewport sizes so instead we're going to only allow a shot if there are no
+    /// active fireballs < half the stage width in the original game (since character is always in center)
+    fn player_can_shoot_fireball(&self) -> bool {
+        let mut closest_fireball_distance = f32::MAX;
+        let character_position = self
+            .entities
+            .get(&self.firebrand_entity_id)
+            .unwrap()
+            .entity
+            .position();
+        for e in self.entities.values() {
+            if e.class() == EntityClass::Fireball {
+                let dist = (e.entity.position().x - character_position.x).abs();
+                closest_fireball_distance = closest_fireball_distance.min(dist);
+            }
+        }
+
+        // In original game, stage was 160 px wide, made from 16px tiles, making the
+        // half-width 5 units.
+
+        closest_fireball_distance > 5.0
+    }
 }
 
 impl entity::MessageHandler for State {
@@ -871,17 +900,19 @@ impl entity::MessageHandler for State {
                     direction,
                     velocity,
                 } => {
-                    self.add_entity(Box::new(entities::fireball::Fireball::new(
-                        (origin.x, origin.y, 0.0).into(),
-                        direction,
-                        velocity,
-                    )));
+                    if self.player_can_shoot_fireball() {
+                        self.add_entity(Box::new(entities::fireball::Fireball::new(
+                            (origin.x, origin.y, 0.0).into(),
+                            direction,
+                            velocity,
+                        )));
 
-                    // Reply to firebrand that a shot was fired
-                    self.message_dispatcher.enqueue(Message::routed_to(
-                        self.firebrand_entity_id,
-                        Event::DidShootFireball,
-                    ));
+                        // Reply to firebrand that a shot was fired
+                        self.message_dispatcher.enqueue(Message::routed_to(
+                            self.firebrand_entity_id,
+                            Event::DidShootFireball,
+                        ));
+                    }
                 }
 
                 _ => {}
