@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{vec2, Point3, Vector2};
+use cgmath::*;
 
 use crate::{
     constants,
@@ -27,7 +27,7 @@ impl Default for FallingBridge {
         Self {
             entity_id: 0,
             sprite: None,
-            position: Point3::new(0.0, 0.0, 0.0),
+            position: point3(0.0, 0.0, 0.0),
             time_remaining: None,
             is_falling: false,
             vertical_velocity: 0.0,
@@ -88,7 +88,7 @@ impl Entity for FallingBridge {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(&self.position);
+        uniforms.data.set_model_position(self.position);
     }
 
     fn entity_id(&self) -> u32 {
@@ -105,7 +105,7 @@ impl Entity for FallingBridge {
     }
 
     fn position(&self) -> Point3<f32> {
-        Point3::new(
+        point3(
             self.position.x,
             self.position.y,
             self.sprite.unwrap().origin.z,

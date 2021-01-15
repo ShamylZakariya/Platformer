@@ -1,4 +1,4 @@
-use cgmath::{vec2, Point2};
+use cgmath::*;
 use std::{collections::HashMap, unimplemented};
 
 use crate::sprite::core::*;
@@ -39,7 +39,7 @@ impl Space {
             // copy sprites into appropriate storage
             if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
                 unit_sprite_map.insert(
-                    Point2::new(
+                    point2(
                         sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
                         sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
                     ),
@@ -63,7 +63,7 @@ impl Space {
     }
 
     pub fn add_sprite(&mut self, sprite: &Sprite) {
-        let coord = Point2::new(
+        let coord = point2(
             sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
             sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
         );
@@ -71,7 +71,7 @@ impl Space {
     }
 
     pub fn remove_sprite(&mut self, sprite: &Sprite) {
-        let coord = Point2::new(
+        let coord = point2(
             sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
             sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
         );
@@ -88,7 +88,7 @@ impl Space {
     /// except that unit sprites will be tested before non-unit sprites.
     pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<Sprite> {
         self.unit_sprites
-            .get(&Point2::new(
+            .get(&point2(
                 point.x.floor() as i32 * HASH_MAP_SCALE,
                 point.y.floor() as i32 * HASH_MAP_SCALE,
             ))
@@ -163,13 +163,13 @@ impl Space {
         max_steps: i32,
         mask: u32,
     ) -> Option<(f32, Sprite)> {
-        let position_snapped = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
+        let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
         let mut result = None;
         match dir {
             ProbeDir::Right => {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
-                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
+                    if let Some(s) = self.get_sprite_at(point2(x, position_snapped.y), mask) {
                         result = Some((s.origin.x - (position.x + 1.0), s));
                         break;
                     }
@@ -178,7 +178,7 @@ impl Space {
             ProbeDir::Up => {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
-                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
+                    if let Some(s) = self.get_sprite_at(point2(position_snapped.x, y), mask) {
                         result = Some((s.origin.y - (position.y + 1.0), s));
                         break;
                     }
@@ -187,7 +187,7 @@ impl Space {
             ProbeDir::Down => {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
-                    if let Some(s) = self.get_sprite_at(Point2::new(position_snapped.x, y), mask) {
+                    if let Some(s) = self.get_sprite_at(point2(position_snapped.x, y), mask) {
                         result = Some((position.y - s.top(), s));
                         break;
                     }
@@ -196,7 +196,7 @@ impl Space {
             ProbeDir::Left => {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
-                    if let Some(s) = self.get_sprite_at(Point2::new(x, position_snapped.y), mask) {
+                    if let Some(s) = self.get_sprite_at(point2(x, position_snapped.y), mask) {
                         result = Some((position.x - s.right(), s));
                         break;
                     }
@@ -219,17 +219,16 @@ impl Space {
 #[cfg(test)]
 mod sprite_hit_tester {
     use super::*;
-    use cgmath::vec4;
 
     #[test]
     fn new_produces_expected_storage() {
-        let tco = Point2::new(0.0, 0.0);
+        let tco = point2(0.0, 0.0);
         let tce = vec2(1.0, 1.0);
         let color = vec4(1.0, 1.0, 1.0, 1.0);
 
         let unit_0 = Sprite::unit(
             CollisionShape::Square,
-            Point2::new(0, 0),
+            point2(0, 0),
             0.0,
             tco,
             tce,
@@ -238,7 +237,7 @@ mod sprite_hit_tester {
         );
         let unit_1 = Sprite::unit(
             CollisionShape::Square,
-            Point2::new(11, -33),
+            point2(11, -33),
             0.0,
             tco,
             tce,
@@ -250,7 +249,7 @@ mod sprite_hit_tester {
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&Point2::new(
+                .get(&point2(
                     unit_0.origin.x as i32 * HASH_MAP_SCALE,
                     unit_0.origin.y as i32 * HASH_MAP_SCALE
                 ))
@@ -260,7 +259,7 @@ mod sprite_hit_tester {
         assert_eq!(
             hit_tester
                 .unit_sprites
-                .get(&Point2::new(
+                .get(&point2(
                     unit_1.origin.x as i32 * HASH_MAP_SCALE,
                     unit_1.origin.y as i32 * HASH_MAP_SCALE
                 ))
@@ -275,13 +274,13 @@ mod sprite_hit_tester {
         let triangle_mask = 1 << 1;
         let all_mask = square_mask | triangle_mask;
 
-        let tco = Point2::new(0.0, 0.0);
+        let tco = point2(0.0, 0.0);
         let tce = vec2(1.0, 1.0);
         let color = vec4(1.0, 1.0, 1.0, 1.0);
 
         let sb1 = Sprite::unit(
             CollisionShape::Square,
-            Point2::new(0, 0),
+            point2(0, 0),
             10.0,
             tco,
             tce,
@@ -291,7 +290,7 @@ mod sprite_hit_tester {
 
         let sb2 = Sprite::unit(
             CollisionShape::Square,
-            Point2::new(-1, -1),
+            point2(-1, -1),
             10.0,
             tco,
             tce,
@@ -301,7 +300,7 @@ mod sprite_hit_tester {
 
         let tr0 = Sprite::unit(
             CollisionShape::NorthEast,
-            Point2::new(0, 4),
+            point2(0, 4),
             10.0,
             tco,
             tce,
@@ -311,7 +310,7 @@ mod sprite_hit_tester {
 
         let tr1 = Sprite::unit(
             CollisionShape::NorthWest,
-            Point2::new(-1, 4),
+            point2(-1, 4),
             10.0,
             tco,
             tce,
@@ -321,7 +320,7 @@ mod sprite_hit_tester {
 
         let tr2 = Sprite::unit(
             CollisionShape::SouthWest,
-            Point2::new(-1, 3),
+            point2(-1, 3),
             10.0,
             tco,
             tce,
@@ -331,7 +330,7 @@ mod sprite_hit_tester {
 
         let tr3 = Sprite::unit(
             CollisionShape::SouthEast,
-            Point2::new(0, 3),
+            point2(0, 3),
             10.0,
             tco,
             tce,
@@ -342,24 +341,20 @@ mod sprite_hit_tester {
         let hit_tester = Space::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test_point(Point2::new(0.1, 4.1), triangle_mask) == Some(tr0));
-        assert!(hit_tester.test_point(Point2::new(-0.1, 4.1), triangle_mask) == Some(tr1));
-        assert!(hit_tester.test_point(Point2::new(-0.1, 3.9), triangle_mask) == Some(tr2));
-        assert!(hit_tester.test_point(Point2::new(0.1, 3.9), triangle_mask) == Some(tr3));
+        assert!(hit_tester.test_point(point2(0.1, 4.1), triangle_mask) == Some(tr0));
+        assert!(hit_tester.test_point(point2(-0.1, 4.1), triangle_mask) == Some(tr1));
+        assert!(hit_tester.test_point(point2(-0.1, 3.9), triangle_mask) == Some(tr2));
+        assert!(hit_tester.test_point(point2(0.1, 3.9), triangle_mask) == Some(tr3));
         assert!(hit_tester
-            .test_point(Point2::new(0.1, 4.1), square_mask)
+            .test_point(point2(0.1, 4.1), square_mask)
             .is_none());
-        assert!(hit_tester
-            .test_point(Point2::new(0.1, 3.9), all_mask)
-            .is_some());
+        assert!(hit_tester.test_point(point2(0.1, 3.9), all_mask).is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test_point(Point2::new(0.5, 0.5), square_mask) == Some(sb1));
+        assert!(hit_tester.test_point(point2(0.5, 0.5), square_mask) == Some(sb1));
         assert!(hit_tester
-            .test_point(Point2::new(0.5, 0.5), triangle_mask)
+            .test_point(point2(0.5, 0.5), triangle_mask)
             .is_none());
-        assert!(hit_tester
-            .test_point(Point2::new(0.5, 0.5), all_mask)
-            .is_some());
+        assert!(hit_tester.test_point(point2(0.5, 0.5), all_mask).is_some());
     }
 }

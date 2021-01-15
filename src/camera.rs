@@ -41,7 +41,7 @@ impl Camera {
         if let Some(ppu) = self.pixels_per_unit {
             let cx = (self.position.x * ppu).floor() / ppu;
             let cy = (self.position.y * ppu).floor() / ppu;
-            cgmath::Point3::new(cx, cy, self.position.z)
+            point3(cx, cy, self.position.z)
         } else {
             self.position
         }
@@ -211,7 +211,7 @@ impl CameraController {
         dt: Duration,
     ) {
         let dt = dt.as_secs_f32();
-        let delta_position = cgmath::vec3(
+        let delta_position = vec3(
             input_accumulator(
                 self.input_state.move_left_pressed,
                 self.input_state.move_right_pressed,
@@ -255,8 +255,8 @@ impl CameraController {
 #[derive(Debug, Copy, Clone)]
 pub struct UniformData {
     // use vec4 for 16-byte spacing requirement
-    view_position: cgmath::Vector4<f32>,
-    view_proj: cgmath::Matrix4<f32>,
+    view_position: Vector4<f32>,
+    view_proj: Matrix4<f32>,
 }
 
 unsafe impl bytemuck::Pod for UniformData {}
@@ -266,7 +266,7 @@ impl UniformData {
     pub fn new() -> Self {
         Self {
             view_position: Zero::zero(),
-            view_proj: cgmath::Matrix4::identity(),
+            view_proj: Matrix4::identity(),
         }
     }
 

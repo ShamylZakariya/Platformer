@@ -1,11 +1,11 @@
+use crate::sprite;
 use anyhow::{Context, Result};
+use cgmath::*;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use xml::reader::{EventReader, XmlEvent};
-
-use crate::sprite;
 
 #[derive(Clone, Debug)]
 pub struct Tile {
@@ -259,7 +259,7 @@ impl TileSet {
     }
 
     /// Returns the size of a sprite tile
-    pub fn get_sprite_size(&self) -> cgmath::Vector2<u32> {
+    pub fn get_sprite_size(&self) -> Vector2<u32> {
         (self.tile_width, self.tile_height).into()
     }
 
@@ -279,15 +279,15 @@ impl TileSet {
     }
 
     /// Returns the column and row of the given tile, where (0,0) is the first or top-left tile in the tileset.
-    pub fn get_tile_position(&self, tile: &Tile) -> cgmath::Point2<u32> {
+    pub fn get_tile_position(&self, tile: &Tile) -> Point2<u32> {
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
-        return cgmath::Point2::new(col, row);
+        return point2(col, row);
     }
 
     /// Returns the tile at a given row/col position (where (0,0) is the first or top-left tile in the tileset)
     /// or None if the position is outside the tileset.
-    pub fn get_tile_at_position(&self, position: cgmath::Point2<u32>) -> Option<&Tile> {
+    pub fn get_tile_at_position(&self, position: Point2<u32>) -> Option<&Tile> {
         if position.x >= self.columns {
             None
         } else {
@@ -296,10 +296,7 @@ impl TileSet {
         }
     }
 
-    pub fn get_tex_coords_for_tile(
-        &self,
-        tile: &Tile,
-    ) -> (cgmath::Point2<f32>, cgmath::Vector2<f32>) {
+    pub fn get_tex_coords_for_tile(&self, tile: &Tile) -> (Point2<f32>, Vector2<f32>) {
         // compute pixel values, and then normalize
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
@@ -307,11 +304,11 @@ impl TileSet {
         let px_y = self.image_height - ((row + 1) * self.tile_height + row * self.spacing);
 
         (
-            cgmath::Point2::new(
+            point2(
                 px_x as f32 / self.image_width as f32,
                 px_y as f32 / self.image_height as f32,
             ),
-            cgmath::vec2(
+            vec2(
                 self.tile_width as f32 / self.image_width as f32,
                 self.tile_height as f32 / self.image_height as f32,
             ),

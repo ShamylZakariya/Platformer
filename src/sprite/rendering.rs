@@ -1,4 +1,4 @@
-use cgmath::{prelude::*, vec2, vec3, vec4, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::{prelude::*, *};
 use core::panic;
 use std::rc::Rc;
 use std::{collections::HashMap, time::Duration};
@@ -153,12 +153,12 @@ impl UniformData {
         }
     }
 
-    pub fn set_color(&mut self, color: &Vector4<f32>) -> &mut Self {
-        self.color = *color;
+    pub fn set_color(&mut self, color: Vector4<f32>) -> &mut Self {
+        self.color = color;
         self
     }
 
-    pub fn set_model_position(&mut self, position: &Point3<f32>) -> &mut Self {
+    pub fn set_model_position(&mut self, position: Point3<f32>) -> &mut Self {
         self.model_position.x = position.x;
         self.model_position.y = position.y;
         self.model_position.z = position.z;
@@ -573,7 +573,7 @@ impl EntityDrawable {
                 // now create a Sprite at this position
                 let sprite = Sprite::unit(
                     tile.shape(),
-                    Point2::new(sprite_position.x, -sprite_position.y),
+                    point2(sprite_position.x, -sprite_position.y),
                     0.0,
                     tex_coords,
                     tex_extents,

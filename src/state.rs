@@ -1,3 +1,4 @@
+use cgmath::*;
 use entities::EntityClass;
 use entity::{Event, Message};
 use std::{collections::HashMap, rc::Rc};
@@ -25,9 +26,9 @@ use crate::sprite::rendering::Uniforms as SpriteUniforms;
 #[derive(Clone, Debug)]
 struct UiDisplayState {
     camera_tracks_character: bool,
-    camera_position: cgmath::Point3<f32>,
+    camera_position: Point3<f32>,
     zoom: f32,
-    character_position: cgmath::Point2<f32>,
+    character_position: Point2<f32>,
     character_cycle: String,
     draw_stage_collision_info: bool,
 }
@@ -216,7 +217,7 @@ impl State {
         let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
-        let sprite_size_px = cgmath::vec2(
+        let sprite_size_px = vec2(
             map.tileset.tile_width as f32,
             map.tileset.tile_height as f32,
         );
@@ -289,8 +290,8 @@ impl State {
         };
 
         // Build camera, and camera uniform storage
-        let map_origin = cgmath::Point2::new(0.0, 0.0);
-        let map_extent = cgmath::Vector2::new(map.width as f32, map.height as f32);
+        let map_origin = point2(0.0, 0.0);
+        let map_extent = vec2(map.width as f32, map.height as f32);
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
         let camera_controller = camera::CameraController::new(4.0, map_origin, map_extent);
@@ -517,27 +518,25 @@ impl State {
         // Update stage uniform state
         self.stage_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(0.0, 0.0, 0.0));
-        self.stage_uniforms
-            .data
-            .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0));
+            .set_model_position(point3(0.0, 0.0, 0.0));
+        self.stage_uniforms.data.set_color(vec4(1.0, 1.0, 1.0, 1.0));
         self.stage_uniforms.write(&mut self.queue);
 
         self.stage_debug_draw_overlap_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.1)); // bring closer
+            .set_model_position(point3(0.0, 0.0, -0.1)); // bring closer
         self.stage_debug_draw_overlap_uniforms
             .data
-            .set_color(&cgmath::vec4(0.0, 1.0, 0.0, 0.75));
+            .set_color(vec4(0.0, 1.0, 0.0, 0.75));
         self.stage_debug_draw_overlap_uniforms
             .write(&mut self.queue);
 
         self.stage_debug_draw_contact_uniforms
             .data
-            .set_model_position(&cgmath::Point3::new(0.0, 0.0, -0.2)); // bring closer
+            .set_model_position(point3(0.0, 0.0, -0.2)); // bring closer
         self.stage_debug_draw_contact_uniforms
             .data
-            .set_color(&cgmath::vec4(1.0, 0.0, 0.0, 0.75));
+            .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         self.stage_debug_draw_contact_uniforms
             .write(&mut self.queue);
 
@@ -590,8 +589,7 @@ impl State {
                 .expect("There should be a player entity")
                 .entity
                 .position();
-            self.camera
-                .set_position(&cgmath::Point3::new(p.x, p.y, cp.z));
+            self.camera.set_position(&point3(p.x, p.y, cp.z));
         }
 
         self.camera_uniforms.write(&mut self.queue);

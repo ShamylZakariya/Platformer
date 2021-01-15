@@ -1,4 +1,4 @@
-use cgmath::{relative_eq, vec2, Point2, Point3, Vector2, Vector3, Vector4};
+use cgmath::*;
 use std::hash::Hash;
 
 use crate::geom;
@@ -180,7 +180,7 @@ impl Sprite {
     ) -> Self {
         Self {
             collision_shape,
-            origin: Point3::new(origin.x as f32, origin.y as f32, z),
+            origin: point3(origin.x as f32, origin.y as f32, z),
             extent: vec2(1.0, 1.0),
             tex_coord_origin,
             tex_coord_extent,
@@ -253,46 +253,46 @@ impl Sprite {
                 a,
                 b,
                 &vec![
-                    Point2::new(self.origin.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
-                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y + self.extent.y),
                 ],
             ),
             CollisionShape::NorthEast => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
                 &vec![
-                    Point2::new(self.origin.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
-                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y),
+                    point2(self.origin.x, self.origin.y + self.extent.y),
                 ],
             ),
             CollisionShape::SouthEast => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
                 &vec![
-                    Point2::new(self.origin.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
-                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y + self.extent.y),
                 ],
             ),
             CollisionShape::SouthWest => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
                 &vec![
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
-                    Point2::new(self.origin.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y + self.extent.y),
                 ],
             ),
             CollisionShape::NorthWest => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
                 &vec![
-                    Point2::new(self.origin.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y),
-                    Point2::new(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
+                    point2(self.origin.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y),
+                    point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
                 ],
             ),
         }
@@ -308,7 +308,7 @@ impl Sprite {
         inset: f32,
         contact: bool,
     ) -> bool {
-        let origin = Point2::new(origin.x + inset, origin.y + inset);
+        let origin = point2(origin.x + inset, origin.y + inset);
         let extent = vec2(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
 
         let (x_overlap, y_overlap) = if contact {
@@ -423,7 +423,6 @@ impl Sprite {
 #[cfg(test)]
 mod sprite_desc_tests {
     use super::*;
-    use cgmath::vec4;
 
     fn test_points(
         sprite: &Sprite,
@@ -439,36 +438,36 @@ mod sprite_desc_tests {
     ) {
         (
             // inside
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.25,
                 sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.5,
                 sprite.origin.y + sprite.extent.y * 0.25,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.75,
                 sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.5,
                 sprite.origin.y + sprite.extent.y * 0.75,
             ),
             // outside
-            Point2::new(
+            point2(
                 sprite.origin.x - sprite.extent.x * 0.25,
                 sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.5,
                 sprite.origin.y - sprite.extent.y * 0.25,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 1.25,
                 sprite.origin.y + sprite.extent.y * 0.5,
             ),
-            Point2::new(
+            point2(
                 sprite.origin.x + sprite.extent.x * 0.5,
                 sprite.origin.y + sprite.extent.y * 1.25,
             ),
@@ -543,9 +542,9 @@ mod sprite_desc_tests {
     fn contains_works() {
         let mut sprite = Sprite::new(
             CollisionShape::Square,
-            Point3::new(0.0, 0.0, 0.0),
+            point3(0.0, 0.0, 0.0),
             vec2(1.0, 1.0),
-            Point2::new(0.0, 0.0),
+            point2(0.0, 0.0),
             vec2(1.0, 1.0),
             vec4(0.0, 0.0, 0.0, 0.0),
             0,
@@ -614,29 +613,29 @@ mod sprite_desc_tests {
     fn line_intersection_with_square_works() {
         let sprite = Sprite::new(
             CollisionShape::Square,
-            Point3::new(0.0, 0.0, 0.0),
+            point3(0.0, 0.0, 0.0),
             vec2(1.0, 1.0),
-            Point2::new(0.0, 0.0),
+            point2(0.0, 0.0),
             vec2(1.0, 1.0),
             vec4(0.0, 0.0, 0.0, 0.0),
             0,
         );
 
         assert_eq!(
-            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(0.5, 0.5)),
-            Some(Point2::new(0.0, 0.5))
+            sprite.line_intersection(&point2(-0.5, 0.5), &point2(0.5, 0.5)),
+            Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, 0.5)),
-            Some(Point2::new(0.5, 1.0))
+            sprite.line_intersection(&point2(0.5, 1.5), &point2(0.5, 0.5)),
+            Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(0.5, 0.5)),
-            Some(Point2::new(1.0, 0.5))
+            sprite.line_intersection(&point2(1.5, 0.5), &point2(0.5, 0.5)),
+            Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 0.5)),
-            Some(Point2::new(0.5, 0.0))
+            sprite.line_intersection(&point2(0.5, -0.5), &point2(0.5, 0.5)),
+            Some(point2(0.5, 0.0))
         );
     }
 
@@ -644,83 +643,83 @@ mod sprite_desc_tests {
     fn line_intersection_with_slopes_works() {
         let mut sprite = Sprite::new(
             CollisionShape::NorthEast,
-            Point3::new(0.0, 0.0, 0.0),
+            point3(0.0, 0.0, 0.0),
             vec2(1.0, 1.0),
-            Point2::new(0.0, 0.0),
+            point2(0.0, 0.0),
             vec2(1.0, 1.0),
             vec4(0.0, 0.0, 0.0, 0.0),
             0,
         );
 
         assert_eq!(
-            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
-            Some(Point2::new(0.0, 0.5))
+            sprite.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
-            Some(Point2::new(0.5, 0.0))
+            sprite.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.0))
         );
 
         sprite.collision_shape = CollisionShape::SouthEast;
         assert_eq!(
-            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
-            Some(Point2::new(0.0, 0.5))
+            sprite.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
-            Some(Point2::new(0.5, 1.0))
+            sprite.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.5))
         );
 
         sprite.collision_shape = CollisionShape::SouthWest;
         assert_eq!(
-            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
-            Some(Point2::new(0.5, 1.0))
+            sprite.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
-            Some(Point2::new(1.0, 0.5))
+            sprite.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.5))
         );
 
         sprite.collision_shape = CollisionShape::NorthWest;
         assert_eq!(
-            sprite.line_intersection(&Point2::new(-0.5, 0.5), &Point2::new(1.5, 0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, 1.5), &Point2::new(0.5, -0.5)),
-            Some(Point2::new(0.5, 0.5))
+            sprite.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(1.5, 0.5), &Point2::new(-0.5, 0.5)),
-            Some(Point2::new(1.0, 0.5))
+            sprite.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            sprite.line_intersection(&Point2::new(0.5, -0.5), &Point2::new(0.5, 1.5)),
-            Some(Point2::new(0.5, 0.0))
+            sprite.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.0))
         );
     }
 
@@ -731,9 +730,9 @@ mod sprite_desc_tests {
     fn double_flip_is_identity() {
         let sprite = Sprite::unit(
             CollisionShape::Square,
-            Point2::new(0, 0),
+            point2(0, 0),
             0.0,
-            Point2::new(0.1, 0.1),
+            point2(0.1, 0.1),
             vec2(0.2, 0.2),
             vec4(1.0, 1.0, 1.0, 1.0),
             0,

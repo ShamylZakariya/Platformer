@@ -1,14 +1,10 @@
 CURRENTLY:
-    - currently, firebrand is "rate limited" in firing. But in game, firebrand can shoot
-        rapidly when the fireball hits something close. So we need, instead a new approach:
-            - don't fire until there are no active fireballs less than DISTANCE from firebrand
-            - In the game Firebrand could shoot ~1 per sec, so it's FIREBALL_VEL * 1
-            - Entity is going to need an "entity class" field, which returns an enum or int or something so we can scan
-                the list of active entities for the fireballs
+    - cgmath (0.18?) has swizzling. I need to upgrade, can clean up my code a LOT.
+    - does cgmath prelude clean things up?
+    - 0.18 has point2, point3 functions
+
 
 TODO:
-    - traits can have default/overridable implementations. THis can clean up Entity a LOT
-    - cgmath (0.18?) has swizzling. I need to upgrade, can clean up my code a LOT.
     - Then start adding enemies?
 
 BUGS:

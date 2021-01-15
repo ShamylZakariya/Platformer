@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use cgmath::{vec3, Point2, Point3, Vector2};
+use cgmath::*;
 
 use crate::{
     entity::{Dispatcher, Entity, Event, Message},
@@ -31,15 +31,15 @@ pub struct Fireball {
 }
 
 impl Fireball {
-    pub fn new(position: cgmath::Point3<f32>, direction: Direction, velocity: f32) -> Self {
+    pub fn new(position: Point3<f32>, direction: Direction, velocity: f32) -> Self {
         Self {
             entity_id: 0,
             position,
             direction,
             velocity,
             alive: true,
-            map_origin: Point2::new(0.0, 0.0),
-            map_extent: Vector2::new(0.0, 0.0),
+            map_origin: point2(0.0, 0.0),
+            map_extent: vec2(0.0, 0.0),
         }
     }
 }
@@ -62,8 +62,8 @@ impl Entity for Fireball {
         let mask = crate::constants::sprite_masks::SHOOTABLE;
 
         let next_position = match self.direction {
-            Direction::East => Point2::new(self.position.x + self.velocity * dt, self.position.y),
-            Direction::West => Point2::new(self.position.x - self.velocity * dt, self.position.y),
+            Direction::East => point2(self.position.x + self.velocity * dt, self.position.y),
+            Direction::West => point2(self.position.x - self.velocity * dt, self.position.y),
         };
 
         if let Some(sprite) = collision_space.test_point(next_position, mask) {
@@ -80,7 +80,7 @@ impl Entity for Fireball {
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         uniforms
             .data
-            .set_model_position(&(self.position - vec3(0.5, 0.5, 0.0)));
+            .set_model_position(self.position - vec3(0.5, 0.5, 0.0));
     }
 
     fn entity_id(&self) -> u32 {

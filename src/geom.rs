@@ -1,7 +1,7 @@
 // https://www.swtestacademy.com/intersection-convex-polygons-algorithm/
 
 pub mod intersection {
-    use cgmath::{MetricSpace, Point2};
+    use cgmath::*;
 
     /// Return the intersection of two line segments, or None if they don't intersect
     pub fn line_line(
@@ -46,7 +46,7 @@ pub mod intersection {
                 && (max_y > y || (max_y - y).abs() < e);
 
             if online1 && online2 {
-                return Some(Point2::new(x, y));
+                return Some(point2(x, y));
             }
         }
 
@@ -103,30 +103,30 @@ pub mod intersection {
         fn line_line_works() {
             assert_eq!(
                 line_line(
-                    &Point2::new(0.0, 0.0),
-                    &Point2::new(10.0, 0.0),
-                    &Point2::new(2.0, 1.0),
-                    &Point2::new(2.0, -1.0),
+                    &point2(0.0, 0.0),
+                    &point2(10.0, 0.0),
+                    &point2(2.0, 1.0),
+                    &point2(2.0, -1.0),
                 ),
-                Some(Point2::new(2.0, 0.0))
+                Some(point2(2.0, 0.0))
             );
 
             assert_eq!(
                 line_line(
-                    &Point2::new(0.0, 0.0),
-                    &Point2::new(10.0, 10.0),
-                    &Point2::new(5.0, 10.0),
-                    &Point2::new(5.0, 0.0),
+                    &point2(0.0, 0.0),
+                    &point2(10.0, 10.0),
+                    &point2(5.0, 10.0),
+                    &point2(5.0, 0.0),
                 ),
-                Some(Point2::new(5.0, 5.0))
+                Some(point2(5.0, 5.0))
             );
 
             assert_eq!(
                 line_line(
-                    &Point2::new(0.0, 0.0),
-                    &Point2::new(10.0, 10.0),
-                    &Point2::new(0.0, 1.0),
-                    &Point2::new(10.0, 11.0),
+                    &point2(0.0, 0.0),
+                    &point2(10.0, 10.0),
+                    &point2(0.0, 1.0),
+                    &point2(10.0, 11.0),
                 ),
                 None
             );
@@ -135,38 +135,34 @@ pub mod intersection {
         #[test]
         fn line_convex_poly_works() {
             let square = vec![
-                Point2::new(0.0, 0.0),
-                Point2::new(1.0, 0.0),
-                Point2::new(1.0, 1.0),
-                Point2::new(0.0, 1.0),
+                point2(0.0, 0.0),
+                point2(1.0, 0.0),
+                point2(1.0, 1.0),
+                point2(0.0, 1.0),
             ];
 
             assert_eq!(
-                line_convex_poly(&Point2::new(-1.0, 0.5), &Point2::new(0.5, 0.5), &square),
-                vec![Point2::new(0.0, 0.5)]
+                line_convex_poly(&point2(-1.0, 0.5), &point2(0.5, 0.5), &square),
+                vec![point2(0.0, 0.5)]
             );
             assert_eq!(
-                line_convex_poly(&Point2::new(2.0, 0.5), &Point2::new(0.5, 0.5), &square),
-                vec![Point2::new(1.0, 0.5)]
+                line_convex_poly(&point2(2.0, 0.5), &point2(0.5, 0.5), &square),
+                vec![point2(1.0, 0.5)]
             );
             assert_eq!(
-                line_convex_poly(&Point2::new(0.5, 2.0), &Point2::new(0.5, 0.5), &square),
-                vec![Point2::new(0.5, 1.0)]
+                line_convex_poly(&point2(0.5, 2.0), &point2(0.5, 0.5), &square),
+                vec![point2(0.5, 1.0)]
             );
             assert_eq!(
-                line_convex_poly(&Point2::new(0.5, -1.0), &Point2::new(0.5, 0.5), &square),
-                vec![Point2::new(0.5, 0.0)]
+                line_convex_poly(&point2(0.5, -1.0), &point2(0.5, 0.5), &square),
+                vec![point2(0.5, 0.0)]
             );
 
-            let triangle = vec![
-                Point2::new(0.0, 0.0),
-                Point2::new(1.0, 0.0),
-                Point2::new(0.0, 1.0),
-            ];
+            let triangle = vec![point2(0.0, 0.0), point2(1.0, 0.0), point2(0.0, 1.0)];
 
             assert_eq!(
-                line_convex_poly(&Point2::new(0.5, 1.0), &Point2::new(0.5, 0.01), &triangle),
-                vec![Point2::new(0.5, 0.5)]
+                line_convex_poly(&point2(0.5, 1.0), &point2(0.5, 0.01), &triangle),
+                vec![point2(0.5, 0.5)]
             );
         }
     }

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use cgmath::Point3;
+use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::map;
@@ -123,7 +123,7 @@ pub enum Event {
     /// If State determines a fireball may be shot (there is some rate limiting)
     /// State will reply with DidShootFireball
     TryShootFireball {
-        origin: cgmath::Point2<f32>,
+        origin: Point2<f32>,
         direction: crate::entities::fireball::Direction,
         velocity: f32,
     },

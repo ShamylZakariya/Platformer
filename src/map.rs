@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use cgmath::*;
 use sprite::core::*;
 use std::path::Path;
 use std::{collections::HashMap, io::BufReader};
@@ -43,7 +44,7 @@ impl Default for Layer {
 pub struct SpriteFlipbookAnimation {
     pub sprites: Vec<Sprite>,
     pub name: String,
-    pub offsets: Vec<cgmath::Vector2<f32>>,
+    pub offsets: Vec<Vector2<f32>>,
     pub durations: Vec<Duration>,
 }
 
@@ -313,7 +314,7 @@ impl Map {
     }
 
     /// Returns bounds of map as tuple of (origin,extent)
-    pub fn bounds(&self) -> (cgmath::Point2<u32>, cgmath::Vector2<u32>) {
+    pub fn bounds(&self) -> (Point2<u32>, Vector2<u32>) {
         ((0, 0).into(), (self.width, self.height).into())
     }
 
@@ -480,11 +481,11 @@ impl Map {
 
                     let mut sd = Sprite::unit(
                         tile.shape(),
-                        cgmath::Point2::new(x as i32, (layer.height - y) as i32),
+                        point2(x as i32, (layer.height - y) as i32),
                         0.0,
                         tex_coord_origin,
                         tex_coord_extent,
-                        cgmath::vec4(1.0, 1.0, 1.0, 1.0),
+                        vec4(1.0, 1.0, 1.0, 1.0),
                         mask,
                     );
 

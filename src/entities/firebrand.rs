@@ -1,6 +1,6 @@
 use std::{collections::HashSet, f32::consts::PI, fmt::Display, time::Duration};
 
-use cgmath::{vec2, Point2, Point3, Vector2, Zero};
+use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -342,7 +342,7 @@ impl Entity for Firebrand {
         );
         self.map_origin = map.bounds().0.cast().unwrap();
         self.map_extent = map.bounds().1.cast().unwrap();
-        self.character_state.position = Point2::new(sprite.origin.x, sprite.origin.y);
+        self.character_state.position = point2(sprite.origin.x, sprite.origin.y);
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -622,9 +622,9 @@ impl Entity for Firebrand {
 
             uniforms
                 .data
-                .set_color(&cgmath::vec4(1.0, 1.0, 1.0, 1.0))
-                .set_sprite_scale(cgmath::vec2(xscale, 1.0))
-                .set_model_position(&cgmath::Point3::new(
+                .set_color(vec4(1.0, 1.0, 1.0, 1.0))
+                .set_sprite_scale(vec2(xscale, 1.0))
+                .set_model_position(point3(
                     self.character_state.position.x
                         + self.character_state.position_offset.x
                         + xoffset,
@@ -664,7 +664,7 @@ impl Entity for Firebrand {
     }
 
     fn position(&self) -> Point3<f32> {
-        Point3::new(
+        point3(
             self.character_state.position.x,
             self.character_state.position.y,
             self.sprite.unwrap().origin.z,
@@ -845,12 +845,12 @@ impl Firebrand {
         let mut tracking = None;
 
         // scan sprites beneath character
-        let center = Point2::new(
+        let center = point2(
             (position.x + test_offset.x).round() as i32,
             (position.y + test_offset.y).round() as i32,
         );
 
-        let below_center = Point2::new(center.x, center.y - 1);
+        let below_center = point2(center.x, center.y - 1);
         let contacts_are_collision = !may_apply_correction;
 
         let can_collide_width = |p: &Point2<f32>, s: &sprite::Sprite| -> bool {
@@ -1042,7 +1042,7 @@ impl Firebrand {
 
         if let Some(c) = contacted {
             if collision_space
-                .get_sprite_at(Point2::new(c.origin.x as i32, c.origin.y as i32 + 1), mask)
+                .get_sprite_at(point2(c.origin.x as i32, c.origin.y as i32 + 1), mask)
                 .is_none()
             {
                 if position.y > c.origin.y + (c.extent.y * 0.5) {
@@ -1056,7 +1056,7 @@ impl Firebrand {
         //
 
         (
-            Point2::new(
+            point2(
                 clamp(
                     position.x + delta_x,
                     self.map_origin.x,
@@ -1285,10 +1285,10 @@ impl Firebrand {
     }
 
     fn is_in_water(&self, collision_space: &collision::Space, position: Point2<f32>) -> bool {
-        let a = Point2::new(position.x.floor() as i32, position.y.floor() as i32);
-        let b = Point2::new(a.x + 1, a.y);
-        let c = Point2::new(a.x, a.y + 1);
-        let d = Point2::new(a.x + 1, a.y + 1);
+        let a = point2(position.x.floor() as i32, position.y.floor() as i32);
+        let b = point2(a.x + 1, a.y);
+        let c = point2(a.x, a.y + 1);
+        let d = point2(a.x + 1, a.y + 1);
 
         for p in [a, b, c, d].iter() {
             if collision_space.get_sprite_at(*p, WATER).is_some() {
