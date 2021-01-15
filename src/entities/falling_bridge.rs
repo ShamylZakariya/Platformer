@@ -57,15 +57,6 @@ impl Entity for FallingBridge {
         collision_space.add_sprite(sprite);
     }
 
-    fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {
-        panic!("FallingBridge must be initialized using init_from_map_sprite")
-    }
-
-    fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
-        // FallingBridge doesn't consume input
-        false
-    }
-
     fn update(
         &mut self,
         dt: Duration,
@@ -110,10 +101,6 @@ impl Entity for FallingBridge {
         self.position.y > -1.0
     }
 
-    fn should_draw(&self) -> bool {
-        true
-    }
-
     fn position(&self) -> Point3<f32> {
         Point3::new(
             self.position.x,
@@ -140,12 +127,5 @@ impl Entity for FallingBridge {
             }
             _ => {}
         }
-    }
-
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
-    }
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
     }
 }

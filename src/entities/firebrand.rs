@@ -345,10 +345,6 @@ impl Entity for Firebrand {
         self.character_state.position = Point2::new(sprite.origin.x, sprite.origin.y);
     }
 
-    fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {
-        panic!("Firebrand must be initialized using init_from_map_sprite")
-    }
-
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
         self.input_state.process_keyboard(key, state)
     }

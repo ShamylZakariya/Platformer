@@ -47,26 +47,11 @@ impl Fireball {
 }
 
 impl Entity for Fireball {
-    fn init_from_map_sprite(
-        &mut self,
-        _sprite: &sprite::Sprite,
-        _tile: &tileset::Tile,
-        _map: &map::Map,
-        _collision_space: &mut collision::Space,
-    ) {
-        panic!("Fireball must be initialized via init() and not init_from_map_sprite()")
-    }
-
     fn init(&mut self, entity_id: u32, map: &map::Map, _collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
         let bounds = map.bounds();
         self.map_origin = bounds.0.cast().unwrap();
         self.map_extent = bounds.1.cast().unwrap();
-    }
-
-    fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
-        // Fireball doesn't consume input
-        false
     }
 
     fn update(
@@ -108,10 +93,6 @@ impl Entity for Fireball {
         self.alive
     }
 
-    fn should_draw(&self) -> bool {
-        true
-    }
-
     fn position(&self) -> Point3<f32> {
         self.position
     }
@@ -122,14 +103,5 @@ impl Entity for Fireball {
 
     fn sprite_cycle(&self) -> &str {
         CYCLE_DEFAULT
-    }
-
-    fn handle_message(&mut self, _message: &Message) {}
-
-    fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
-    }
-    fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
     }
 }

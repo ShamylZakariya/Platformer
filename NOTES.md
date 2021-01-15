@@ -3,6 +3,8 @@ CURRENTLY:
         rapidly when the fireball hits something close. So we need, instead a new approach:
             - don't fire until there are no active fireballs less than DISTANCE from firebrand
             - In the game Firebrand could shoot ~1 per sec, so it's FIREBALL_VEL * 1
+            - Entity is going to need an "entity class" field, which returns an enum or int or something so we can scan
+                the list of active entities for the fireballs
 
 TODO:
     - traits can have default/overridable implementations. THis can clean up Entity a LOT
@@ -11,6 +13,7 @@ TODO:
 
 BUGS:
     - I can wallhold on a vertical spike, lol.
+        - this happens when firebrand - invulnerable from a previous contact - alights on them.
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
         - could outset sprites a half pixel (what's apixel at different scales?)
         - could make each "layer" an indexed mesh
