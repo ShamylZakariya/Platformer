@@ -614,6 +614,24 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="99">
+  <properties>
+   <property name="cycle" value="wall_shoot"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="100">
+  <properties>
+   <property name="cycle" value="wall_shoot"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="101">
+  <properties>
+   <property name="cycle" value="wall_shoot"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
  <tile id="112">
   <properties>
    <property name="cycle" value="injured"/>
@@ -631,6 +649,26 @@
  <tile id="114">
   <properties>
    <property name="cycle" value="injured"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="115">
+  <properties>
+   <property name="cycle" value="wall_shoot"/>
+   <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="116">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="wall_shoot"/>
+   <property name="name" value="firebrand"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="117">
+  <properties>
+   <property name="cycle" value="wall_shoot"/>
    <property name="name" value="firebrand"/>
   </properties>
  </tile>

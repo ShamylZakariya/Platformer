@@ -34,6 +34,7 @@ const CYCLE_INJURY_1: &str = "injured";
 const CYCLE_INJURY_2: &str = "fly_shoot_2";
 const CYCLE_INJURY_3: &str = "injured";
 const CYCLE_WALL: &str = "wall";
+const CYCLE_WALL_SHOOT: &str = "wall_shoot";
 
 const COLLISION_PROBE_STEPS: i32 = 3;
 
@@ -719,7 +720,7 @@ impl Firebrand {
         }
 
         self.last_shoot_time = self.time;
-        let origin = self.character_state.position;
+        let origin = self.character_state.position + vec2(0.5, 0.7);
         let direction = match self.character_facing() {
             Facing::Left => Direction::West,
             Facing::Right => Direction::East,
@@ -1240,7 +1241,13 @@ impl Firebrand {
                     }
                 }
             }
-            Stance::WallHold(_) => CYCLE_WALL,
+            Stance::WallHold(_) => {
+                if is_shooting {
+                    CYCLE_WALL_SHOOT
+                } else {
+                    CYCLE_WALL
+                }
+            },
             Stance::Injury => {
                 let frame = ((elapsed / INJURY_CYCLE_DURATION).floor() as i32) % 4;
                 match frame {

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, time::Duration};
 
-use cgmath::{vec2, Point2, Point3, Vector2};
+use cgmath::{Point2, Point3, Vector2, vec2, vec3};
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -83,7 +83,7 @@ impl Entity for Fireball {
             Direction::West => Point2::new(self.position.x - self.velocity * dt, self.position.y),
         };
 
-        if let Some(sprite) = collision_space.test_point(next_position + vec2(0.5, 0.5), mask) {
+        if let Some(sprite) = collision_space.test_point(next_position, mask) {
             if let Some(entity_id) = sprite.entity_id {
                 message_dispatcher.enqueue(Message::routed_to(entity_id, Event::HitByFireball));
             }
@@ -95,7 +95,7 @@ impl Entity for Fireball {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(&self.position);
+        uniforms.data.set_model_position(&(self.position - vec3(0.5, 0.5, 0.0)));
     }
 
     fn entity_id(&self) -> u32 {
