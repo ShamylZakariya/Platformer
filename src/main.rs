@@ -24,7 +24,10 @@ mod tileset;
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_title("Gargoyle's Quest")
+        .build(&event_loop)
+        .unwrap();
     let mut state = block_on(state::State::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
