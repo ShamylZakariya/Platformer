@@ -315,7 +315,7 @@ impl Map {
 
     /// Returns bounds of map as tuple of (origin,extent)
     pub fn bounds(&self) -> (Point2<u32>, Vector2<u32>) {
-        ((0, 0).into(), (self.width, self.height).into())
+        (point2(0, 0), vec2(self.width, self.height))
     }
 
     /// Returns the layer by the provided name, or None if not found

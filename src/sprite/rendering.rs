@@ -159,10 +159,7 @@ impl UniformData {
     }
 
     pub fn set_model_position(&mut self, position: Point3<f32>) -> &mut Self {
-        self.model_position.x = position.x;
-        self.model_position.y = position.y;
-        self.model_position.z = position.z;
-        self.model_position.w = 1.0;
+        self.model_position = vec4(position.x, position.y, position.z, 1.0);
         self
     }
 

@@ -304,7 +304,7 @@ impl Default for Firebrand {
             time: 0.0,
             step: 0,
             input_state: Default::default(),
-            character_state: CharacterState::new((0.0, 0.0).into()),
+            character_state: CharacterState::new(point2(0.0, 0.0)),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
@@ -312,8 +312,8 @@ impl Default for Firebrand {
             flight_countdown: FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_countdown: 0.0,
             wallgrab_jump_dir: 0.0,
-            map_origin: (0.0, 0.0).into(),
-            map_extent: (0.0, 0.0).into(),
+            map_origin: point2(0.0, 0.0),
+            map_extent: vec2(0.0, 0.0),
             cycle_animation_time_elapsed: None,
             in_water: false,
             injury_kickback_vel: 1.0,
@@ -342,7 +342,7 @@ impl Entity for Firebrand {
         );
         self.map_origin = map.bounds().0.cast().unwrap();
         self.map_extent = map.bounds().1.cast().unwrap();
-        self.character_state.position = point2(sprite.origin.x, sprite.origin.y);
+        self.character_state.position = sprite.origin.xy();
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {

@@ -260,7 +260,7 @@ impl TileSet {
 
     /// Returns the size of a sprite tile
     pub fn get_sprite_size(&self) -> Vector2<u32> {
-        (self.tile_width, self.tile_height).into()
+        vec2(self.tile_width, self.tile_height)
     }
 
     pub fn get_tile(&self, id: u32) -> Option<&Tile> {

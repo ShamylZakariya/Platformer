@@ -806,7 +806,7 @@ impl State {
             camera_tracks_character: self.camera_tracks_character,
             camera_position: self.camera.position(),
             zoom: self.projection.scale(),
-            character_position: (position.x, position.y).into(),
+            character_position: position.xy(),
             draw_stage_collision_info: self.draw_stage_collision_info,
             character_cycle: firebrand.entity.sprite_cycle().to_string(),
         }
@@ -900,7 +900,7 @@ impl entity::MessageHandler for State {
                 } => {
                     if self.player_can_shoot_fireball() {
                         self.add_entity(Box::new(entities::fireball::Fireball::new(
-                            (origin.x, origin.y, 0.0).into(),
+                            point3(origin.x, origin.y, 0.0),
                             direction,
                             velocity,
                         )));
