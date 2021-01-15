@@ -9,7 +9,7 @@ use winit::{
     window::Window,
 };
 
-use crate::entity;
+use crate::{constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
 use crate::map;
 use crate::sprite::collision;
 use crate::sprite::rendering;
@@ -755,7 +755,7 @@ impl State {
 
                 let mut zoom = ui_display_state.zoom;
                 if imgui::Slider::new(imgui::im_str!("Zoom"))
-                    .range(0 as f32..=999.0 as f32)
+                    .range(ORIGINAL_VIEWPORT_TILES_WIDE as f32..=32 as f32)
                     .build(&ui, &mut zoom)
                 {
                     ui_input_state.zoom = Some(zoom);
@@ -851,10 +851,12 @@ impl State {
         self.entities.insert(components.id(), components);
     }
 
-    /// Returns true iff the player can shoot. The original game only allows one fireball on screen
-    /// at a time; we have dynamic viewport sizes so instead we're going to only allow a shot if there are no
-    /// active fireballs < half the stage width in the original game (since character is always in center)
+    /// Returns true iff the player can shoot.
     fn player_can_shoot_fireball(&self) -> bool {
+        // The original game only allows one fireball on screen at a time; we have dynamic viewport sizes
+        // so instead we're going to only allow a shot if there are no active fireballs closer than half
+        // the stage width in the original game (since character is always in center)
+
         let mut closest_fireball_distance = f32::MAX;
         let character_position = self
             .entities
@@ -869,10 +871,7 @@ impl State {
             }
         }
 
-        // In original game, stage was 160 px wide, made from 16px tiles, making the
-        // half-width 5 units.
-
-        closest_fireball_distance > 5.0
+        closest_fireball_distance > (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0)
     }
 }
 
