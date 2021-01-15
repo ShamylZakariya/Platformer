@@ -11,7 +11,7 @@ pub mod sprite_masks {
 }
 
 // In original game, stage was 160 px wide, made from 16px tiles, making the viewport 10 units wide.
-pub const ORIGINAL_VIEWPORT_TILES_WIDE:i32 = 10;
+pub const ORIGINAL_VIEWPORT_TILES_WIDE: i32 = 10;
 
 pub const GRAVITY_VEL: f32 = -1.0 / 0.12903225806451613;
 pub fn apply_gravity(vertical_velocity: f32, dt: f32) -> f32 {

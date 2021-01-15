@@ -1037,11 +1037,14 @@ impl Firebrand {
         }
 
         //
-        //  Wallgrabs are dissallowed on the top-helf of a ledge (no tile above the contacted tile)
+        //  Wallgrabs are dissallowed on the top-helf of a ledge (no tile above the contacted tile) and on sprites
+        //  which deal contact damage.
         //
 
         if let Some(c) = contacted {
-            if collision_space
+            if c.mask & CONTACT_DAMAGE != 0 {
+                contacted = None;
+            } else if collision_space
                 .get_sprite_at(point2(c.origin.x as i32, c.origin.y as i32 + 1), mask)
                 .is_none()
             {

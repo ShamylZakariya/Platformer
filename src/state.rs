@@ -9,13 +9,13 @@ use winit::{
     window::Window,
 };
 
-use crate::{constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
 use crate::map;
 use crate::sprite::collision;
 use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
 use crate::{camera, entities};
+use crate::{constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
