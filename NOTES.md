@@ -6,10 +6,11 @@ CURRENTLY:
 
     - firebrand needs to show "shooot" sprites when firing (what's the timing for that sprite)
         MISSING WALLGRAB SHOOT SPRITE
-        DOES FIREBRAND STAND STILL WHILE SHOOTING OR IS THERE A WALK_SHOOT SPRITE
 
 
 TODO:
+    - traits can have default/overridable implementations. THis can clean up Entity a LOT
+    - cgmath (0.18?) has swizzling. I need to upgrade, can clean up my code a LOT.
     - Then start adding enemies?
 
 BUGS:

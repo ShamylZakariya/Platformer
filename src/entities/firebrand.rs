@@ -55,6 +55,7 @@ const FIREBALL_VELOCITY: f32 = 1.0 / 0.166;
 const FIREBALL_SHOOT_RATE: f32 = 1.0; // in the game only one fireball was visible
                                       // on screen at a time. It took 1 second to
                                       // go off screen and then could shoot again.
+const FIREBALL_SHOOT_MOVEMENT_PAUSE_DURATION: f32 = 0.3;
 
 // Animation timings
 const WALK_CYCLE_DURATION: f32 = 0.2;
@@ -373,13 +374,13 @@ impl Entity for Firebrand {
         //  No user input processing while in injury state
         //
 
-        let can_process_input = !self.is_in_injury();
+        let can_process_jump_inputs = !self.is_in_injury();
 
         //
         //  Handle jump button
         //
 
-        if can_process_input {
+        if can_process_jump_inputs {
             match self.input_state.jump {
                 ButtonState::Pressed => match self.character_state.stance {
                     Stance::Standing => {
@@ -932,6 +933,13 @@ impl Firebrand {
             input_accumulator(self.input_state.move_left, self.input_state.move_right)
                 * WALK_SPEED
                 * dt;
+
+        // if character is on foot and shot fireball recently, we don't apply left/right motion
+        if self.character_state.stance == Stance::Standing
+            && self.time - self.last_shoot_time < FIREBALL_SHOOT_MOVEMENT_PAUSE_DURATION
+        {
+            delta_x = 0.0;
+        }
 
         // walljump overrides user input vel birefly.
         if self.wallgrab_jump_lateral_motion_countdown > 0.0 {
