@@ -52,7 +52,7 @@ impl Camera {
     }
 
     pub fn calc_matrix(&self) -> Matrix4<f32> {
-        Matrix4::look_at_dir(
+        Matrix4::look_to_rh(
             self.position(),
             self.look_dir.normalize(),
             Vector3::unit_y(),
