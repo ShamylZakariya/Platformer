@@ -16,7 +16,9 @@ pub struct IdVendor {
 
 impl Default for IdVendor {
     fn default() -> Self {
-        IdVendor { current_id: 0u32 }
+        IdVendor {
+            current_id: 1000u32,
+        }
     }
 }
 
@@ -40,6 +42,7 @@ pub trait Entity {
     ///
     fn init_from_map_sprite(
         &mut self,
+        _entity_id: u32,
         _sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
         _map: &map::Map,
@@ -152,8 +155,9 @@ pub enum Event {
     /// Generally sent by SpawnPoint to request spawning their enemy type.
     /// Global responds with EntityWasSpawned to signal spawn result.
     SpawnEntity {
-        origin: Point2<f32>,
         class_name: String,
+        spawn_point_sprite: sprite::Sprite,
+        spawn_point_tile: tileset::Tile,
     },
 
     /// Response from Global to signal if requested entity was spawned.

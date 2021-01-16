@@ -327,19 +327,15 @@ impl Default for Firebrand {
 impl Entity for Firebrand {
     fn init_from_map_sprite(
         &mut self,
+        entity_id: u32,
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
         map: &map::Map,
         _collision_space: &mut collision::Space,
     ) {
-        self.entity_id = sprite
-            .entity_id
-            .expect("Entity sprites should have an entity_id");
+        self.entity_id = entity_id;
         self.sprite = Some(*sprite);
-        self.sprite_size_px = vec2(
-            map.tileset.tile_width as f32,
-            map.tileset.tile_height as f32,
-        );
+        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
         self.map_origin = map.bounds().0.cast().unwrap();
         self.map_extent = map.bounds().1.cast().unwrap();
         self.character_state.position = sprite.origin.xy();

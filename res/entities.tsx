@@ -672,4 +672,20 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="128">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="fire_sprite"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="129">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="alt"/>
+   <property name="name" value="fire_sprite"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
 </tileset>

@@ -112,7 +112,7 @@
  <tile id="38">
   <properties>
    <property name="entity_class" value="SpawnPoint"/>
-   <property name="spawned_entity_class" value="Fire"/>
+   <property name="spawned_entity_class" value="FireSprite"/>
   </properties>
  </tile>
  <tile id="40">

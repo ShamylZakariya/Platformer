@@ -1,4 +1,5 @@
 use cgmath::*;
+use core::panic;
 use entities::EntityClass;
 use entity::{Event, Message};
 use std::{
@@ -840,12 +841,14 @@ impl State {
     }
 
     /// Adds this entity to the simulation state
-    fn add_entity(&mut self, mut entity: Box<dyn entity::Entity>) {
-        entity.init(
-            self.entity_id_vendor.next_id(),
-            &self.map,
-            &mut self.collision_space,
-        );
+    fn add_entity(&mut self, mut entity: Box<dyn entity::Entity>) -> u32 {
+        if entity.entity_id() == 0 {
+            entity.init(
+                self.entity_id_vendor.next_id(),
+                &self.map,
+                &mut self.collision_space,
+            );
+        }
 
         let sprite_name = entity.sprite_name().to_string();
         let components = EntityComponents::new(
@@ -863,7 +866,9 @@ impl State {
             ),
         );
 
-        self.entities.insert(components.id(), components);
+        let id = components.id();
+        self.entities.insert(id, components);
+        id
     }
 
     /// Returns true iff the player can shoot.
@@ -922,13 +927,12 @@ impl State {
 
 impl entity::MessageHandler for State {
     fn handle_message(&mut self, message: &Message) {
-        if let Some(entity_id) = message.recipient_entity_id {
+        if let Some(recipient_entity_id) = message.recipient_entity_id {
             //
             // if the message has a destination entity, route it - if no destination
             // entity is found that's OK, it might be expired.
             //
-
-            if let Some(e) = self.entities.get_mut(&entity_id) {
+            if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
                 e.entity.handle_message(&message);
             }
         } else {
@@ -936,7 +940,7 @@ impl entity::MessageHandler for State {
             //  The message has no destination, so we handle it
             //
 
-            match message.event {
+            match &message.event {
                 entity::Event::TryShootFireball {
                     origin,
                     direction,
@@ -945,8 +949,8 @@ impl entity::MessageHandler for State {
                     if self.player_can_shoot_fireball() {
                         self.add_entity(Box::new(entities::fireball::Fireball::new(
                             point3(origin.x, origin.y, 0.0),
-                            direction,
-                            velocity,
+                            *direction,
+                            *velocity,
                         )));
 
                         // Reply to firebrand that a shot was fired
@@ -954,6 +958,39 @@ impl entity::MessageHandler for State {
                             self.firebrand_entity_id,
                             Event::DidShootFireball,
                         ));
+                    }
+                }
+
+                entity::Event::SpawnEntity {
+                    class_name,
+                    spawn_point_sprite,
+                    spawn_point_tile,
+                } => {
+                    match entities::instantiate_map_sprite(
+                        class_name,
+                        spawn_point_sprite,
+                        spawn_point_tile,
+                        &self.map,
+                        &mut self.collision_space,
+                        Some(&mut self.entity_id_vendor),
+                    ) {
+                        Ok(entity) => {
+                            println!(
+                                "State::handle_message[SpawnEntity] - Spawned \"{}\"",
+                                class_name
+                            );
+                            let id = self.add_entity(entity);
+                            self.message_dispatcher.enqueue(Message::global_to_entity(
+                                message.sender_entity_id.unwrap(),
+                                Event::EntityWasSpawned {
+                                    entity_id: Some(id),
+                                },
+                            ));
+                        }
+                        Err(e) => {
+                            println!("Unable to instantiate \"{}\", error: {:?}", class_name, e);
+                            panic!("Failed to instantiate SpawnPoint entity");
+                        }
                     }
                 }
 
