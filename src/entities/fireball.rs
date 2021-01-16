@@ -99,6 +99,10 @@ impl Entity for Fireball {
         self.position
     }
 
+    fn bounds(&self) -> (Point2<f32>, Vector2<f32>) {
+        (self.position().xy() - vec2(0.5, 0.5), vec2(1.0, 1.0))
+    }
+
     fn sprite_name(&self) -> &str {
         "fireball"
     }
