@@ -233,6 +233,20 @@ impl CameraController {
         self.clamp_camera_position_to_map(camera, projection);
     }
 
+    /// Return the bounds of the camera viewport expressed as (bottom_left,extent)
+    pub fn viewport_bounds(
+        &self,
+        camera: &Camera,
+        projection: &Projection,
+    ) -> (Point2<f32>, Vector2<f32>) {
+        let viewport_size = vec2(projection.scale, projection.scale / projection.aspect);
+        let bottom_left = point2(
+            camera.position.x - viewport_size.x / 2.0,
+            camera.position.y - viewport_size.y / 2.0,
+        );
+        (bottom_left, viewport_size)
+    }
+
     fn clamp_camera_position_to_map(&self, camera: &mut Camera, projection: &mut Projection) {
         let viewport_size = vec2(projection.scale, projection.scale / projection.aspect);
         camera.position.x = camera

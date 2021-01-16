@@ -8,12 +8,14 @@ use crate::tileset;
 pub mod falling_bridge;
 pub mod fireball;
 pub mod firebrand;
+pub mod spawn_point;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityClass {
     Firebrand,
     Fireball,
     FallingBridge,
+    SpawnPoint,
 }
 
 pub fn instantiate_from_map(
@@ -28,6 +30,9 @@ pub fn instantiate_from_map(
             Some(Box::new(falling_bridge::FallingBridge::default()) as Box<dyn entity::Entity>)
         }
         "Firebrand" => Some(Box::new(firebrand::Firebrand::default()) as Box<dyn entity::Entity>),
+        "SpawnPoint" => {
+            Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
+        }
         _ => None,
     } {
         e.init_from_map_sprite(sprite, tile, map, collision_space);

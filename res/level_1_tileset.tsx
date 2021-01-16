@@ -109,6 +109,12 @@
    <property name="entity_class" value="Firebrand"/>
   </properties>
  </tile>
+ <tile id="38">
+  <properties>
+   <property name="entity_class" value="SpawnPoint"/>
+   <property name="spawned_entity_class" value="Fire"/>
+  </properties>
+ </tile>
  <tile id="40">
   <properties>
    <property name="animation" value="fire_window"/>

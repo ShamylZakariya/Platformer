@@ -1,7 +1,10 @@
 use cgmath::*;
 use entities::EntityClass;
 use entity::{Event, Message};
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 use std::{path::Path, time::Duration};
 use winit::{
     dpi::PhysicalPosition,
@@ -160,6 +163,7 @@ pub struct State {
     entity_material: Rc<crate::sprite::rendering::Material>,
     entities: HashMap<u32, EntityComponents>,
     firebrand_entity_id: u32,
+    visible_entities: HashSet<u32>,
 
     // Flipbook animations
     flipbook_animations: Vec<FlipbookAnimationComponents>,
@@ -441,6 +445,7 @@ impl State {
             entity_material,
             entities: entity_components,
             firebrand_entity_id,
+            visible_entities: HashSet::new(),
 
             flipbook_animations,
 
@@ -593,6 +598,12 @@ impl State {
         }
 
         self.camera_uniforms.write(&mut self.queue);
+
+        //
+        //  Notify entities of their visibility
+        //
+
+        self.update_entity_visibility();
 
         //
         // Dispatch collected messages
@@ -872,6 +883,32 @@ impl State {
         }
 
         closest_fireball_distance > (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0)
+    }
+
+    fn update_entity_visibility(&mut self) {
+        let viewport = self
+            .camera_controller
+            .viewport_bounds(&self.camera, &self.projection);
+
+        let previously_visible_entities = std::mem::take(&mut self.visible_entities);
+        for e in self.entities.values() {
+            let bounds = e.entity.bounds();
+            if crate::geom::intersection::rect_rect_intersects(viewport, bounds) {
+                self.visible_entities.insert(e.id());
+            }
+        }
+
+        for e in self.visible_entities.iter() {
+            if !previously_visible_entities.contains(e) {
+                self.entities.get(e).unwrap().entity.did_enter_viewport();
+            }
+        }
+
+        for e in previously_visible_entities.iter() {
+            if !self.visible_entities.contains(e) {
+                self.entities.get(e).unwrap().entity.did_exit_viewport();
+            }
+        }
     }
 }
 

@@ -91,6 +91,13 @@ pub trait Entity {
     /// The current position of the entity
     fn position(&self) -> Point3<f32>;
 
+    /// The bounds of the entity, expressed as (origin, extent)
+    /// Note: An entity's bounds origin are not necessarily same as the entity's position.
+    /// Default implementation simply returns a unit box with lower-left at position().
+    fn bounds(&self) -> (Point2<f32>, Vector2<f32>) {
+        (self.position().xy(), vec2(1.0, 1.0))
+    }
+
     /// The name identifying the entity's sprites in the Entity spritesheet. E.g., "firebrand" or "falling_bridge"
     fn sprite_name(&self) -> &str;
 
@@ -109,6 +116,12 @@ pub trait Entity {
     fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
         None
     }
+
+    /// Called when the entity entered the viewport
+    fn did_enter_viewport(&self) {}
+
+    /// Called when the entity entered the viewport
+    fn did_exit_viewport(&self) {}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

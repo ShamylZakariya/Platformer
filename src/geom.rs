@@ -3,6 +3,21 @@
 pub mod intersection {
     use cgmath::*;
 
+    /// Returns true if the two rectangle
+    pub fn rect_rect_intersects(
+        rect_a: (Point2<f32>, Vector2<f32>),
+        rect_b: (Point2<f32>, Vector2<f32>),
+    ) -> bool {
+        let (x_overlap, y_overlap) = {
+            (
+                rect_a.0.x <= rect_b.0.x + rect_b.1.x && rect_a.0.x + rect_a.1.x >= rect_b.0.x,
+                rect_a.0.y <= rect_b.0.y + rect_b.1.y && rect_a.0.y + rect_a.1.y >= rect_b.0.y,
+            )
+        };
+
+        x_overlap && y_overlap
+    }
+
     /// Return the intersection of two line segments, or None if they don't intersect
     pub fn line_line(
         l1p1: &Point2<f32>,
@@ -98,6 +113,29 @@ pub mod intersection {
     #[cfg(test)]
     mod intersection_tests {
         use super::*;
+
+        #[test]
+        fn rect_rect_intersects_works() {
+            let a = (point2(1.0, 1.0), vec2(1.0, 1.0));
+            assert!(rect_rect_intersects(a, (point2(0.5, 0.0), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(1.0, 0.0), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(1.0, 0.5), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(1.0, 1.0), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(0.5, 1.0), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(0.0, 1.0), vec2(1.0, 1.0))));
+            assert!(rect_rect_intersects(a, (point2(0.5, 1.0), vec2(1.0, 1.0))));
+
+            assert!(!rect_rect_intersects(a, (point2(3.0, 0.0), vec2(1.0, 1.0))));
+            assert!(!rect_rect_intersects(a, (point2(0.0, 3.0), vec2(1.0, 1.0))));
+            assert!(!rect_rect_intersects(
+                a,
+                (point2(-2.0, 0.0), vec2(1.0, 1.0))
+            ));
+            assert!(!rect_rect_intersects(
+                a,
+                (point2(-2.0, -2.0), vec2(1.0, 1.0))
+            ));
+        }
 
         #[test]
         fn line_line_works() {
