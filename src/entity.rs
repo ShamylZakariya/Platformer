@@ -118,10 +118,10 @@ pub trait Entity {
     }
 
     /// Called when the entity entered the viewport
-    fn did_enter_viewport(&self) {}
+    fn did_enter_viewport(&mut self) {}
 
     /// Called when the entity entered the viewport
-    fn did_exit_viewport(&self) {}
+    fn did_exit_viewport(&mut self) {}
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

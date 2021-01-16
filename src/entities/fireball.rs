@@ -106,4 +106,8 @@ impl Entity for Fireball {
     fn sprite_cycle(&self) -> &str {
         CYCLE_DEFAULT
     }
+
+    fn did_exit_viewport(&mut self) {
+        self.alive = false;
+    }
 }

@@ -67,11 +67,11 @@ impl Entity for SpawnPoint {
 
     fn handle_message(&mut self, _message: &Message) {}
 
-    fn did_enter_viewport(&self) {
+    fn did_enter_viewport(&mut self) {
         println!("SpawnPoint[{}]::did_enter_viewport", self.entity_id());
     }
 
-    fn did_exit_viewport(&self) {
+    fn did_exit_viewport(&mut self) {
         println!("SpawnPoint[{}]::did_exit_viewport", self.entity_id());
     }
 }

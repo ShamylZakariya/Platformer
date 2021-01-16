@@ -898,15 +898,19 @@ impl State {
             }
         }
 
-        for e in self.visible_entities.iter() {
-            if !previously_visible_entities.contains(e) {
-                self.entities.get(e).unwrap().entity.did_enter_viewport();
+        for entity_id in self.visible_entities.iter() {
+            if !previously_visible_entities.contains(entity_id) {
+                if let Some(entity) = self.entities.get_mut(entity_id) {
+                    entity.entity.did_enter_viewport();
+                }
             }
         }
 
-        for e in previously_visible_entities.iter() {
-            if !self.visible_entities.contains(e) {
-                self.entities.get(e).unwrap().entity.did_exit_viewport();
+        for entity_id in previously_visible_entities.iter() {
+            if !self.visible_entities.contains(entity_id) {
+                if let Some(entity) = self.entities.get_mut(entity_id) {
+                    entity.entity.did_exit_viewport();
+                }
             }
         }
     }
