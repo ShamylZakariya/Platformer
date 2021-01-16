@@ -18,7 +18,7 @@ pub enum EntityClass {
     SpawnPoint,
 }
 
-pub fn instantiate_from_map(
+pub fn instantiate_map_sprite(
     classname: &str,
     sprite: &sprite::Sprite,
     tile: &tileset::Tile,

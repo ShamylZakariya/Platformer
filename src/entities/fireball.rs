@@ -55,6 +55,7 @@ impl Entity for Fireball {
     fn update(
         &mut self,
         dt: Duration,
+        _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) {
@@ -67,8 +68,12 @@ impl Entity for Fireball {
         };
 
         if let Some(sprite) = collision_space.test_point(next_position, mask) {
-            if let Some(entity_id) = sprite.entity_id {
-                message_dispatcher.enqueue(Message::routed_to(entity_id, Event::HitByFireball));
+            if let Some(target_entity_id) = sprite.entity_id {
+                message_dispatcher.enqueue(Message::entity_to_entity(
+                    self.entity_id(),
+                    target_entity_id,
+                    Event::HitByFireball,
+                ));
             }
             self.alive = false;
         } else {

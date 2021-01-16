@@ -64,6 +64,7 @@ pub trait Entity {
     fn update(
         &mut self,
         _dt: Duration,
+        _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
     ) {
@@ -127,7 +128,7 @@ pub trait Entity {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /// An Event payload for Message
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Event {
     /// Received by an Entity when contacted by the character
     CharacterContact,
@@ -144,32 +145,62 @@ pub enum Event {
     /// Sent to Firebrand when a fireball was successfully shot
     DidShootFireball,
 
+    /// Received by an entity when hit by Firebrand's fireball
     HitByFireball,
+
+    /// Sent by an entity to Global to signal request to spawn an entity.
+    /// Generally sent by SpawnPoint to request spawning their enemy type.
+    /// Global responds with EntityWasSpawned to signal spawn result.
+    SpawnEntity {
+        origin: Point2<f32>,
+        class_name: String,
+    },
+
+    /// Response from Global to signal if requested entity was spawned.
+    /// Bears the spawned entity id on success, None otherwise.
+    EntityWasSpawned { entity_id: Option<u32> },
+
+    /// Sent by a spawned entity to its spawn point when it dies
+    SpawnedEntityDidDie,
 }
 
 /// A Message to be sent to an Entity instance.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Message {
+    /// The entity that sent this message.
+    /// If None, then the State sent the message.
+    pub sender_entity_id: Option<u32>,
+
     /// The entity to which to route this Message.
-    /// If None, the Stage will process the message
-    pub entity_id: Option<u32>,
+    /// If None, the State will process the message
+    pub recipient_entity_id: Option<u32>,
     /// The event payload describing whatever happened
     pub event: Event,
 }
 
 impl Message {
     /// Creates a message to be processed by the global handler
-    pub fn global(event: Event) -> Self {
+    pub fn entity_to_global(sender: u32, event: Event) -> Self {
         Message {
-            entity_id: None,
+            sender_entity_id: Some(sender),
+            recipient_entity_id: None,
             event,
         }
     }
 
-    /// Creates a message to be routed to a specific Entity
-    pub fn routed_to(entity_id: u32, event: Event) -> Self {
+    /// Creates a message to be routed from one entity to another
+    pub fn entity_to_entity(sender: u32, recipient: u32, event: Event) -> Self {
         Message {
-            entity_id: Some(entity_id),
+            sender_entity_id: Some(sender),
+            recipient_entity_id: Some(recipient),
+            event,
+        }
+    }
+
+    pub fn global_to_entity(recipient: u32, event: Event) -> Self {
+        Message {
+            sender_entity_id: None,
+            recipient_entity_id: Some(recipient),
             event,
         }
     }

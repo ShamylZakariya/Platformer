@@ -413,7 +413,7 @@ impl Map {
             |sprite, tile| {
                 if let Some(name) = tile.get_property("entity_class") {
                     let entity =
-                        entities::instantiate_from_map(name, sprite, tile, self, collision_space)
+                        entities::instantiate_map_sprite(name, sprite, tile, self, collision_space)
                             .expect(&format!(
                                 "Unable to instantiate Entity with class name \"{}\"",
                                 name

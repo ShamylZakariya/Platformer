@@ -352,6 +352,7 @@ impl Entity for Firebrand {
     fn update(
         &mut self,
         dt: Duration,
+        _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) {
@@ -727,11 +728,14 @@ impl Firebrand {
             Facing::Left => Direction::West,
             Facing::Right => Direction::East,
         };
-        message_dispatcher.enqueue(Message::global(Event::TryShootFireball {
-            origin,
-            direction,
-            velocity: FIREBALL_VELOCITY,
-        }));
+        message_dispatcher.enqueue(Message::entity_to_global(
+            self.entity_id(),
+            Event::TryShootFireball {
+                origin,
+                direction,
+                velocity: FIREBALL_VELOCITY,
+            },
+        ));
     }
 
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
@@ -741,7 +745,11 @@ impl Firebrand {
                 contact_damage = true;
             }
             if let Some(entity_id) = s.entity_id {
-                message_dispatcher.enqueue(Message::routed_to(entity_id, Event::CharacterContact));
+                message_dispatcher.enqueue(Message::entity_to_entity(
+                    self.entity_id(),
+                    entity_id,
+                    Event::CharacterContact,
+                ));
             }
         }
 

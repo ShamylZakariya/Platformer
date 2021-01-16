@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    entity::{Dispatcher, Entity, Message},
+    entity::{self, Dispatcher, Entity, Message},
     map,
     sprite::{self, collision},
     tileset,
@@ -12,6 +12,10 @@ use crate::{
 pub struct SpawnPoint {
     entity_id: u32,
     position: Point3<f32>,
+    sprite: Option<sprite::Sprite>,
+    tile: Option<tileset::Tile>,
+    spawned_entity_id: Option<u32>,
+    did_become_visible: bool,
 }
 
 impl Default for SpawnPoint {
@@ -19,6 +23,10 @@ impl Default for SpawnPoint {
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
+            sprite: None,
+            tile: None,
+            spawned_entity_id: None,
+            did_become_visible: false,
         }
     }
 }
@@ -27,7 +35,7 @@ impl Entity for SpawnPoint {
     fn init_from_map_sprite(
         &mut self,
         sprite: &sprite::Sprite,
-        _tile: &tileset::Tile,
+        tile: &tileset::Tile,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
     ) {
@@ -35,14 +43,22 @@ impl Entity for SpawnPoint {
             .entity_id
             .expect("Entity sprites should have an entity_id");
         self.position = sprite.origin;
+        self.sprite = Some(*sprite);
+        self.tile = Some(tile.clone());
     }
 
     fn update(
         &mut self,
         _dt: Duration,
+        _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
     ) {
+        if self.did_become_visible && self.spawned_entity_id.is_none() {
+            // time to spawn
+        }
+
+        self.did_become_visible = false;
     }
 
     fn entity_id(&self) -> u32 {
@@ -65,10 +81,19 @@ impl Entity for SpawnPoint {
         ""
     }
 
-    fn handle_message(&mut self, _message: &Message) {}
+    fn handle_message(&mut self, message: &Message) {
+        match message.event {
+            entity::Event::SpawnedEntityDidDie => {
+                assert!(message.sender_entity_id == self.spawned_entity_id);
+                self.spawned_entity_id = None;
+            }
+            _ => {}
+        }
+    }
 
     fn did_enter_viewport(&mut self) {
         println!("SpawnPoint[{}]::did_enter_viewport", self.entity_id());
+        self.did_become_visible = true;
     }
 
     fn did_exit_viewport(&mut self) {

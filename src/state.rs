@@ -552,8 +552,12 @@ impl State {
         {
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
-                e.entity
-                    .update(dt, &mut self.collision_space, &mut self.message_dispatcher);
+                e.entity.update(
+                    dt,
+                    &self.map,
+                    &mut self.collision_space,
+                    &mut self.message_dispatcher,
+                );
                 e.entity.update_uniforms(&mut e.uniforms);
                 e.uniforms.write(&mut self.queue);
 
@@ -918,7 +922,7 @@ impl State {
 
 impl entity::MessageHandler for State {
     fn handle_message(&mut self, message: &Message) {
-        if let Some(entity_id) = message.entity_id {
+        if let Some(entity_id) = message.recipient_entity_id {
             //
             // if the message has a destination entity, route it - if no destination
             // entity is found that's OK, it might be expired.
@@ -946,7 +950,7 @@ impl entity::MessageHandler for State {
                         )));
 
                         // Reply to firebrand that a shot was fired
-                        self.message_dispatcher.enqueue(Message::routed_to(
+                        self.message_dispatcher.enqueue(Message::global_to_entity(
                             self.firebrand_entity_id,
                             Event::DidShootFireball,
                         ));
