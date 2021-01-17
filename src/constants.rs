@@ -10,6 +10,14 @@ pub mod sprite_masks {
     pub const SHOOTABLE: u32 = 1 << 26;
 }
 
+pub mod sprite_layers {
+    pub const BACKGROUND: f32 = 1.0;
+    pub const LEVEL: f32 = 0.9;
+    pub const ENTITIES: f32 = 0.8;
+    pub const PLAYER: f32 = 0.7;
+    pub const FOREGROUND: f32 = 0.1;
+}
+
 // In original game, stage was 160 px wide, made from 16px tiles, making the viewport 10 units wide.
 pub const ORIGINAL_VIEWPORT_TILES_WIDE: i32 = 10;
 

@@ -19,7 +19,7 @@ use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
 use crate::{camera, entities};
-use crate::{constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
+use crate::{constants::sprite_layers, constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
@@ -259,12 +259,12 @@ impl State {
                 .expect("Expected layer named 'Entities'");
 
             // generate level sprites
-            let bg_sprites = map.generate_sprites(bg_layer, |_, _| 1.0);
+            let bg_sprites = map.generate_sprites(bg_layer, |_, _| sprite_layers::BACKGROUND);
             let level_sprites = map.generate_sprites(level_layer, |_sprite, tile| {
                 if tile.get_property("foreground") == Some("true") {
-                    0.1
+                    sprite_layers::FOREGROUND
                 } else {
-                    0.9
+                    sprite_layers::LEVEL
                 }
             });
 
@@ -274,11 +274,12 @@ impl State {
                 entity_layer,
                 &mut collision_space,
                 &mut entity_id_vendor,
-                |_, _| 0.9,
+                |_, _| sprite_layers::ENTITIES,
             );
 
             // generate animations
-            let stage_animation_flipbooks = map.generate_animations(bg_layer, |_, _| 0.9);
+            let stage_animation_flipbooks =
+                map.generate_animations(bg_layer, |_, _| sprite_layers::BACKGROUND);
 
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);

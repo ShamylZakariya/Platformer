@@ -1,11 +1,8 @@
 CURRENTLY:
-    - Entity Spawn Point
-    Each spawn point has enough info to spawn an enemy, e.g, flying fish, etc
-    Spawn point (and all entities) receive became_visible, became_hidden messages
-    Each spawned entity knows the id of the spawn point, and sends a "became inactive" message when they die
-    If spawn point becomes visible and its entity is not active, it spawns one
+    FireSprite
+        - needs to do the left/right/left/right march
+        - needs to die when shot twice
 
-    - write tests for rect_rect_intersects
 
 TODO:
     - Refactor State.rs into components, e.g. RenderState, EntityState, etc

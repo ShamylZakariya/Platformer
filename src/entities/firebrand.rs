@@ -626,7 +626,7 @@ impl Entity for Firebrand {
                         + self.character_state.position_offset.x
                         + xoffset,
                     self.character_state.position.y + self.character_state.position_offset.y,
-                    0.5,
+                    crate::constants::sprite_layers::PLAYER,
                 ));
         }
     }

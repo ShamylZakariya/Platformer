@@ -9,12 +9,14 @@ use crate::{
     tileset,
 };
 
-const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
+const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 
 pub struct FireSprite {
     entity_id: u32,
     sprite: Option<sprite::Sprite>,
     position: Point3<f32>,
+    animation_cycle_tick_countdown: f32,
+    animation_cycle_tick: u32,
 }
 
 impl Default for FireSprite {
@@ -23,6 +25,8 @@ impl Default for FireSprite {
             entity_id: 0,
             sprite: None,
             position: point3(0.0, 0.0, 0.0),
+            animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
+            animation_cycle_tick: 0,
         }
     }
 }
@@ -43,16 +47,29 @@ impl Entity for FireSprite {
 
     fn update(
         &mut self,
-        _dt: Duration,
+        dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
     ) {
-        // let dt = dt.as_secs_f32();
+        let dt = dt.as_secs_f32();
+        self.animation_cycle_tick_countdown -= dt;
+        if self.animation_cycle_tick_countdown <= 0.0 {
+            self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
+            self.animation_cycle_tick += 1;
+        }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(self.position);
+        let (xscale, xoffset) = if self.animation_cycle_tick / 2 % 2 == 0 {
+            (1.0, 0.0)
+        } else {
+            (-1.0, 1.0)
+        };
+        uniforms
+            .data
+            .set_model_position(self.position + vec3(xoffset, 0.0, 0.0))
+            .set_sprite_scale(vec2(xscale, 1.0));
     }
 
     fn entity_id(&self) -> u32 {
@@ -68,11 +85,7 @@ impl Entity for FireSprite {
     }
 
     fn position(&self) -> Point3<f32> {
-        point3(
-            self.position.x,
-            self.position.y,
-            self.sprite.unwrap().origin.z,
-        )
+        self.position
     }
 
     fn sprite_name(&self) -> &str {
@@ -80,7 +93,11 @@ impl Entity for FireSprite {
     }
 
     fn sprite_cycle(&self) -> &str {
-        "default"
+        if self.animation_cycle_tick % 2 == 0 {
+            "default"
+        } else {
+            "alt"
+        }
     }
 
     fn handle_message(&mut self, _message: &Message) {}
