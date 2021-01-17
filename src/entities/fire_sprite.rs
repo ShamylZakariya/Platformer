@@ -1,10 +1,10 @@
-use std::time::Duration;
-
 use cgmath::*;
+use std::time::Duration;
+use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    constants::sprite_masks::COLLIDER,
-    entity::{Dispatcher, Entity, Message},
+    constants::sprite_masks::{self, COLLIDER},
+    entity::{Dispatcher, Entity, Event, Message},
     map,
     sprite::{self, collision, rendering},
     tileset,
@@ -14,6 +14,7 @@ use crate::{
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 0.5; // units per second
+const HIT_POINTS: i32 = 2;
 
 #[derive(Debug)]
 enum MovementDir {
@@ -34,22 +35,28 @@ impl MovementDir {
 
 pub struct FireSprite {
     entity_id: u32,
-    sprite: Option<sprite::Sprite>,
+    spawn_point_id: u32,
+    sprite: sprite::Sprite,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
     current_movement: MovementDir,
+    alive: bool,
+    hit_points: i32,
 }
 
 impl Default for FireSprite {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            sprite: None,
+            spawn_point_id: 0,
+            sprite: sprite::Sprite::default(),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             current_movement: MovementDir::East,
+            alive: true,
+            hit_points: 2,
         }
     }
 }
@@ -61,11 +68,36 @@ impl Entity for FireSprite {
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
         _map: &map::Map,
-        _collision_space: &mut collision::Space,
+        collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.sprite = Some(*sprite);
+        self.spawn_point_id = sprite
+            .entity_id
+            .expect("Spawned entities expect to find a spawn point id from the sprite");
+
         self.position = sprite.origin;
+
+        // Make copy of sprite for ourselves, we'll use it for collision testing
+        // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
+        self.sprite = *sprite;
+        self.sprite.entity_id = Some(entity_id);
+        self.sprite.mask = sprite_masks::SHOOTABLE | sprite_masks::COLLIDER;
+        self.sprite.collision_shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_sprite(&self.sprite);
+    }
+
+    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+        if self.alive {
+            if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
+                println!("BOOM");
+                self.hit_points = 0;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
     }
 
     fn update(
@@ -73,9 +105,22 @@ impl Entity for FireSprite {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
-        _message_dispatcher: &mut Dispatcher,
+        message_dispatcher: &mut Dispatcher,
     ) {
         let dt = dt.as_secs_f32();
+
+        if self.hit_points == 0 {
+            self.alive = false;
+
+            // send death message to spawn point
+            message_dispatcher.enqueue(Message::entity_to_entity(
+                self.entity_id(),
+                self.spawn_point_id,
+                Event::SpawnedEntityDidDie,
+            ));
+
+            return;
+        }
 
         //
         //  Update position - firesprite simply marches left/right stopping at "cliffs" or obstacles
@@ -95,8 +140,8 @@ impl Entity for FireSprite {
         match self.current_movement {
             MovementDir::East => {
                 // check for obstacle to right
-                if let Some(sprite_to_right) =
-                    collision_space.get_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
+                if let Some(sprite_to_right) = collision_space
+                    .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
                 {
                     if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -105,7 +150,7 @@ impl Entity for FireSprite {
                 }
                 // check if the platform falls away to right
                 if collision_space
-                    .get_sprite_at(snapped_next_position + vec2(1, -1), COLLIDER)
+                    .get_static_sprite_at(snapped_next_position + vec2(1, -1), COLLIDER)
                     .is_none()
                 {
                     should_reverse_direction = true
@@ -114,7 +159,7 @@ impl Entity for FireSprite {
             MovementDir::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
-                    collision_space.get_sprite_at(snapped_next_position, COLLIDER)
+                    collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)
                 {
                     if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -123,7 +168,7 @@ impl Entity for FireSprite {
                 }
                 // check if the platform falls away to left
                 if collision_space
-                    .get_sprite_at(snapped_next_position + vec2(0, -1), COLLIDER)
+                    .get_static_sprite_at(snapped_next_position + vec2(0, -1), COLLIDER)
                     .is_none()
                 {
                     should_reverse_direction = true
@@ -137,6 +182,14 @@ impl Entity for FireSprite {
             self.position.x = next_position.x;
             self.position.y = next_position.y;
         }
+
+        //
+        //  Update the sprite for collision detection
+        //
+
+        self.sprite.origin.x = self.position.x;
+        self.sprite.origin.y = self.position.y;
+        collision_space.update_dynamic_sprite(&self.sprite);
 
         //
         //  Update sprite animation cycle
@@ -170,7 +223,7 @@ impl Entity for FireSprite {
     }
 
     fn is_alive(&self) -> bool {
-        true
+        self.alive
     }
 
     fn position(&self) -> Point3<f32> {
@@ -189,5 +242,12 @@ impl Entity for FireSprite {
         }
     }
 
-    fn handle_message(&mut self, _message: &Message) {}
+    fn handle_message(&mut self, message: &Message) {
+        match message.event {
+            Event::HitByFireball => {
+                self.hit_points = (self.hit_points - 1).max(0);
+            }
+            _ => {}
+        }
+    }
 }

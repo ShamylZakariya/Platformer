@@ -3,216 +3,111 @@ use std::{collections::HashMap, unimplemented};
 
 use crate::sprite::core::*;
 
-#[derive(Clone, Copy, Debug)]
-pub enum ProbeDir {
-    Up,
-    Right,
-    Down,
-    Left,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ProbeResult {
-    None,
-    OneHit {
-        dist: f32,
-        sprite: Sprite,
-    },
-    TwoHits {
-        dist: f32,
-        sprite_0: Sprite,
-        sprite_1: Sprite,
-    },
-}
-
 pub struct Space {
-    unit_sprites: HashMap<Point2<i32>, Sprite>,
+    static_unit_sprites: HashMap<Point2<i32>, Sprite>,
+    dynamic_sprites: HashMap<u32, Sprite>,
 }
 
-const HASH_MAP_SCALE: i32 = 1000;
-
+/// A "space" for hit testing against static and dynamic sprites.
+/// Static sprites can be added and removed, but should generally stay in position.
+/// Static sprites also are unit sized, and generally represent level tiles and
+/// unmoving single unit sized objects.
+/// Dynamic sprites are expected to move about during runtime, and are intended for
+/// representing moving entities. Dynamic sprites can be arbitrarily sized.
+/// Dynamic sprites are identified by their entity_id. It is illegal to attempt
+/// to add a Dynamic sprite without an entity id.
 impl Space {
-    pub fn new(sprites: &[Sprite]) -> Self {
+    /// Constructs a new Space with the provided static sprites.
+    /// Static sprites don't move at runtime. Sprites that move at
+    /// runtime should be added and manipulated via the dynamic_sprite methods.
+    pub fn new(static_sprites: &[Sprite]) -> Self {
         let mut unit_sprite_map = HashMap::new();
 
-        for sprite in sprites {
+        for sprite in static_sprites {
             // copy sprites into appropriate storage
             if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
                 unit_sprite_map.insert(
                     point2(
-                        sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
-                        sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
+                        sprite.origin.x.floor() as i32,
+                        sprite.origin.y.floor() as i32,
                     ),
                     *sprite,
                 );
             } else {
-                unimplemented!("SpriteHitTester does not support non-unit static sprites.")
+                unimplemented!("Static sprites must be unit-sized")
             }
         }
 
         Self {
-            unit_sprites: unit_sprite_map,
+            static_unit_sprites: unit_sprite_map,
+            dynamic_sprites: HashMap::new(),
         }
     }
 
-    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<Sprite> {
-        self.unit_sprites
-            .get(&(point * HASH_MAP_SCALE))
+    pub fn get_static_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<Sprite> {
+        self.static_unit_sprites
+            .get(&(point))
             .filter(|s| s.mask & mask != 0)
             .map(|s| *s)
     }
 
-    pub fn add_sprite(&mut self, sprite: &Sprite) {
+    pub fn add_static_sprite(&mut self, sprite: &Sprite) {
         let coord = point2(
-            sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
-            sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
+            sprite.origin.x.floor() as i32,
+            sprite.origin.y.floor() as i32,
         );
-        self.unit_sprites.insert(coord, *sprite);
+        self.static_unit_sprites.insert(coord, *sprite);
     }
 
-    pub fn remove_sprite(&mut self, sprite: &Sprite) {
+    pub fn remove_static_sprite(&mut self, sprite: &Sprite) {
         let coord = point2(
-            sprite.origin.x.floor() as i32 * HASH_MAP_SCALE,
-            sprite.origin.y.floor() as i32 * HASH_MAP_SCALE,
+            sprite.origin.x.floor() as i32,
+            sprite.origin.y.floor() as i32,
         );
-        self.unit_sprites.remove(&coord);
+        self.static_unit_sprites.remove(&coord);
     }
 
-    pub fn remove_sprite_at(&mut self, point: Point2<i32>) {
-        self.unit_sprites.remove(&(point * HASH_MAP_SCALE));
+    pub fn remove_static_sprite_at(&mut self, point: Point2<i32>) {
+        self.static_unit_sprites.remove(&(point));
     }
 
-    /// tests if a point in the sprites' coordinate system intersects with a sprite.
+    pub fn add_dynamic_sprite(&mut self, sprite: &Sprite) {
+        let id = sprite
+            .entity_id
+            .expect("Dynamic sprites must have an entity_id");
+        self.dynamic_sprites.insert(id, *sprite);
+    }
+
+    pub fn remove_dynamic_sprite(&mut self, sprite: &Sprite) {
+        let id = sprite
+            .entity_id
+            .expect("Dynamic sprites must have an entity_id");
+        self.dynamic_sprites.remove(&id);
+    }
+
+    pub fn remove_dynamic_sprite_with_entity_id(&mut self, entity_id: u32) {
+        self.dynamic_sprites.remove(&entity_id);
+    }
+
+    pub fn update_dynamic_sprite(&mut self, sprite: &Sprite) {
+        self.add_dynamic_sprite(sprite);
+    }
+
+    /// Tests if a point in the sprites' coordinate system intersects with a sprite.
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
-    /// In the case of overlapping sprites, there is no guarantee which will be returned,
-    /// except that unit sprites will be tested before non-unit sprites.
+    /// In the case of overlapping sprites, dynamic sprites will be returned before static,
+    /// but otherwise there is no guarantee of which will be returned.
     pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<Sprite> {
-        self.unit_sprites
-            .get(&point2(
-                point.x.floor() as i32 * HASH_MAP_SCALE,
-                point.y.floor() as i32 * HASH_MAP_SCALE,
-            ))
+        for s in self.dynamic_sprites.values() {
+            if s.mask & mask != 0 && s.contains(&point) {
+                return Some(*s);
+            }
+        }
+
+        self.static_unit_sprites
+            .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
             .map(|s| *s)
-    }
-
-    /// Probes `max_steps` sprites in the collision space from `position` in `dir`, returning a ProbeResult
-    /// Ignores any sprites which don't match the provided `mask`
-    /// NOTE: Probe only tests for sprites with Square collision shape, because, well, that's what's needed here
-    /// and I'm not writing a library.
-    pub fn probe<F>(
-        &self,
-        position: Point2<f32>,
-        dir: ProbeDir,
-        max_steps: i32,
-        mask: u32,
-        test: F,
-    ) -> ProbeResult
-    where
-        F: Fn(f32, &Sprite) -> bool,
-    {
-        let (offset, should_probe_offset) = match dir {
-            ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
-            ProbeDir::Right | ProbeDir::Left => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
-        };
-
-        let mut dist = None;
-        let mut sprite_0 = None;
-        let mut sprite_1 = None;
-        if let Some(r) = self._probe_line(position, dir, max_steps, mask) {
-            if test(r.0, &r.1) {
-                dist = Some(r.0);
-                sprite_0 = Some(r.1);
-            }
-        }
-
-        if should_probe_offset {
-            if let Some(r) = self._probe_line(position + offset, dir, max_steps, mask) {
-                if test(r.0, &r.1) {
-                    dist = match dist {
-                        Some(d) => Some(d.min(r.0)),
-                        None => Some(r.0),
-                    };
-                    sprite_1 = Some(r.1);
-                }
-            }
-        }
-
-        match (sprite_0, sprite_1) {
-            (None, None) => ProbeResult::None,
-            (None, Some(s)) => ProbeResult::OneHit {
-                dist: dist.unwrap(),
-                sprite: s,
-            },
-            (Some(s), None) => ProbeResult::OneHit {
-                dist: dist.unwrap(),
-                sprite: s,
-            },
-            (Some(s0), Some(s1)) => ProbeResult::TwoHits {
-                dist: dist.unwrap(),
-                sprite_0: s0,
-                sprite_1: s1,
-            },
-        }
-    }
-
-    fn _probe_line(
-        &self,
-        position: Point2<f32>,
-        dir: ProbeDir,
-        max_steps: i32,
-        mask: u32,
-    ) -> Option<(f32, Sprite)> {
-        let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
-        let mut result = None;
-        match dir {
-            ProbeDir::Right => {
-                for i in 0..max_steps {
-                    let x = position_snapped.x + i;
-                    if let Some(s) = self.get_sprite_at(point2(x, position_snapped.y), mask) {
-                        result = Some((s.origin.x - (position.x + 1.0), s));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Up => {
-                for i in 0..max_steps {
-                    let y = position_snapped.y + i;
-                    if let Some(s) = self.get_sprite_at(point2(position_snapped.x, y), mask) {
-                        result = Some((s.origin.y - (position.y + 1.0), s));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Down => {
-                for i in 0..max_steps {
-                    let y = position_snapped.y - i;
-                    if let Some(s) = self.get_sprite_at(point2(position_snapped.x, y), mask) {
-                        result = Some((position.y - s.top(), s));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Left => {
-                for i in 0..max_steps {
-                    let x = position_snapped.x - i;
-                    if let Some(s) = self.get_sprite_at(point2(x, position_snapped.y), mask) {
-                        result = Some((position.x - s.right(), s));
-                        break;
-                    }
-                }
-            }
-        };
-
-        // we only accept collisions with square shapes - because slopes are special cases handled by
-        // find_character_footing only (note, the game only has northeast, and northwest slopes)
-        if let Some(result) = result {
-            if result.0 >= 0.0 && result.1.collision_shape == CollisionShape::Square {
-                return Some(result);
-            }
-        }
-
-        None
     }
 }
 
@@ -248,21 +143,15 @@ mod sprite_hit_tester {
         let hit_tester = Space::new(&[unit_0, unit_1]);
         assert_eq!(
             hit_tester
-                .unit_sprites
-                .get(&point2(
-                    unit_0.origin.x as i32 * HASH_MAP_SCALE,
-                    unit_0.origin.y as i32 * HASH_MAP_SCALE
-                ))
+                .static_unit_sprites
+                .get(&point2(unit_0.origin.x as i32, unit_0.origin.y as i32,))
                 .unwrap(),
             &unit_0
         );
         assert_eq!(
             hit_tester
-                .unit_sprites
-                .get(&point2(
-                    unit_1.origin.x as i32 * HASH_MAP_SCALE,
-                    unit_1.origin.y as i32 * HASH_MAP_SCALE
-                ))
+                .static_unit_sprites
+                .get(&point2(unit_1.origin.x as i32, unit_1.origin.y as i32,))
                 .unwrap(),
             &unit_1
         );

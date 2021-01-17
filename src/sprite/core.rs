@@ -142,6 +142,24 @@ fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
     a.x * b.y - a.y * b.x
 }
 
+impl Default for Sprite {
+    fn default() -> Self {
+        Self {
+            collision_shape: CollisionShape::None,
+            origin: point3(0.0, 0.0, 0.0),
+            extent: vec2(0.0, 0.0),
+            tex_coord_origin: point2(0.0, 0.0),
+            tex_coord_extent: vec2(0.0, 0.0),
+            color: vec4(1.0, 1.0, 1.0, 1.0),
+            mask: 0,
+            entity_id: None,
+            flipped_diagonally: false,
+            flipped_horizontally: false,
+            flipped_vertically: false,
+        }
+    }
+}
+
 impl Sprite {
     /// Creates a new Sprite at an arbitrary origin with a specified extent
     pub fn new(

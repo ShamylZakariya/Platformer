@@ -49,7 +49,7 @@ impl Entity for FallingBridge {
         self.sprite = Some(*sprite);
         self.position = sprite.origin;
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
-        collision_space.add_sprite(sprite);
+        collision_space.add_static_sprite(sprite);
     }
 
     fn update(
@@ -72,7 +72,7 @@ impl Entity for FallingBridge {
                     self.is_falling = true;
                     self.time_remaining = None;
 
-                    collision_space.remove_sprite(
+                    collision_space.remove_static_sprite(
                         &self
                             .sprite
                             .expect("Should have a sprite associated with FallingBridge instance"),

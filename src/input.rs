@@ -94,17 +94,19 @@ impl InputState {
     }
 }
 
-pub fn input_accumulator(negative: &ButtonState, positive: &ButtonState) -> f32 {
-    let mut acc = 0.0;
+/// Helper function to process positive/negative button presses - e.g., left/right
+/// into an accumulated value of -1 for negative, +1 for positive, and 0 if both or none are pressed.
+pub fn input_accumulator(negative: &ButtonState, positive: &ButtonState) -> i32 {
+    let mut acc = 0;
     match negative {
         ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
-            acc -= 1.0;
+            acc -= 1;
         }
         ButtonState::Up => {}
     }
     match positive {
         ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
-            acc += 1.0;
+            acc += 1;
         }
         ButtonState::Up => {}
     }
