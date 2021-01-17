@@ -11,6 +11,7 @@ mod constants;
 mod entities;
 mod entity;
 mod geom;
+mod input;
 mod map;
 mod sprite;
 mod state;

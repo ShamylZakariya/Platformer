@@ -7,6 +7,7 @@ use crate::{
     constants::{sprite_masks::*, GRAVITY_VEL},
     entities::fireball::Direction,
     entity::{Dispatcher, Entity, Event, Message},
+    input::*,
     map,
     sprite::{self, collision, rendering},
     tileset,
@@ -158,108 +159,55 @@ impl CharacterState {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum ButtonState {
-    Pressed,
-    Down,
-    Released,
-    Up,
+struct FirebrandInputState {
+    input_state: InputState,
 }
 
-impl ButtonState {
-    fn transition(&self, key_down: bool) -> ButtonState {
-        if key_down {
-            match self {
-                ButtonState::Pressed => ButtonState::Down,
-                ButtonState::Down => ButtonState::Down,
-                ButtonState::Released => ButtonState::Pressed,
-                ButtonState::Up => ButtonState::Pressed,
-            }
-        } else {
-            match self {
-                ButtonState::Pressed => ButtonState::Released,
-                ButtonState::Down => ButtonState::Released,
-                ButtonState::Released => ButtonState::Up,
-                ButtonState::Up => ButtonState::Up,
-            }
-        }
-    }
-
-    fn is_active(&self) -> bool {
-        match self {
-            ButtonState::Pressed | ButtonState::Down => true,
-            _ => false,
-        }
-    }
-}
-
-#[derive(Debug)]
-struct InputState {
-    move_left: ButtonState,
-    move_right: ButtonState,
-    jump: ButtonState,
-    fire: ButtonState,
-}
-
-impl Default for InputState {
+impl Default for FirebrandInputState {
     fn default() -> Self {
         Self {
-            move_left: ButtonState::Up,
-            move_right: ButtonState::Up,
-            jump: ButtonState::Up,
-            fire: ButtonState::Up,
+            input_state: InputState::for_keys(&vec![
+                VirtualKeyCode::W,
+                VirtualKeyCode::A,
+                VirtualKeyCode::D,
+                VirtualKeyCode::Space,
+            ]),
         }
     }
 }
 
-impl InputState {
+impl FirebrandInputState {
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let pressed = state == ElementState::Pressed;
-        match key {
-            VirtualKeyCode::W => {
-                self.jump = self.jump.transition(pressed);
-                true
-            }
-            VirtualKeyCode::A => {
-                self.move_left = self.move_left.transition(pressed);
-                true
-            }
-            VirtualKeyCode::D => {
-                self.move_right = self.move_right.transition(pressed);
-                true
-            }
-            VirtualKeyCode::Space => {
-                self.fire = self.fire.transition(pressed);
-                true
-            }
-            _ => false,
-        }
+        self.input_state.process_keyboard(key, state)
     }
 
     fn update(&mut self) {
-        self.jump = self.jump.transition(self.jump.is_active());
-        self.move_left = self.move_left.transition(self.move_left.is_active());
-        self.move_right = self.move_right.transition(self.move_right.is_active());
-        self.fire = self.fire.transition(self.fire.is_active());
-    }
-}
-
-fn input_accumulator(negative: ButtonState, positive: ButtonState) -> f32 {
-    let mut acc = 0.0;
-    match negative {
-        ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
-            acc -= 1.0;
-        }
-        ButtonState::Up => {}
-    }
-    match positive {
-        ButtonState::Pressed | ButtonState::Down | ButtonState::Released => {
-            acc += 1.0;
-        }
-        ButtonState::Up => {}
+        self.input_state.update();
     }
 
-    acc
+    fn jump(&self) -> &ButtonState {
+        self.input_state
+            .get_button_state(VirtualKeyCode::W)
+            .unwrap()
+    }
+
+    fn move_left(&self) -> &ButtonState {
+        self.input_state
+            .get_button_state(VirtualKeyCode::A)
+            .unwrap()
+    }
+
+    fn move_right(&self) -> &ButtonState {
+        self.input_state
+            .get_button_state(VirtualKeyCode::D)
+            .unwrap()
+    }
+
+    fn fire(&self) -> &ButtonState {
+        self.input_state
+            .get_button_state(VirtualKeyCode::Space)
+            .unwrap()
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -271,7 +219,7 @@ pub struct Firebrand {
 
     time: f32,
     step: usize,
-    input_state: InputState,
+    input_state: FirebrandInputState,
     character_state: CharacterState,
 
     // sprites the character is overlapping and might collide with
@@ -303,7 +251,7 @@ impl Default for Firebrand {
             sprite_size_px: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
-            input_state: Default::default(),
+            input_state: FirebrandInputState::default(),
             character_state: CharacterState::new(point2(0.0, 0.0)),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
@@ -359,7 +307,7 @@ impl Entity for Firebrand {
         self.time += dt;
         self.step += 1;
 
-        match self.input_state.fire {
+        match self.input_state.fire() {
             ButtonState::Pressed => self.shoot_fireball(message_dispatcher),
             _ => {}
         }
@@ -375,7 +323,7 @@ impl Entity for Firebrand {
         //
 
         if can_process_jump_inputs {
-            match self.input_state.jump {
+            match self.input_state.jump() {
                 ButtonState::Pressed => match self.character_state.stance {
                     Stance::Standing => {
                         self.jump_time_remaining = JUMP_DURATION;
@@ -937,7 +885,7 @@ impl Firebrand {
         let probe_test = create_collision_probe_test(position);
 
         let mut delta_x =
-            input_accumulator(self.input_state.move_left, self.input_state.move_right)
+            input_accumulator(self.input_state.move_left(), self.input_state.move_right())
                 * WALK_SPEED
                 * dt;
 
@@ -1194,8 +1142,8 @@ impl Firebrand {
             Stance::Standing => {
                 if is_shooting {
                     CYCLE_SHOOT
-                } else if self.input_state.move_left.is_active()
-                    || self.input_state.move_right.is_active()
+                } else if self.input_state.move_left().is_active()
+                    || self.input_state.move_right().is_active()
                 {
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     match frame {
@@ -1273,9 +1221,9 @@ impl Firebrand {
     fn character_facing(&self) -> Facing {
         match self.character_state.stance {
             Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
-                if self.input_state.move_left.is_active() {
+                if self.input_state.move_left().is_active() {
                     Facing::Left
-                } else if self.input_state.move_right.is_active() {
+                } else if self.input_state.move_right().is_active() {
                     Facing::Right
                 } else {
                     self.character_state.facing
