@@ -3,13 +3,34 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
+    constants::sprite_masks::COLLIDER,
     entity::{Dispatcher, Entity, Message},
     map,
     sprite::{self, collision, rendering},
     tileset,
 };
 
+// --------------------------------------------------------------------------------------------------------------------
+
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
+const MOVEMENT_SPEED: f32 = 0.5; // units per second
+
+#[derive(Debug)]
+enum MovementDir {
+    East,
+    West,
+}
+
+impl MovementDir {
+    fn invert(&self) -> MovementDir {
+        match self {
+            MovementDir::East => MovementDir::West,
+            MovementDir::West => MovementDir::East,
+        }
+    }
+}
+
+// --------------------------------------------------------------------------------------------------------------------
 
 pub struct FireSprite {
     entity_id: u32,
@@ -17,6 +38,7 @@ pub struct FireSprite {
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
+    current_movement: MovementDir,
 }
 
 impl Default for FireSprite {
@@ -27,6 +49,7 @@ impl Default for FireSprite {
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
+            current_movement: MovementDir::East,
         }
     }
 }
@@ -49,10 +72,76 @@ impl Entity for FireSprite {
         &mut self,
         dt: Duration,
         _map: &map::Map,
-        _collision_space: &mut collision::Space,
+        collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
     ) {
         let dt = dt.as_secs_f32();
+
+        //
+        //  Update position - firesprite simply marches left/right stopping at "cliffs" or obstacles
+        //
+
+        let next_position = self.position.xy()
+            + match self.current_movement {
+                MovementDir::East => vec2(1.0, 0.0),
+                MovementDir::West => vec2(-1.0, 0.0),
+            } * dt;
+        let snapped_next_position = point2(
+            next_position.x.floor() as i32,
+            next_position.y.floor() as i32,
+        );
+        let mut should_reverse_direction = false;
+
+        match self.current_movement {
+            MovementDir::East => {
+                // check for obstacle to right
+                if let Some(sprite_to_right) =
+                    collision_space.get_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
+                {
+                    if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
+                    {
+                        should_reverse_direction = true
+                    }
+                }
+                // check if the platform falls away to right
+                if collision_space
+                    .get_sprite_at(snapped_next_position + vec2(1, -1), COLLIDER)
+                    .is_none()
+                {
+                    should_reverse_direction = true
+                }
+            }
+            MovementDir::West => {
+                // check for obstacle to left
+                if let Some(sprite_to_left) =
+                    collision_space.get_sprite_at(snapped_next_position, COLLIDER)
+                {
+                    if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
+                    {
+                        should_reverse_direction = true
+                    }
+                }
+                // check if the platform falls away to left
+                if collision_space
+                    .get_sprite_at(snapped_next_position + vec2(0, -1), COLLIDER)
+                    .is_none()
+                {
+                    should_reverse_direction = true
+                }
+            }
+        }
+
+        if should_reverse_direction {
+            self.current_movement = self.current_movement.invert();
+        } else {
+            self.position.x = next_position.x;
+            self.position.y = next_position.y;
+        }
+
+        //
+        //  Update sprite animation cycle
+        //
+
         self.animation_cycle_tick_countdown -= dt;
         if self.animation_cycle_tick_countdown <= 0.0 {
             self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
