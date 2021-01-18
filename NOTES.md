@@ -1,6 +1,7 @@
 CURRENTLY:
+    - I think the spawn point for the FireSprite is blocking being able to shoot him? Something weird.
 TODO:
-q    - Refactor State.rs into components, e.g. RenderState, EntityState, etc
+    - Refactor State.rs into components, e.g. RenderState, EntityState, etc
     - CameraController ought to own the camera?
     - Enemies
 
