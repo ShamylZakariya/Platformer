@@ -1,16 +1,20 @@
 pub mod constants;
 pub mod events;
+pub mod game_state;
+pub mod gpu_state;
 pub mod ui;
 
 use cgmath::*;
-use ui::InputHandler;
 use core::panic;
 use entities::EntityClass;
+use futures::executor::block_on;
+use gpu_state::GpuState;
 use std::path::Path;
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
 };
+use ui::InputHandler;
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -38,16 +42,19 @@ use self::{
 };
 
 // --------------------------------------------------------------------------------------------------------------------
+pub trait AppEventDelegate {
+    fn event(&mut self, _window: &Window, _event: &winit::event::Event<()>) {}
+    fn resize(&mut self, _window: &Window, _new_size: winit::dpi::PhysicalSize<u32>) {}
+    fn input(&mut self, _window: &Window, _event: &WindowEvent) -> bool {
+        false
+    }
+    fn update(&mut self, _window: &Window, _dt: std::time::Duration) {}
+    fn render(&mut self, _window: &Window) {}
+}
+// --------------------------------------------------------------------------------------------------------------------
 
 pub struct State {
-    // Basic mechanism
-    surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    sc_desc: wgpu::SwapChainDescriptor,
-    swap_chain: wgpu::SwapChain,
-    size: winit::dpi::PhysicalSize<u32>,
-    depth_texture: texture::Texture,
+    gpu: GpuState,
 
     // Input state
     last_mouse_pos: PhysicalPosition<f64>,
@@ -64,9 +71,9 @@ pub struct State {
     stage_debug_draw_overlap_uniforms: SpriteUniforms,
     stage_debug_draw_contact_uniforms: SpriteUniforms,
     stage_sprite_drawable: SpriteDrawable,
-    map: map::Map,
 
     // Collision detection and dispatch
+    map: map::Map,
     collision_space: collision::Space,
     message_dispatcher: Dispatcher,
 
@@ -92,44 +99,7 @@ pub struct State {
 }
 
 impl State {
-    pub async fn new(window: &Window) -> Self {
-        let size = window.inner_size();
-
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
-        let surface = unsafe { instance.create_surface(window) };
-        let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
-                compatible_surface: Some(&surface),
-            })
-            .await
-            .unwrap();
-
-        let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
-                    shader_validation: true,
-                },
-                None,
-            )
-            .await
-            .unwrap();
-
-        let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Mailbox,
-        };
-
-        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
-
-        let depth_texture =
-            texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
-
+    pub fn new(window: &Window, gpu: GpuState) -> Self {
         // Load the stage map
         let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -140,7 +110,7 @@ impl State {
         );
 
         let material_bind_group_layout =
-            crate::sprite::rendering::Material::bind_group_layout(&device);
+            crate::sprite::rendering::Material::bind_group_layout(&gpu.device);
         let (
             stage_sprite_material,
             stage_sprite_drawable,
@@ -151,9 +121,10 @@ impl State {
             let stage_sprite_material = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet =
-                    texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
+                    texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false)
+                        .unwrap();
                 Rc::new(crate::sprite::rendering::Material::new(
-                    &device,
+                    &gpu.device,
                     "Sprite Material",
                     spritesheet,
                     &material_bind_group_layout,
@@ -197,7 +168,8 @@ impl State {
             all_sprites.extend(bg_sprites);
             all_sprites.extend(level_sprites.clone());
 
-            let sm = crate::sprite::rendering::Mesh::new(&all_sprites, 0, &device, "Sprite Mesh");
+            let sm =
+                crate::sprite::rendering::Mesh::new(&all_sprites, 0, &gpu.device, "Sprite Mesh");
             (
                 stage_sprite_material.clone(),
                 SpriteDrawable::with(sm, stage_sprite_material.clone()),
@@ -211,8 +183,9 @@ impl State {
         let map_origin = point2(0.0, 0.0);
         let map_extent = vec2(map.width as f32, map.height as f32);
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
-        let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
-        let camera_uniforms = CameraUniforms::new(&device);
+        let projection =
+            camera::Projection::new(gpu.sc_desc.width, gpu.sc_desc.height, 16.0, 0.1, 100.0);
+        let camera_uniforms = CameraUniforms::new(&gpu.device);
         let camera_controller = camera::CameraController::new(
             camera,
             projection,
@@ -223,25 +196,26 @@ impl State {
 
         // Build the sprite render pipeline
 
-        let stage_uniforms = SpriteUniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&device, sprite_size_px);
-        let stage_debug_draw_contact_uniforms = SpriteUniforms::new(&device, sprite_size_px);
+        let stage_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let stage_debug_draw_contact_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[
-                    &material_bind_group_layout,
-                    &camera_controller.uniforms.bind_group_layout,
-                    &stage_uniforms.bind_group_layout,
-                ],
-                label: Some("Stage Sprite Pipeline Layout"),
-                push_constant_ranges: &[],
-            });
+            gpu.device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    bind_group_layouts: &[
+                        &material_bind_group_layout,
+                        &camera_controller.uniforms.bind_group_layout,
+                        &stage_uniforms.bind_group_layout,
+                    ],
+                    label: Some("Stage Sprite Pipeline Layout"),
+                    push_constant_ranges: &[],
+                });
 
         let sprite_render_pipeline = crate::sprite::rendering::create_render_pipeline(
-            &device,
+            &gpu.device,
             &sprite_render_pipeline_layout,
-            sc_desc.format,
+            gpu.sc_desc.format,
             Some(texture::Texture::DEPTH_FORMAT),
         );
 
@@ -253,10 +227,10 @@ impl State {
         let entity_material = Rc::new({
             let spritesheet_path = Path::new("res").join(&entity_tileset.image_path);
             let spritesheet =
-                texture::Texture::load(&device, &queue, spritesheet_path, false).unwrap();
+                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
 
             crate::sprite::rendering::Material::new(
-                &device,
+                &gpu.device,
                 "Sprite Material",
                 spritesheet,
                 &material_bind_group_layout,
@@ -279,11 +253,11 @@ impl State {
                     crate::sprite::rendering::EntityDrawable::load(
                         &entity_tileset,
                         entity_material.clone(),
-                        &device,
+                        &gpu.device,
                         &name,
                         0,
                     ),
-                    SpriteUniforms::new(&device, sprite_size_px),
+                    SpriteUniforms::new(&gpu.device, sprite_size_px),
                 ),
             );
         }
@@ -291,10 +265,17 @@ impl State {
         let flipbook_animations = stage_animation_flipbooks
             .into_iter()
             .map(|a| {
-                rendering::FlipbookAnimationDrawable::new(a, stage_sprite_material.clone(), &device)
+                rendering::FlipbookAnimationDrawable::new(
+                    a,
+                    stage_sprite_material.clone(),
+                    &gpu.device,
+                )
             })
             .map(|a| {
-                FlipbookAnimationComponents::new(a, SpriteUniforms::new(&device, sprite_size_px))
+                FlipbookAnimationComponents::new(
+                    a,
+                    SpriteUniforms::new(&gpu.device, sprite_size_px),
+                )
             })
             .collect::<Vec<_>>();
 
@@ -327,17 +308,11 @@ impl State {
             }]);
 
         let imgui_renderer = imgui_wgpu::RendererConfig::new()
-            .set_texture_format(sc_desc.format)
-            .build(&mut imgui, &device, &queue);
+            .set_texture_format(gpu.sc_desc.format)
+            .build(&mut imgui, &gpu.device, &gpu.queue);
 
         Self {
-            surface,
-            device,
-            queue,
-            sc_desc,
-            swap_chain,
-            depth_texture,
-            size,
+            gpu,
 
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
@@ -378,13 +353,8 @@ impl State {
             .handle_event(self.imgui.io_mut(), &window, &event);
     }
 
-    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.size = new_size;
-        self.sc_desc.width = new_size.width;
-        self.sc_desc.height = new_size.height;
-        self.depth_texture =
-            texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+    pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.gpu.resize(window, new_size);
         self.camera_controller
             .projection
             .resize(new_size.width, new_size.height);
@@ -444,7 +414,7 @@ impl State {
             .data
             .set_model_position(point3(0.0, 0.0, 0.0));
         self.stage_uniforms.data.set_color(vec4(1.0, 1.0, 1.0, 1.0));
-        self.stage_uniforms.write(&mut self.queue);
+        self.stage_uniforms.write(&mut self.gpu.queue);
 
         self.stage_debug_draw_overlap_uniforms
             .data
@@ -453,7 +423,7 @@ impl State {
             .data
             .set_color(vec4(0.0, 1.0, 0.0, 0.75));
         self.stage_debug_draw_overlap_uniforms
-            .write(&mut self.queue);
+            .write(&mut self.gpu.queue);
 
         self.stage_debug_draw_contact_uniforms
             .data
@@ -462,7 +432,7 @@ impl State {
             .data
             .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         self.stage_debug_draw_contact_uniforms
-            .write(&mut self.queue);
+            .write(&mut self.gpu.queue);
 
         //
         //  Update entities - if any are expired, remove them.
@@ -478,7 +448,7 @@ impl State {
                     &mut self.message_dispatcher,
                 );
                 e.entity.update_uniforms(&mut e.uniforms);
-                e.uniforms.write(&mut self.queue);
+                e.uniforms.write(&mut self.gpu.queue);
 
                 if !e.entity.is_alive() {
                     expired_count += 1;
@@ -496,7 +466,7 @@ impl State {
 
         for a in &mut self.flipbook_animations {
             a.update(dt);
-            a.uniforms.write(&mut self.queue);
+            a.uniforms.write(&mut self.gpu.queue);
         }
 
         //
@@ -517,7 +487,7 @@ impl State {
         };
 
         self.camera_controller.update(dt, tracking);
-        self.camera_controller.uniforms.write(&mut self.queue);
+        self.camera_controller.uniforms.write(&mut self.gpu.queue);
 
         //
         //  Notify entities of their visibility
@@ -534,11 +504,13 @@ impl State {
 
     pub fn render(&mut self, window: &Window) {
         let frame = self
+            .gpu
             .swap_chain
             .get_current_frame()
             .expect("Timeout getting texture");
 
         let mut encoder = self
+            .gpu
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
@@ -564,7 +536,7 @@ impl State {
                     },
                 }],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &self.depth_texture.view,
+                    attachment: &self.gpu.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: true,
@@ -635,16 +607,12 @@ impl State {
                 .prepare_frame(self.imgui.io_mut(), window)
                 .expect("Failed to prepare frame");
 
-            let ui_input = self.render_ui(
-                self.current_display_state(),
-                &frame,
-                &mut encoder,
-                &window,
-            );
+            let ui_input =
+                self.render_ui(self.current_display_state(), &frame, &mut encoder, &window);
             self.process_input(&ui_input);
         }
 
-        self.queue.submit(std::iter::once(encoder.finish()));
+        self.gpu.queue.submit(std::iter::once(encoder.finish()));
     }
 
     /// Adds this entity to the simulation state
@@ -663,12 +631,12 @@ impl State {
             crate::sprite::rendering::EntityDrawable::load(
                 &self.entity_tileset,
                 self.entity_material.clone(),
-                &self.device,
+                &self.gpu.device,
                 &sprite_name,
                 0,
             ),
             SpriteUniforms::new(
-                &self.device,
+                &self.gpu.device,
                 self.map.tileset.get_sprite_size().cast().unwrap(),
             ),
         );
@@ -827,7 +795,6 @@ impl MessageHandler for State {
 // ---------------------------------------------------------------------------------------------------------------------
 
 impl InputHandler for State {
-
     fn current_display_state(&self) -> ui::DisplayState {
         let firebrand = self
             .entities
@@ -931,7 +898,12 @@ impl InputHandler for State {
         });
 
         self.imgui_renderer
-            .render(ui.render(), &self.queue, &self.device, &mut render_pass)
+            .render(
+                ui.render(),
+                &self.gpu.queue,
+                &self.gpu.device,
+                &mut render_pass,
+            )
             .expect("Imgui render failed");
 
         ui_input_state

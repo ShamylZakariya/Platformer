@@ -30,7 +30,8 @@ fn main() {
         .with_title("Gargoyle's Quest")
         .build(&event_loop)
         .unwrap();
-    let mut state = block_on(gamestate::State::new(&window));
+    let gpu = block_on(gamestate::gpu_state::GpuState::new(&window));
+    let mut state = gamestate::State::new(&window, gpu);
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
