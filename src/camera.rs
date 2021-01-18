@@ -4,6 +4,8 @@ use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
+use crate::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 // CGMath uses an OpenGL clipspace of [-1,+1] on z, where wgpu uses [0,+1] for z
@@ -200,41 +202,11 @@ impl Uniforms {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug)]
-struct CameraControllerInputState {
-    move_left_pressed: bool,
-    move_right_pressed: bool,
-    move_up_pressed: bool,
-    move_down_pressed: bool,
-    zoom_in_pressed: bool,
-    zoom_out_pressed: bool,
-}
-
-impl Default for CameraControllerInputState {
-    fn default() -> Self {
-        Self {
-            move_left_pressed: false,
-            move_right_pressed: false,
-            move_up_pressed: false,
-            move_down_pressed: false,
-            zoom_in_pressed: false,
-            zoom_out_pressed: false,
-        }
-    }
-}
-
-fn input_accumulator(negative: bool, positive: bool) -> f32 {
-    return if negative { -1.0 } else { 0.0 } + if positive { 1.0 } else { 0.0 };
-}
-
 pub struct CameraController {
     pub camera: Camera,
     pub projection: Projection,
     pub uniforms: Uniforms,
 
-    delta_scale: f32,
-    speed: f32,
-    input_state: CameraControllerInputState,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
 }
@@ -244,7 +216,6 @@ impl CameraController {
         camera: Camera,
         projection: Projection,
         uniforms: Uniforms,
-        speed: f32,
         map_origin: Point2<f32>,
         map_extent: Vector2<f32>,
     ) -> Self {
@@ -252,82 +223,42 @@ impl CameraController {
             camera,
             projection,
             uniforms,
-            delta_scale: 1.0,
-            speed,
-            input_state: Default::default(),
             map_origin,
             map_extent,
         }
     }
 
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let pressed = state == ElementState::Pressed;
-        match key {
-            VirtualKeyCode::Up => {
-                self.input_state.move_up_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Down => {
-                self.input_state.move_down_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Left => {
-                self.input_state.move_left_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Right => {
-                self.input_state.move_right_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::PageUp => {
-                self.input_state.zoom_in_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::PageDown => {
-                self.input_state.zoom_out_pressed = pressed;
-                true
-            }
-            _ => false,
+    pub fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
+        false
+    }
+
+    pub fn mouse_movement(&mut self, pressed: bool, _position: Point2<f32>, delta: Vector2<f32>) {
+        // there's some weirdness about position/delta - they don't really correlate to pixels, I think
+        // there's some peculiar scaling thing going on.
+        if pressed {
+            let delta = (delta * 0.125) / self.projection.scale;
+            self.camera.position.x -= delta.x;
+            self.camera.position.y += delta.y;
         }
     }
 
-    pub fn process_mouse(&mut self, _mouse_dx: f64, _mouse_dy: f64) {}
-
     pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
-        self.delta_scale = match delta {
-            MouseScrollDelta::LineDelta(_, scroll) => *scroll * 50.0,
-            MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => *scroll as f32,
+        let delta_scale = match delta {
+            MouseScrollDelta::LineDelta(_, scroll) => *scroll * 0.05,
+            MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => {
+                *scroll as f32 * 0.05
+            }
         };
+        let new_scale = self.projection.scale + delta_scale * self.projection.scale;
+        let new_scale = new_scale.min(MAX_CAMERA_SCALE).max(MIN_CAMERA_SCALE);
+        self.projection.set_scale(new_scale);
     }
 
     pub fn update(&mut self, dt: Duration, tracking: Option<Point2<f32>>) {
-        let dt = dt.as_secs_f32();
-
         if let Some(tracking) = tracking {
             self.camera.position.x = tracking.x;
             self.camera.position.y = tracking.y;
-        } else {
-            let delta_position = vec3(
-                input_accumulator(
-                    self.input_state.move_left_pressed,
-                    self.input_state.move_right_pressed,
-                ),
-                input_accumulator(
-                    self.input_state.move_down_pressed,
-                    self.input_state.move_up_pressed,
-                ),
-                0.0,
-            );
-            self.camera.position += delta_position * self.speed * dt;
         }
-
-        let delta_zoom = input_accumulator(
-            self.input_state.zoom_out_pressed,
-            self.input_state.zoom_in_pressed,
-        );
-
-        self.projection
-            .set_scale(self.projection.scale + delta_zoom * self.speed * dt);
 
         self.clamp_camera_position_to_map();
         self.uniforms

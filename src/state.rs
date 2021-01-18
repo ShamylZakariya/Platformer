@@ -13,13 +13,16 @@ use winit::{
     window::Window,
 };
 
-use crate::map;
 use crate::sprite::collision;
 use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
 use crate::{camera, entities};
 use crate::{constants::sprite_layers, constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
+use crate::{
+    constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
+    map,
+};
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
@@ -302,7 +305,6 @@ impl State {
             camera,
             projection,
             camera_uniforms,
-            4.0,
             map_origin,
             map_extent,
         );
@@ -511,9 +513,11 @@ impl State {
                 let mouse_dx = position.x - self.last_mouse_pos.x;
                 let mouse_dy = position.y - self.last_mouse_pos.y;
                 self.last_mouse_pos = *position;
-                if self.mouse_pressed {
-                    self.camera_controller.process_mouse(mouse_dx, mouse_dy);
-                }
+                self.camera_controller.mouse_movement(
+                    self.mouse_pressed,
+                    point2(position.x, position.y).cast().unwrap(),
+                    vec2(mouse_dx, mouse_dy).cast().unwrap(),
+                );
                 true
             }
             _ => false,
@@ -773,7 +777,7 @@ impl State {
 
                 let mut zoom = ui_display_state.zoom;
                 if imgui::Slider::new(imgui::im_str!("Zoom"))
-                    .range(ORIGINAL_VIEWPORT_TILES_WIDE as f32..=32 as f32)
+                    .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
                     .build(&ui, &mut zoom)
                 {
                     ui_input_state.zoom = Some(zoom);
