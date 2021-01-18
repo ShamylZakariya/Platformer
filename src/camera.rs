@@ -238,8 +238,12 @@ impl CameraController {
         &self,
         camera: &Camera,
         projection: &Projection,
+        inset_by: f32,
     ) -> (Point2<f32>, Vector2<f32>) {
-        let viewport_size = vec2(projection.scale, projection.scale / projection.aspect);
+        let viewport_size = vec2(
+            projection.scale - 2.0 * inset_by,
+            (projection.scale / projection.aspect) - 2.0 * inset_by,
+        );
         let bottom_left = point2(
             camera.position.x - viewport_size.x / 2.0,
             camera.position.y - viewport_size.y / 2.0,

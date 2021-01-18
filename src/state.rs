@@ -896,9 +896,12 @@ impl State {
     }
 
     fn update_entity_visibility(&mut self) {
+        // get the viewport - outset it by 1 unit in each edge to "pad" it.
+        // since enemy re-spawning isn't exactly a matter of going offscreen,
+        // but more like going "a little offscreen".
         let viewport = self
             .camera_controller
-            .viewport_bounds(&self.camera, &self.projection);
+            .viewport_bounds(&self.camera, &self.projection, -1.0);
 
         let previously_visible_entities = std::mem::take(&mut self.visible_entities);
         for e in self.entities.values() {
