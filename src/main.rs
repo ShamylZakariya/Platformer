@@ -31,7 +31,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
     let gpu = block_on(gamestate::gpu_state::GpuState::new(&window));
-    let mut state = gamestate::State::new(&window, gpu);
+    let mut state = gamestate::AppState::new(&window, gpu);
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {

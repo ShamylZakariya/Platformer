@@ -1,8 +1,6 @@
 use crate::texture;
 use winit::window::Window;
 
-use super::AppEventDelegate;
-
 pub struct GpuState {
     pub surface: wgpu::Surface,
     pub device: wgpu::Device,
@@ -62,10 +60,8 @@ impl GpuState {
             depth_texture,
         }
     }
-}
 
-impl AppEventDelegate for GpuState {
-    fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
