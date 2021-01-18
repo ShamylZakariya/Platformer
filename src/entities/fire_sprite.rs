@@ -146,6 +146,10 @@ impl Entity for FireSprite {
             next_position.x.floor() as i32,
             next_position.y.floor() as i32,
         );
+        let snapped_next_position_center = point2(
+            (next_position.x + 0.5).floor() as i32,
+            next_position.y.floor() as i32,
+        );
         let mut should_reverse_direction = false;
 
         match self.current_movement {
@@ -161,7 +165,7 @@ impl Entity for FireSprite {
                 }
                 // check if the platform falls away to right
                 if collision_space
-                    .get_static_sprite_at(snapped_next_position + vec2(1, -1), COLLIDER)
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
                     .is_none()
                 {
                     should_reverse_direction = true
@@ -179,7 +183,7 @@ impl Entity for FireSprite {
                 }
                 // check if the platform falls away to left
                 if collision_space
-                    .get_static_sprite_at(snapped_next_position + vec2(0, -1), COLLIDER)
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
                     .is_none()
                 {
                     should_reverse_direction = true
