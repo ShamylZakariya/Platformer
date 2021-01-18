@@ -62,6 +62,7 @@ impl Camera {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct Projection {
     width: f32,
     height: f32,
@@ -112,158 +113,6 @@ impl Projection {
         if self.scale < 0.00001 {
             self.scale = 0.00001;
         }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-#[derive(Debug)]
-struct CameraControllerInputState {
-    move_left_pressed: bool,
-    move_right_pressed: bool,
-    move_up_pressed: bool,
-    move_down_pressed: bool,
-    zoom_in_pressed: bool,
-    zoom_out_pressed: bool,
-}
-
-impl Default for CameraControllerInputState {
-    fn default() -> Self {
-        Self {
-            move_left_pressed: false,
-            move_right_pressed: false,
-            move_up_pressed: false,
-            move_down_pressed: false,
-            zoom_in_pressed: false,
-            zoom_out_pressed: false,
-        }
-    }
-}
-
-fn input_accumulator(negative: bool, positive: bool) -> f32 {
-    return if negative { -1.0 } else { 0.0 } + if positive { 1.0 } else { 0.0 };
-}
-
-#[derive(Debug)]
-pub struct CameraController {
-    delta_scale: f32,
-    speed: f32,
-    input_state: CameraControllerInputState,
-    map_origin: Point2<f32>,
-    map_extent: Vector2<f32>,
-}
-
-impl CameraController {
-    pub fn new(speed: f32, map_origin: Point2<f32>, map_extent: Vector2<f32>) -> Self {
-        Self {
-            delta_scale: 1.0,
-            speed,
-            input_state: Default::default(),
-            map_origin,
-            map_extent,
-        }
-    }
-
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        let pressed = state == ElementState::Pressed;
-        match key {
-            VirtualKeyCode::Up => {
-                self.input_state.move_up_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Down => {
-                self.input_state.move_down_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Left => {
-                self.input_state.move_left_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::Right => {
-                self.input_state.move_right_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::PageUp => {
-                self.input_state.zoom_in_pressed = pressed;
-                true
-            }
-            VirtualKeyCode::PageDown => {
-                self.input_state.zoom_out_pressed = pressed;
-                true
-            }
-            _ => false,
-        }
-    }
-
-    pub fn process_mouse(&mut self, _mouse_dx: f64, _mouse_dy: f64) {}
-
-    pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
-        self.delta_scale = match delta {
-            MouseScrollDelta::LineDelta(_, scroll) => *scroll * 50.0,
-            MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => *scroll as f32,
-        };
-    }
-
-    pub fn update_camera(
-        &mut self,
-        camera: &mut Camera,
-        projection: &mut Projection,
-        dt: Duration,
-    ) {
-        let dt = dt.as_secs_f32();
-        let delta_position = vec3(
-            input_accumulator(
-                self.input_state.move_left_pressed,
-                self.input_state.move_right_pressed,
-            ),
-            input_accumulator(
-                self.input_state.move_down_pressed,
-                self.input_state.move_up_pressed,
-            ),
-            0.0,
-        );
-        let delta_zoom = input_accumulator(
-            self.input_state.zoom_out_pressed,
-            self.input_state.zoom_in_pressed,
-        );
-
-        camera.position += delta_position * self.speed * dt;
-        projection.set_scale(projection.scale + delta_zoom * self.speed * dt);
-
-        self.clamp_camera_position_to_map(camera, projection);
-    }
-
-    /// Return the bounds of the camera viewport expressed as (bottom_left,extent)
-    pub fn viewport_bounds(
-        &self,
-        camera: &Camera,
-        projection: &Projection,
-        inset_by: f32,
-    ) -> (Point2<f32>, Vector2<f32>) {
-        let viewport_size = vec2(
-            projection.scale - 2.0 * inset_by,
-            (projection.scale / projection.aspect) - 2.0 * inset_by,
-        );
-        let bottom_left = point2(
-            camera.position.x - viewport_size.x / 2.0,
-            camera.position.y - viewport_size.y / 2.0,
-        );
-        (bottom_left, viewport_size)
-    }
-
-    fn clamp_camera_position_to_map(&self, camera: &mut Camera, projection: &mut Projection) {
-        let viewport_size = vec2(projection.scale, projection.scale / projection.aspect);
-        camera.position.x = camera
-            .position
-            .x
-            .max(self.map_origin.x + viewport_size.x * 0.5)
-            .min(self.map_origin.x + self.map_extent.x - viewport_size.x * 0.5);
-
-        camera.position.y = camera
-            .position
-            .y
-            .max(self.map_origin.y + 1.0 + viewport_size.y * 0.5)
-            .min(self.map_origin.y + 1.0 + self.map_extent.y - viewport_size.y * 0.5);
     }
 }
 
@@ -346,5 +195,181 @@ impl Uniforms {
 
     pub fn write(&self, queue: &mut wgpu::Queue) {
         queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.data]));
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[derive(Debug)]
+struct CameraControllerInputState {
+    move_left_pressed: bool,
+    move_right_pressed: bool,
+    move_up_pressed: bool,
+    move_down_pressed: bool,
+    zoom_in_pressed: bool,
+    zoom_out_pressed: bool,
+}
+
+impl Default for CameraControllerInputState {
+    fn default() -> Self {
+        Self {
+            move_left_pressed: false,
+            move_right_pressed: false,
+            move_up_pressed: false,
+            move_down_pressed: false,
+            zoom_in_pressed: false,
+            zoom_out_pressed: false,
+        }
+    }
+}
+
+fn input_accumulator(negative: bool, positive: bool) -> f32 {
+    return if negative { -1.0 } else { 0.0 } + if positive { 1.0 } else { 0.0 };
+}
+
+pub struct CameraController {
+    pub camera: Camera,
+    pub projection: Projection,
+    pub uniforms: Uniforms,
+
+    delta_scale: f32,
+    speed: f32,
+    input_state: CameraControllerInputState,
+    map_origin: Point2<f32>,
+    map_extent: Vector2<f32>,
+}
+
+impl CameraController {
+    pub fn new(
+        camera: Camera,
+        projection: Projection,
+        uniforms: Uniforms,
+        speed: f32,
+        map_origin: Point2<f32>,
+        map_extent: Vector2<f32>,
+    ) -> Self {
+        Self {
+            camera,
+            projection,
+            uniforms,
+            delta_scale: 1.0,
+            speed,
+            input_state: Default::default(),
+            map_origin,
+            map_extent,
+        }
+    }
+
+    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+        let pressed = state == ElementState::Pressed;
+        match key {
+            VirtualKeyCode::Up => {
+                self.input_state.move_up_pressed = pressed;
+                true
+            }
+            VirtualKeyCode::Down => {
+                self.input_state.move_down_pressed = pressed;
+                true
+            }
+            VirtualKeyCode::Left => {
+                self.input_state.move_left_pressed = pressed;
+                true
+            }
+            VirtualKeyCode::Right => {
+                self.input_state.move_right_pressed = pressed;
+                true
+            }
+            VirtualKeyCode::PageUp => {
+                self.input_state.zoom_in_pressed = pressed;
+                true
+            }
+            VirtualKeyCode::PageDown => {
+                self.input_state.zoom_out_pressed = pressed;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    pub fn process_mouse(&mut self, _mouse_dx: f64, _mouse_dy: f64) {}
+
+    pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
+        self.delta_scale = match delta {
+            MouseScrollDelta::LineDelta(_, scroll) => *scroll * 50.0,
+            MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => *scroll as f32,
+        };
+    }
+
+    pub fn update(&mut self, dt: Duration, tracking: Option<Point2<f32>>) {
+        let dt = dt.as_secs_f32();
+
+        if let Some(tracking) = tracking {
+            self.camera.position.x = tracking.x;
+            self.camera.position.y = tracking.y;
+        } else {
+            let delta_position = vec3(
+                input_accumulator(
+                    self.input_state.move_left_pressed,
+                    self.input_state.move_right_pressed,
+                ),
+                input_accumulator(
+                    self.input_state.move_down_pressed,
+                    self.input_state.move_up_pressed,
+                ),
+                0.0,
+            );
+            self.camera.position += delta_position * self.speed * dt;
+        }
+
+        let delta_zoom = input_accumulator(
+            self.input_state.zoom_out_pressed,
+            self.input_state.zoom_in_pressed,
+        );
+
+        self.projection
+            .set_scale(self.projection.scale + delta_zoom * self.speed * dt);
+
+        self.clamp_camera_position_to_map();
+        self.uniforms
+            .data
+            .update_view_proj(&self.camera, &self.projection);
+    }
+
+    /// Return the bounds of the camera viewport expressed as (bottom_left,extent)
+    pub fn viewport_bounds(
+        &self,
+        camera: &Camera,
+        projection: &Projection,
+        inset_by: f32,
+    ) -> (Point2<f32>, Vector2<f32>) {
+        let viewport_size = vec2(
+            projection.scale - 2.0 * inset_by,
+            (projection.scale / projection.aspect) - 2.0 * inset_by,
+        );
+        let bottom_left = point2(
+            camera.position.x - viewport_size.x / 2.0,
+            camera.position.y - viewport_size.y / 2.0,
+        );
+        (bottom_left, viewport_size)
+    }
+
+    fn clamp_camera_position_to_map(&mut self) {
+        let viewport_size = vec2(
+            self.projection.scale,
+            self.projection.scale / self.projection.aspect,
+        );
+        self.camera.position.x = self
+            .camera
+            .position
+            .x
+            .max(self.map_origin.x + viewport_size.x * 0.5)
+            .min(self.map_origin.x + self.map_extent.x - viewport_size.x * 0.5);
+
+        self.camera.position.y = self
+            .camera
+            .position
+            .y
+            .max(self.map_origin.y + 1.0 + viewport_size.y * 0.5)
+            .min(self.map_origin.y + 1.0 + self.map_extent.y - viewport_size.y * 0.5);
     }
 }

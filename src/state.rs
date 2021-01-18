@@ -135,14 +135,11 @@ pub struct State {
     depth_texture: texture::Texture,
 
     // Input state
-    camera_controller: camera::CameraController,
     last_mouse_pos: PhysicalPosition<f64>,
     mouse_pressed: bool,
 
     // Camera
-    camera: camera::Camera,
-    projection: camera::Projection,
-    camera_uniforms: CameraUniforms,
+    camera_controller: camera::CameraController,
 
     // Pipelines
     sprite_render_pipeline: wgpu::RenderPipeline,
@@ -300,10 +297,15 @@ impl State {
         let map_extent = vec2(map.width as f32, map.height as f32);
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
         let projection = camera::Projection::new(sc_desc.width, sc_desc.height, 16.0, 0.1, 100.0);
-        let camera_controller = camera::CameraController::new(4.0, map_origin, map_extent);
-
-        let mut camera_uniforms = CameraUniforms::new(&device);
-        camera_uniforms.data.update_view_proj(&camera, &projection);
+        let camera_uniforms = CameraUniforms::new(&device);
+        let camera_controller = camera::CameraController::new(
+            camera,
+            projection,
+            camera_uniforms,
+            4.0,
+            map_origin,
+            map_extent,
+        );
 
         // Build the sprite render pipeline
 
@@ -315,7 +317,7 @@ impl State {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 bind_group_layouts: &[
                     &material_bind_group_layout,
-                    &camera_uniforms.bind_group_layout,
+                    &camera_controller.uniforms.bind_group_layout,
                     &stage_uniforms.bind_group_layout,
                 ],
                 label: Some("Stage Sprite Pipeline Layout"),
@@ -423,13 +425,10 @@ impl State {
             depth_texture,
             size,
 
-            camera_controller,
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,
 
-            camera,
-            projection,
-            camera_uniforms,
+            camera_controller,
 
             sprite_render_pipeline,
 
@@ -472,7 +471,9 @@ impl State {
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-        self.projection.resize(new_size.width, new_size.height);
+        self.camera_controller
+            .projection
+            .resize(new_size.width, new_size.height);
     }
 
     pub fn input(&mut self, _window: &Window, event: &WindowEvent) -> bool {
@@ -586,24 +587,21 @@ impl State {
         // Update camera state
         //
 
-        self.camera_controller
-            .update_camera(&mut self.camera, &mut self.projection, dt);
-        self.camera_uniforms
-            .data
-            .update_view_proj(&self.camera, &self.projection);
+        let tracking = if self.camera_tracks_character {
+            Some(
+                self.entities
+                    .get(&self.firebrand_entity_id)
+                    .expect("firebrand_entity_id should be the player's entity_id")
+                    .entity
+                    .position()
+                    .xy(),
+            )
+        } else {
+            None
+        };
 
-        if self.camera_tracks_character {
-            let cp = self.camera.position();
-            let p = self
-                .entities
-                .get(&self.firebrand_entity_id)
-                .expect("There should be a player entity")
-                .entity
-                .position();
-            self.camera.set_position(&point3(p.x, p.y, cp.z));
-        }
-
-        self.camera_uniforms.write(&mut self.queue);
+        self.camera_controller.update(dt, tracking);
+        self.camera_controller.uniforms.write(&mut self.queue);
 
         //
         //  Notify entities of their visibility
@@ -664,14 +662,17 @@ impl State {
             // Render stage
             self.stage_sprite_drawable.draw(
                 &mut render_pass,
-                &self.camera_uniforms,
+                &self.camera_controller.uniforms,
                 &self.stage_uniforms,
             );
 
             // Render flipbook animations
             for a in &self.flipbook_animations {
-                a.flipbook_animation
-                    .draw(&mut render_pass, &self.camera_uniforms, &a.uniforms);
+                a.flipbook_animation.draw(
+                    &mut render_pass,
+                    &self.camera_controller.uniforms,
+                    &a.uniforms,
+                );
             }
 
             if self.draw_stage_collision_info {
@@ -680,7 +681,7 @@ impl State {
                         self.stage_sprite_drawable.draw_sprites(
                             overlapping,
                             &mut render_pass,
-                            &self.camera_uniforms,
+                            &self.camera_controller.uniforms,
                             &self.stage_debug_draw_overlap_uniforms,
                         );
                     }
@@ -689,7 +690,7 @@ impl State {
                         self.stage_sprite_drawable.draw_sprites(
                             contacting,
                             &mut render_pass,
-                            &self.camera_uniforms,
+                            &self.camera_controller.uniforms,
                             &self.stage_debug_draw_contact_uniforms,
                         );
                     }
@@ -701,7 +702,7 @@ impl State {
                 if e.entity.is_alive() && e.entity.should_draw() {
                     e.sprite.draw(
                         &mut render_pass,
-                        &self.camera_uniforms,
+                        &self.camera_controller.uniforms,
                         &e.uniforms,
                         e.entity.sprite_cycle(),
                     );
@@ -821,8 +822,8 @@ impl State {
 
         UiDisplayState {
             camera_tracks_character: self.camera_tracks_character,
-            camera_position: self.camera.position(),
-            zoom: self.projection.scale(),
+            camera_position: self.camera_controller.camera.position(),
+            zoom: self.camera_controller.projection.scale(),
             character_position: position.xy(),
             draw_stage_collision_info: self.draw_stage_collision_info,
             character_cycle: firebrand.entity.sprite_cycle().to_string(),
@@ -831,7 +832,7 @@ impl State {
 
     fn process_ui_input(&mut self, ui_input_state: UiInputState) {
         if let Some(z) = ui_input_state.zoom {
-            self.projection.set_scale(z);
+            self.camera_controller.projection.set_scale(z);
         }
         if let Some(d) = ui_input_state.draw_stage_collision_info {
             self.draw_stage_collision_info = d;
@@ -899,9 +900,11 @@ impl State {
         // get the viewport - outset it by 1 unit in each edge to "pad" it.
         // since enemy re-spawning isn't exactly a matter of going offscreen,
         // but more like going "a little offscreen".
-        let viewport = self
-            .camera_controller
-            .viewport_bounds(&self.camera, &self.projection, -1.0);
+        let viewport = self.camera_controller.viewport_bounds(
+            &self.camera_controller.camera,
+            &self.camera_controller.projection,
+            -1.0,
+        );
 
         let previously_visible_entities = std::mem::take(&mut self.visible_entities);
         for e in self.entities.values() {
