@@ -1,18 +1,22 @@
+pub mod constants;
+pub mod events;
+pub mod ui;
+
 use cgmath::*;
+use ui::InputHandler;
 use core::panic;
 use entities::EntityClass;
+use std::path::Path;
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
 };
-use std::{path::Path, time::Duration};
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
     window::Window,
 };
 
-use crate::event_dispatch::*;
 use crate::map;
 use crate::sprite::rendering;
 use crate::texture;
@@ -22,88 +26,16 @@ use crate::{
     entity::{self, EntityComponents},
     sprite::collision,
 };
+use crate::{event_dispatch::*, sprite::rendering::FlipbookAnimationComponents};
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
 use crate::sprite::rendering::Uniforms as SpriteUniforms;
 
-pub mod constants;
-pub mod events;
-use constants::sprite_layers;
-
 use self::{
-    constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE},
+    constants::{sprite_layers, MAX_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE},
     events::Event,
 };
-
-// --------------------------------------------------------------------------------------------------------------------
-
-#[derive(Clone, Debug)]
-struct UiDisplayState {
-    camera_tracks_character: bool,
-    camera_position: Point3<f32>,
-    zoom: f32,
-    character_position: Point2<f32>,
-    character_cycle: String,
-    draw_stage_collision_info: bool,
-}
-
-impl Default for UiDisplayState {
-    fn default() -> Self {
-        UiDisplayState {
-            camera_tracks_character: true,
-            camera_position: [0.0, 0.0, 0.0].into(),
-            zoom: 1.0,
-            character_position: [0.0, 0.0].into(),
-            character_cycle: "".to_string(),
-            draw_stage_collision_info: true,
-        }
-    }
-}
-
-#[derive(Default)]
-struct UiInputState {
-    camera_tracks_character: Option<bool>,
-    zoom: Option<f32>,
-    draw_stage_collision_info: Option<bool>,
-    draw_entity_debug: Option<bool>,
-}
-
-// --------------------------------------------------------------------------------------------------------------------
-
-struct FlipbookAnimationComponents {
-    flipbook_animation: rendering::FlipbookAnimationDrawable,
-    uniforms: SpriteUniforms,
-    seconds_until_next_frame: f32,
-    current_frame: usize,
-}
-
-impl FlipbookAnimationComponents {
-    fn new(flipbook: rendering::FlipbookAnimationDrawable, uniforms: SpriteUniforms) -> Self {
-        let seconds_until_next_frame = flipbook.duration_for_frame(0).as_secs_f32();
-        Self {
-            flipbook_animation: flipbook,
-            uniforms,
-            seconds_until_next_frame,
-            current_frame: 0,
-        }
-    }
-
-    fn update(&mut self, dt: Duration) {
-        let dt = dt.as_secs_f32();
-        self.seconds_until_next_frame -= dt;
-        if self.seconds_until_next_frame <= 0.0 {
-            self.current_frame += 1;
-            self.seconds_until_next_frame = self
-                .flipbook_animation
-                .duration_for_frame(self.current_frame)
-                .as_secs_f32();
-
-            self.flipbook_animation
-                .set_frame(&mut self.uniforms, self.current_frame);
-        }
-    }
-}
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -652,7 +584,7 @@ impl State {
 
             // Render flipbook animations
             for a in &self.flipbook_animations {
-                a.flipbook_animation.draw(
+                a.drawable.draw(
                     &mut render_pass,
                     &self.camera_controller.uniforms,
                     &a.uniforms,
@@ -704,126 +636,15 @@ impl State {
                 .expect("Failed to prepare frame");
 
             let ui_input = self.render_ui(
-                self.current_ui_display_state(),
+                self.current_display_state(),
                 &frame,
                 &mut encoder,
                 &window,
             );
-            self.process_ui_input(ui_input);
+            self.process_input(&ui_input);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
-    }
-
-    // Renders imgui ui, and returns a UiInputState encapsulating user input.
-    // The user input is consumed in process_ui_input.
-    fn render_ui(
-        &mut self,
-        ui_display_state: UiDisplayState,
-        frame: &wgpu::SwapChainFrame,
-        encoder: &mut wgpu::CommandEncoder,
-        window: &Window,
-    ) -> UiInputState {
-        let ui = self.imgui.frame();
-        let mut ui_input_state = UiInputState::default();
-
-        //
-        // Build the UI, mutating ui_input_state to indicate user interaction.
-        //
-
-        imgui::Window::new(imgui::im_str!("Debug"))
-            .size([280.0, 128.0], imgui::Condition::FirstUseEver)
-            .build(&ui, || {
-                let mut camera_tracks_character = ui_display_state.camera_tracks_character;
-                if ui.checkbox(
-                    imgui::im_str!("Camera Tracks Character"),
-                    &mut camera_tracks_character,
-                ) {
-                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
-                }
-                ui.text(imgui::im_str!(
-                    "camera: ({:.2},{:.2}) zoom: {:.2}",
-                    ui_display_state.camera_position.x,
-                    ui_display_state.camera_position.y,
-                    ui_display_state.zoom,
-                ));
-
-                ui.text(imgui::im_str!(
-                    "character: ({:.2},{:.2}) cycle: {}",
-                    ui_display_state.character_position.x,
-                    ui_display_state.character_position.y,
-                    ui_display_state.character_cycle,
-                ));
-
-                let mut zoom = ui_display_state.zoom;
-                if imgui::Slider::new(imgui::im_str!("Zoom"))
-                    .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
-                    .build(&ui, &mut zoom)
-                {
-                    ui_input_state.zoom = Some(zoom);
-                }
-
-                let mut draw_stage_collision_info = ui_display_state.draw_stage_collision_info;
-                if ui.checkbox(
-                    imgui::im_str!("Stage Collision Visible"),
-                    &mut draw_stage_collision_info,
-                ) {
-                    ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
-                }
-            });
-
-        //
-        // Create and submit the render pass
-        //
-
-        self.winit_platform.prepare_render(&ui, &window);
-
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &frame.output.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load, // Do not clear
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-
-        self.imgui_renderer
-            .render(ui.render(), &self.queue, &self.device, &mut render_pass)
-            .expect("Imgui render failed");
-
-        ui_input_state
-    }
-
-    fn current_ui_display_state(&self) -> UiDisplayState {
-        let firebrand = self
-            .entities
-            .get(&self.firebrand_entity_id)
-            .expect("Expect player entity");
-        let position = firebrand.entity.position();
-
-        UiDisplayState {
-            camera_tracks_character: self.camera_tracks_character,
-            camera_position: self.camera_controller.camera.position(),
-            zoom: self.camera_controller.projection.scale(),
-            character_position: position.xy(),
-            draw_stage_collision_info: self.draw_stage_collision_info,
-            character_cycle: firebrand.entity.sprite_cycle().to_string(),
-        }
-    }
-
-    fn process_ui_input(&mut self, ui_input_state: UiInputState) {
-        if let Some(z) = ui_input_state.zoom {
-            self.camera_controller.projection.set_scale(z);
-        }
-        if let Some(d) = ui_input_state.draw_stage_collision_info {
-            self.draw_stage_collision_info = d;
-        }
-        if let Some(ctp) = ui_input_state.camera_tracks_character {
-            self.camera_tracks_character = ctp;
-        }
     }
 
     /// Adds this entity to the simulation state
@@ -916,6 +737,8 @@ impl State {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 impl MessageHandler for State {
     fn handle_message(&mut self, message: &Message) {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
@@ -998,5 +821,119 @@ impl MessageHandler for State {
                 _ => {}
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+impl InputHandler for State {
+
+    fn current_display_state(&self) -> ui::DisplayState {
+        let firebrand = self
+            .entities
+            .get(&self.firebrand_entity_id)
+            .expect("Expect player entity");
+        let position = firebrand.entity.position();
+
+        ui::DisplayState {
+            camera_tracks_character: self.camera_tracks_character,
+            camera_position: self.camera_controller.camera.position(),
+            zoom: self.camera_controller.projection.scale(),
+            character_position: position.xy(),
+            draw_stage_collision_info: self.draw_stage_collision_info,
+            character_cycle: firebrand.entity.sprite_cycle().to_string(),
+        }
+    }
+
+    fn process_input(&mut self, ui_input_state: &ui::InputState) {
+        if let Some(z) = ui_input_state.zoom {
+            self.camera_controller.projection.set_scale(z);
+        }
+        if let Some(d) = ui_input_state.draw_stage_collision_info {
+            self.draw_stage_collision_info = d;
+        }
+        if let Some(ctp) = ui_input_state.camera_tracks_character {
+            self.camera_tracks_character = ctp;
+        }
+    }
+
+    fn render_ui(
+        &mut self,
+        ui_display_state: ui::DisplayState,
+        frame: &wgpu::SwapChainFrame,
+        encoder: &mut wgpu::CommandEncoder,
+        window: &Window,
+    ) -> ui::InputState {
+        let ui = self.imgui.frame();
+        let mut ui_input_state = ui::InputState::default();
+
+        //
+        // Build the UI, mutating ui_input_state to indicate user interaction.
+        //
+
+        imgui::Window::new(imgui::im_str!("Debug"))
+            .size([280.0, 128.0], imgui::Condition::FirstUseEver)
+            .build(&ui, || {
+                let mut camera_tracks_character = ui_display_state.camera_tracks_character;
+                if ui.checkbox(
+                    imgui::im_str!("Camera Tracks Character"),
+                    &mut camera_tracks_character,
+                ) {
+                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
+                }
+                ui.text(imgui::im_str!(
+                    "camera: ({:.2},{:.2}) zoom: {:.2}",
+                    ui_display_state.camera_position.x,
+                    ui_display_state.camera_position.y,
+                    ui_display_state.zoom,
+                ));
+
+                ui.text(imgui::im_str!(
+                    "character: ({:.2},{:.2}) cycle: {}",
+                    ui_display_state.character_position.x,
+                    ui_display_state.character_position.y,
+                    ui_display_state.character_cycle,
+                ));
+
+                let mut zoom = ui_display_state.zoom;
+                if imgui::Slider::new(imgui::im_str!("Zoom"))
+                    .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
+                    .build(&ui, &mut zoom)
+                {
+                    ui_input_state.zoom = Some(zoom);
+                }
+
+                let mut draw_stage_collision_info = ui_display_state.draw_stage_collision_info;
+                if ui.checkbox(
+                    imgui::im_str!("Stage Collision Visible"),
+                    &mut draw_stage_collision_info,
+                ) {
+                    ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
+                }
+            });
+
+        //
+        // Create and submit the render pass
+        //
+
+        self.winit_platform.prepare_render(&ui, &window);
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                attachment: &frame.output.view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // Do not clear
+                    store: true,
+                },
+            }],
+            depth_stencil_attachment: None,
+        });
+
+        self.imgui_renderer
+            .render(ui.render(), &self.queue, &self.device, &mut render_pass)
+            .expect("Imgui render failed");
+
+        ui_input_state
     }
 }

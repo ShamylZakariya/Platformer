@@ -682,3 +682,41 @@ impl FlipbookAnimationDrawable {
         render_pass.draw_indexed(0..self.mesh.num_elements, 0, 0..1);
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+/// FlipbookAnimationComponents represents a unit owning a flipbook animation and the uniforms
+/// it needs to render.
+pub struct FlipbookAnimationComponents {
+    pub drawable: FlipbookAnimationDrawable,
+    pub uniforms: Uniforms,
+    seconds_until_next_frame: f32,
+    current_frame: usize,
+}
+
+impl FlipbookAnimationComponents {
+    pub fn new(flipbook: FlipbookAnimationDrawable, uniforms: Uniforms) -> Self {
+        let seconds_until_next_frame = flipbook.duration_for_frame(0).as_secs_f32();
+        Self {
+            drawable: flipbook,
+            uniforms,
+            seconds_until_next_frame,
+            current_frame: 0,
+        }
+    }
+
+    pub fn update(&mut self, dt: Duration) {
+        let dt = dt.as_secs_f32();
+        self.seconds_until_next_frame -= dt;
+        if self.seconds_until_next_frame <= 0.0 {
+            self.current_frame += 1;
+            self.seconds_until_next_frame = self
+                .drawable
+                .duration_for_frame(self.current_frame)
+                .as_secs_f32();
+
+            self.drawable
+                .set_frame(&mut self.uniforms, self.current_frame);
+        }
+    }
+}

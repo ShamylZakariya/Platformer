@@ -1,16 +1,16 @@
-use anyhow::Result;
-
-use crate::entity;
-use crate::map;
-use crate::sprite::{self, collision};
-use crate::tileset;
-
 pub mod death_animation;
 pub mod falling_bridge;
 pub mod fire_sprite;
 pub mod fireball;
 pub mod firebrand;
 pub mod spawn_point;
+
+use anyhow::Result;
+
+use crate::entity;
+use crate::map;
+use crate::sprite::{self, collision};
+use crate::tileset;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityClass {

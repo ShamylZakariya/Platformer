@@ -131,6 +131,8 @@ pub trait Entity {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// EntityComponents represent a unit that can own an Entity and its sprite and uniforms, suitable
+/// for updating state, and drawing.
 pub struct EntityComponents {
     pub entity: Box<dyn Entity>,
     pub sprite: crate::sprite::rendering::EntityDrawable,
