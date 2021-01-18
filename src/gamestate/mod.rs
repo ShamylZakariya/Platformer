@@ -14,6 +14,7 @@ use self::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct AppState {
+    gpu: GpuState,
     game_state: GameState,
 
     // Imgui
@@ -23,8 +24,8 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(window: &Window, gpu: GpuState) -> Self {
-        let game_state = GameState::new(gpu);
+    pub fn new(window: &Window, mut gpu: GpuState) -> Self {
+        let game_state = GameState::new(&mut gpu);
 
         //
         // set up imgui
@@ -54,11 +55,14 @@ impl AppState {
                 }),
             }]);
 
-        let imgui_renderer = imgui_wgpu::RendererConfig::new()
-            .set_texture_format(game_state.gpu.sc_desc.format)
-            .build(&mut imgui, &game_state.gpu.device, &game_state.gpu.queue);
+        let imgui_renderer = {
+            imgui_wgpu::RendererConfig::new()
+                .set_texture_format(gpu.sc_desc.format)
+                .build(&mut imgui, &gpu.device, &gpu.queue)
+        };
 
         Self {
+            gpu,
             game_state,
             winit_platform,
             imgui,
@@ -72,6 +76,7 @@ impl AppState {
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.gpu.resize(new_size);
         self.game_state.resize(new_size);
     }
 
@@ -81,45 +86,124 @@ impl AppState {
 
     pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
         self.imgui.io_mut().update_delta_time(dt);
-        self.game_state.update(dt);
+        self.game_state.update(dt, &mut self.gpu);
     }
 
     pub fn render(&mut self, window: &Window) {
-        let frame = self
-            .game_state
-            .gpu
-            .swap_chain
-            .get_current_frame()
-            .expect("Timeout getting texture");
-
-        let mut encoder =
-            self.game_state
+        let input_state = {
+            let frame = self
                 .gpu
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
-                });
+                .swap_chain
+                .get_current_frame()
+                .expect("Timeout getting texture");
 
-        self.game_state.render(&frame, &mut encoder);
+            let mut encoder =
+                self.gpu
+                    .device
+                    .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                        label: Some("Render Encoder"),
+                    });
 
-        //
-        //  ImGUI
-        //
+            //
+            //  Let GameState render game contents
+            //
 
-        {
+            self.game_state.render(&mut self.gpu, &frame, &mut encoder);
+
+            //
+            //  Render ImGUI overlay
+            //
+
             self.winit_platform
                 .prepare_frame(self.imgui.io_mut(), window)
                 .expect("Failed to prepare frame");
 
-            let ui_input =
-                self.render_ui(self.current_display_state(), &frame, &mut encoder, &window);
-            self.process_input(&ui_input);
-        }
+            let display_state = self.current_display_state();
 
-        self.game_state
-            .gpu
-            .queue
-            .submit(std::iter::once(encoder.finish()));
+            let ui = self.imgui.frame();
+            let mut ui_input_state = ui::InputState::default();
+
+            //
+            // Build the UI, mutating ui_input_state to indicate user interaction.
+            //
+
+            imgui::Window::new(imgui::im_str!("Debug"))
+                .size([280.0, 128.0], imgui::Condition::FirstUseEver)
+                .build(&ui, || {
+                    let mut camera_tracks_character = display_state.camera_tracks_character;
+                    if ui.checkbox(
+                        imgui::im_str!("Camera Tracks Character"),
+                        &mut camera_tracks_character,
+                    ) {
+                        ui_input_state.camera_tracks_character = Some(camera_tracks_character);
+                    }
+                    ui.text(imgui::im_str!(
+                        "camera: ({:.2},{:.2}) zoom: {:.2}",
+                        display_state.camera_position.x,
+                        display_state.camera_position.y,
+                        display_state.zoom,
+                    ));
+
+                    ui.text(imgui::im_str!(
+                        "character: ({:.2},{:.2}) cycle: {}",
+                        display_state.character_position.x,
+                        display_state.character_position.y,
+                        display_state.character_cycle,
+                    ));
+
+                    let mut zoom = display_state.zoom;
+                    if imgui::Slider::new(imgui::im_str!("Zoom"))
+                        .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
+                        .build(&ui, &mut zoom)
+                    {
+                        ui_input_state.zoom = Some(zoom);
+                    }
+
+                    let mut draw_stage_collision_info = display_state.draw_stage_collision_info;
+                    if ui.checkbox(
+                        imgui::im_str!("Stage Collision Visible"),
+                        &mut draw_stage_collision_info,
+                    ) {
+                        ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
+                    }
+                });
+
+            //
+            // Create and submit the render pass
+            //
+
+            self.winit_platform.prepare_render(&ui, &window);
+
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: &frame.output.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load, // Do not clear
+                            store: true,
+                        },
+                    }],
+                    depth_stencil_attachment: None,
+                });
+
+                self.imgui_renderer
+                    .render(
+                        ui.render(),
+                        &self.gpu.queue,
+                        &self.gpu.device,
+                        &mut render_pass,
+                    )
+                    .expect("Imgui render failed");
+            }
+
+            let commands = encoder.finish();
+            self.gpu.queue.submit(std::iter::once(commands));
+
+            ui_input_state
+        };
+
+        self.process_input(&input_state);
     }
 }
 
@@ -151,90 +235,5 @@ impl InputHandler for AppState {
         if let Some(ctp) = ui_input_state.camera_tracks_character {
             self.game_state.camera_tracks_character = ctp;
         }
-    }
-
-    fn render_ui(
-        &mut self,
-        ui_display_state: ui::DisplayState,
-        frame: &wgpu::SwapChainFrame,
-        encoder: &mut wgpu::CommandEncoder,
-        window: &Window,
-    ) -> ui::InputState {
-        let ui = self.imgui.frame();
-        let mut ui_input_state = ui::InputState::default();
-
-        //
-        // Build the UI, mutating ui_input_state to indicate user interaction.
-        //
-
-        imgui::Window::new(imgui::im_str!("Debug"))
-            .size([280.0, 128.0], imgui::Condition::FirstUseEver)
-            .build(&ui, || {
-                let mut camera_tracks_character = ui_display_state.camera_tracks_character;
-                if ui.checkbox(
-                    imgui::im_str!("Camera Tracks Character"),
-                    &mut camera_tracks_character,
-                ) {
-                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
-                }
-                ui.text(imgui::im_str!(
-                    "camera: ({:.2},{:.2}) zoom: {:.2}",
-                    ui_display_state.camera_position.x,
-                    ui_display_state.camera_position.y,
-                    ui_display_state.zoom,
-                ));
-
-                ui.text(imgui::im_str!(
-                    "character: ({:.2},{:.2}) cycle: {}",
-                    ui_display_state.character_position.x,
-                    ui_display_state.character_position.y,
-                    ui_display_state.character_cycle,
-                ));
-
-                let mut zoom = ui_display_state.zoom;
-                if imgui::Slider::new(imgui::im_str!("Zoom"))
-                    .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
-                    .build(&ui, &mut zoom)
-                {
-                    ui_input_state.zoom = Some(zoom);
-                }
-
-                let mut draw_stage_collision_info = ui_display_state.draw_stage_collision_info;
-                if ui.checkbox(
-                    imgui::im_str!("Stage Collision Visible"),
-                    &mut draw_stage_collision_info,
-                ) {
-                    ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
-                }
-            });
-
-        //
-        // Create and submit the render pass
-        //
-
-        self.winit_platform.prepare_render(&ui, &window);
-
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &frame.output.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load, // Do not clear
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: None,
-        });
-
-        self.imgui_renderer
-            .render(
-                ui.render(),
-                &self.game_state.gpu.queue,
-                &self.game_state.gpu.device,
-                &mut render_pass,
-            )
-            .expect("Imgui render failed");
-
-        ui_input_state
     }
 }

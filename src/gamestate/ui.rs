@@ -38,13 +38,4 @@ pub trait InputHandler {
     fn current_display_state(&self) -> DisplayState;
     /// Consume output of the ImGUI render pass to mutate internal state.
     fn process_input(&mut self, input: &InputState);
-
-    /// Consumes a DisplayState, rendering an ImGUI UI, and delivers a InputState representing user input mutation
-    fn render_ui(
-        &mut self,
-        ui_display_state: DisplayState,
-        frame: &wgpu::SwapChainFrame,
-        encoder: &mut wgpu::CommandEncoder,
-        window: &winit::window::Window,
-    ) -> InputState;
 }

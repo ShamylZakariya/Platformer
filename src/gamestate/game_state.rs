@@ -1,6 +1,7 @@
 use cgmath::*;
 use gpu_state::GpuState;
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     path::Path,
     rc::Rc,
@@ -32,9 +33,13 @@ use super::{
     gpu_state,
 };
 
-pub struct GameState {
-    pub gpu: GpuState,
+struct EntityAdditionRequest {
+    entity_id: u32,
+    entity: Box<dyn entity::Entity>,
+    needs_init: bool,
+}
 
+pub struct GameState {
     // Camera
     pub camera_controller: camera::CameraController,
 
@@ -59,6 +64,7 @@ pub struct GameState {
     entities: HashMap<u32, entity::EntityComponents>,
     firebrand_entity_id: u32,
     visible_entities: HashSet<u32>,
+    entities_to_add: Vec<EntityAdditionRequest>,
 
     // Flipbook animations
     flipbook_animations: Vec<rendering::FlipbookAnimationComponents>,
@@ -73,7 +79,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(gpu: gpu_state::GpuState) -> Self {
+    pub fn new(gpu: &mut GpuState) -> Self {
         // Load the stage map
         let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -170,9 +176,9 @@ impl GameState {
 
         // Build the sprite render pipeline
 
-        let stage_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
-        let stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
-        let stage_debug_draw_contact_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_debug_draw_contact_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
             gpu.device
@@ -253,8 +259,35 @@ impl GameState {
             })
             .collect::<Vec<_>>();
 
+
+        //
+        // Write unchanging values into their uniform buffers
+        //
+
+        stage_uniforms
+            .data
+            .set_model_position(point3(0.0, 0.0, 0.0));
+        stage_uniforms.data.set_color(vec4(1.0, 1.0, 1.0, 1.0));
+        stage_uniforms.write(&mut gpu.queue);
+
+        stage_debug_draw_overlap_uniforms
+            .data
+            .set_model_position(point3(0.0, 0.0, -0.1)); // bring closer
+        stage_debug_draw_overlap_uniforms
+            .data
+            .set_color(vec4(0.0, 1.0, 0.0, 0.75));
+        stage_debug_draw_overlap_uniforms.write(&mut gpu.queue);
+
+        stage_debug_draw_contact_uniforms
+            .data
+            .set_model_position(point3(0.0, 0.0, -0.2)); // bring closer
+        stage_debug_draw_contact_uniforms
+            .data
+            .set_color(vec4(1.0, 0.0, 0.0, 0.75));
+        stage_debug_draw_contact_uniforms.write(&mut gpu.queue);
+
+
         Self {
-            gpu,
             camera_controller,
             sprite_render_pipeline,
             stage_uniforms,
@@ -270,6 +303,7 @@ impl GameState {
             entities: entity_components,
             firebrand_entity_id,
             visible_entities: HashSet::new(),
+            entities_to_add: Vec::new(),
             flipbook_animations: flipbook_animations,
 
             last_mouse_pos: (0, 0).into(),
@@ -281,7 +315,6 @@ impl GameState {
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.gpu.resize(new_size);
         self.camera_controller
             .projection
             .resize(new_size.width, new_size.height);
@@ -333,31 +366,17 @@ impl GameState {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration) {
-        // Update stage uniform state
-        self.stage_uniforms
-            .data
-            .set_model_position(point3(0.0, 0.0, 0.0));
-        self.stage_uniforms.data.set_color(vec4(1.0, 1.0, 1.0, 1.0));
-        self.stage_uniforms.write(&mut self.gpu.queue);
+    pub fn update(&mut self, dt: std::time::Duration, gpu: &mut GpuState) {
+        //
+        //  Process entity additions
+        //
 
-        self.stage_debug_draw_overlap_uniforms
-            .data
-            .set_model_position(point3(0.0, 0.0, -0.1)); // bring closer
-        self.stage_debug_draw_overlap_uniforms
-            .data
-            .set_color(vec4(0.0, 1.0, 0.0, 0.75));
-        self.stage_debug_draw_overlap_uniforms
-            .write(&mut self.gpu.queue);
-
-        self.stage_debug_draw_contact_uniforms
-            .data
-            .set_model_position(point3(0.0, 0.0, -0.2)); // bring closer
-        self.stage_debug_draw_contact_uniforms
-            .data
-            .set_color(vec4(1.0, 0.0, 0.0, 0.75));
-        self.stage_debug_draw_contact_uniforms
-            .write(&mut self.gpu.queue);
+        {
+            let additions = std::mem::take(&mut self.entities_to_add);
+            for addition in additions {
+                self.add_entity(gpu, addition);
+            }
+        }
 
         //
         //  Update entities - if any are expired, remove them.
@@ -373,7 +392,7 @@ impl GameState {
                     &mut self.message_dispatcher,
                 );
                 e.entity.update_uniforms(&mut e.uniforms);
-                e.uniforms.write(&mut self.gpu.queue);
+                e.uniforms.write(&mut gpu.queue);
 
                 if !e.entity.is_alive() {
                     expired_count += 1;
@@ -391,7 +410,7 @@ impl GameState {
 
         for a in &mut self.flipbook_animations {
             a.update(dt);
-            a.uniforms.write(&mut self.gpu.queue);
+            a.uniforms.write(&mut gpu.queue);
         }
 
         //
@@ -412,7 +431,7 @@ impl GameState {
         };
 
         self.camera_controller.update(dt, tracking);
-        self.camera_controller.uniforms.write(&mut self.gpu.queue);
+        self.camera_controller.uniforms.write(&mut gpu.queue);
 
         //
         //  Notify entities of their visibility
@@ -427,7 +446,12 @@ impl GameState {
         Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
-    pub fn render(&mut self, frame: &SwapChainFrame, encoder: &mut CommandEncoder) {
+    pub fn render(
+        &mut self,
+        gpu: &mut GpuState,
+        frame: &SwapChainFrame,
+        encoder: &mut CommandEncoder,
+    ) {
         //
         // Render Sprites and entities; this is first pass so we clear color/depth
         //
@@ -447,7 +471,7 @@ impl GameState {
                 },
             }],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                attachment: &self.gpu.depth_texture.view,
+                attachment: &gpu.depth_texture.view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: true,
@@ -507,37 +531,6 @@ impl GameState {
                 );
             }
         }
-    }
-
-    /// Adds this entity to the simulation state
-    pub fn add_entity(&mut self, mut entity: Box<dyn entity::Entity>) -> u32 {
-        if entity.entity_id() == 0 {
-            entity.init(
-                self.entity_id_vendor.next_id(),
-                &self.map,
-                &mut self.collision_space,
-            );
-        }
-
-        let sprite_name = entity.sprite_name().to_string();
-        let components = EntityComponents::new(
-            entity,
-            crate::sprite::rendering::EntityDrawable::load(
-                &self.entity_tileset,
-                self.entity_material.clone(),
-                &self.gpu.device,
-                &sprite_name,
-                0,
-            ),
-            SpriteUniforms::new(
-                &self.gpu.device,
-                self.map.tileset.get_sprite_size().cast().unwrap(),
-            ),
-        );
-
-        let id = components.id();
-        self.entities.insert(id, components);
-        id
     }
 
     /// Returns true iff the player can shoot.
@@ -603,6 +596,55 @@ impl GameState {
             .get(&self.firebrand_entity_id)
             .expect("Expect firebrand_entity_id to be valid")
     }
+
+    /// Request that the provided entity be added to the GameState at the next update.
+    /// Returns the entity_id of the entity if it's already been initialized, or the
+    /// id that will be assigned when it's late initialized at insertion time.
+    fn request_add_entity(&mut self, entity: Box<dyn entity::Entity>) -> u32 {
+        if entity.entity_id() == 0 {
+            let id = self.entity_id_vendor.next_id();
+            self.entities_to_add.push(EntityAdditionRequest {
+                entity_id: id,
+                entity,
+                needs_init: true,
+            });
+            id
+        } else {
+            let id = entity.entity_id();
+            self.entities_to_add.push(EntityAdditionRequest {
+                entity_id: id,
+                entity,
+                needs_init: false,
+            });
+            id
+        }
+    }
+
+    /// Adds the entity specified in the request
+    fn add_entity(&mut self, gpu: &mut GpuState, mut req: EntityAdditionRequest) {
+        if req.needs_init {
+            req.entity
+                .init(req.entity_id, &self.map, &mut self.collision_space);
+        }
+
+        let sprite_name = req.entity.sprite_name().to_string();
+        let components = EntityComponents::new(
+            req.entity,
+            crate::sprite::rendering::EntityDrawable::load(
+                &self.entity_tileset,
+                self.entity_material.clone(),
+                &gpu.device,
+                &sprite_name,
+                0,
+            ),
+            SpriteUniforms::new(
+                &gpu.device,
+                self.map.tileset.get_sprite_size().cast().unwrap(),
+            ),
+        );
+
+        self.entities.insert(components.id(), components);
+    }
 }
 
 impl MessageHandler for GameState {
@@ -627,7 +669,7 @@ impl MessageHandler for GameState {
                     velocity,
                 } => {
                     if self.player_can_shoot_fireball() {
-                        self.add_entity(Box::new(entities::fireball::Fireball::new(
+                        self.request_add_entity(Box::new(entities::fireball::Fireball::new(
                             point3(origin.x, origin.y, 0.0),
                             *direction,
                             *velocity,
@@ -649,10 +691,12 @@ impl MessageHandler for GameState {
                         -1 => entities::death_animation::Direction::West,
                         _ => entities::death_animation::Direction::East,
                     };
-                    self.add_entity(Box::new(entities::death_animation::DeathAnimation::new(
-                        point3(position.x, position.y, sprite_layers::FOREGROUND),
-                        direction,
-                    )));
+                    self.request_add_entity(Box::new(
+                        entities::death_animation::DeathAnimation::new(
+                            point3(position.x, position.y, sprite_layers::FOREGROUND),
+                            direction,
+                        ),
+                    ));
                 }
 
                 Event::SpawnEntity {
@@ -669,7 +713,7 @@ impl MessageHandler for GameState {
                         Some(&mut self.entity_id_vendor),
                     ) {
                         Ok(entity) => {
-                            let id = self.add_entity(entity);
+                            let id = self.request_add_entity(entity);
                             self.message_dispatcher.enqueue(Message::global_to_entity(
                                 message.sender_entity_id.unwrap(),
                                 Event::EntityWasSpawned {
