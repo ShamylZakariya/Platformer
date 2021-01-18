@@ -6,15 +6,16 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
 mod camera;
-mod constants;
 mod entities;
 mod entity;
+mod event_dispatch;
+mod gamestate;
 mod geom;
 mod input;
 mod map;
 mod sprite;
-mod state;
 mod texture;
 mod tileset;
 
@@ -29,7 +30,7 @@ fn main() {
         .with_title("Gargoyle's Quest")
         .build(&event_loop)
         .unwrap();
-    let mut state = block_on(state::State::new(&window));
+    let mut state = block_on(gamestate::State::new(&window));
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {

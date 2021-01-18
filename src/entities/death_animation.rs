@@ -3,7 +3,8 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    entity::{Dispatcher, Entity},
+    entity::Entity,
+    event_dispatch::*,
     map,
     sprite::{collision, rendering},
 };

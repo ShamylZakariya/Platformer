@@ -1,7 +1,6 @@
 use cgmath::*;
 use core::panic;
 use entities::EntityClass;
-use entity::{Event, Message};
 use std::{
     collections::{HashMap, HashSet},
     rc::Rc,
@@ -13,20 +12,29 @@ use winit::{
     window::Window,
 };
 
-use crate::sprite::collision;
+use crate::event_dispatch::*;
+use crate::map;
 use crate::sprite::rendering;
 use crate::texture;
 use crate::tileset;
 use crate::{camera, entities};
-use crate::{constants::sprite_layers, constants::ORIGINAL_VIEWPORT_TILES_WIDE, entity};
 use crate::{
-    constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
-    map,
+    entity::{self, EntityComponents},
+    sprite::collision,
 };
 
 use crate::camera::Uniforms as CameraUniforms;
 use crate::sprite::rendering::Drawable as SpriteDrawable;
 use crate::sprite::rendering::Uniforms as SpriteUniforms;
+
+pub mod constants;
+pub mod events;
+use constants::sprite_layers;
+
+use self::{
+    constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE},
+    events::Event,
+};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -59,34 +67,6 @@ struct UiInputState {
     zoom: Option<f32>,
     draw_stage_collision_info: Option<bool>,
     draw_entity_debug: Option<bool>,
-}
-
-struct EntityComponents {
-    entity: Box<dyn entity::Entity>,
-    sprite: crate::sprite::rendering::EntityDrawable,
-    uniforms: SpriteUniforms,
-}
-
-impl EntityComponents {
-    fn new(
-        entity: Box<dyn entity::Entity>,
-        sprite: crate::sprite::rendering::EntityDrawable,
-        uniforms: SpriteUniforms,
-    ) -> Self {
-        Self {
-            entity,
-            sprite,
-            uniforms,
-        }
-    }
-
-    pub fn id(&self) -> u32 {
-        self.entity.entity_id()
-    }
-
-    pub fn class(&self) -> EntityClass {
-        self.entity.entity_class()
-    }
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -156,7 +136,7 @@ pub struct State {
 
     // Collision detection and dispatch
     collision_space: collision::Space,
-    message_dispatcher: entity::Dispatcher,
+    message_dispatcher: Dispatcher,
 
     // Entity rendering
     entity_id_vendor: entity::IdVendor,
@@ -441,7 +421,7 @@ impl State {
             map,
 
             collision_space: stage_hit_tester,
-            message_dispatcher: entity::Dispatcher::default(),
+            message_dispatcher: Dispatcher::default(),
 
             entity_id_vendor,
             entity_tileset,
@@ -617,7 +597,7 @@ impl State {
         // Dispatch collected messages
         //
 
-        entity::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
+        Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -936,7 +916,7 @@ impl State {
     }
 }
 
-impl entity::MessageHandler for State {
+impl MessageHandler for State {
     fn handle_message(&mut self, message: &Message) {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             //
@@ -952,7 +932,7 @@ impl entity::MessageHandler for State {
             //
 
             match &message.event {
-                entity::Event::TryShootFireball {
+                Event::TryShootFireball {
                     origin,
                     direction,
                     velocity,
@@ -972,7 +952,7 @@ impl entity::MessageHandler for State {
                     }
                 }
 
-                entity::Event::PlayEntityDeathAnimation {
+                Event::PlayEntityDeathAnimation {
                     position,
                     direction,
                 } => {
@@ -986,7 +966,7 @@ impl entity::MessageHandler for State {
                     )));
                 }
 
-                entity::Event::SpawnEntity {
+                Event::SpawnEntity {
                     class_name,
                     spawn_point_sprite,
                     spawn_point_tile,

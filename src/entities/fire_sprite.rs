@@ -3,8 +3,12 @@ use std::time::Duration;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    constants::sprite_masks::{self, COLLIDER},
-    entity::{Dispatcher, Entity, Event, Message},
+    entity::Entity,
+    event_dispatch::*,
+    gamestate::{
+        constants::sprite_masks::{self, COLLIDER},
+        events::Event,
+    },
     map,
     sprite::{self, collision, rendering},
     tileset,

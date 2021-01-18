@@ -3,8 +3,9 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    constants,
-    entity::{Dispatcher, Entity, Event, Message},
+    entity::Entity,
+    event_dispatch::*,
+    gamestate::{constants, events::Event},
     map,
     sprite::{self, collision, rendering},
     tileset,

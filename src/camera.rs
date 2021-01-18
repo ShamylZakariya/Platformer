@@ -4,7 +4,7 @@ use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
-use crate::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
+use crate::gamestate::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -233,7 +233,7 @@ impl CameraController {
     }
 
     pub fn mouse_movement(&mut self, pressed: bool, _position: Point2<f32>, delta: Vector2<f32>) {
-        // there's some weirdness about position/delta - they don't really correlate to pixels, I think
+        // FIXME: there's some weirdness about position/delta - they don't really correlate to pixels, I think
         // there's some peculiar scaling thing going on.
         if pressed {
             let delta = (delta * 0.125) / self.projection.scale;
@@ -254,7 +254,7 @@ impl CameraController {
         self.projection.set_scale(new_scale);
     }
 
-    pub fn update(&mut self, dt: Duration, tracking: Option<Point2<f32>>) {
+    pub fn update(&mut self, _dt: Duration, tracking: Option<Point2<f32>>) {
         if let Some(tracking) = tracking {
             self.camera.position.x = tracking.x;
             self.camera.position.y = tracking.y;

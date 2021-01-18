@@ -4,9 +4,13 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    constants::{sprite_masks::*, GRAVITY_VEL},
     entities::fireball::Direction,
-    entity::{Dispatcher, Entity, Event, Message},
+    entity::Entity,
+    event_dispatch::*,
+    gamestate::{
+        constants::{self, sprite_layers, sprite_masks::*, GRAVITY_VEL},
+        events::Event,
+    },
     input::*,
     map,
     sprite::{self, collision, rendering},
@@ -722,7 +726,7 @@ impl Entity for Firebrand {
                         + self.character_state.position_offset.x
                         + xoffset,
                     self.character_state.position.y + self.character_state.position_offset.y,
-                    crate::constants::sprite_layers::PLAYER,
+                    sprite_layers::PLAYER,
                 ));
         }
     }
@@ -1207,8 +1211,7 @@ impl Firebrand {
                 }
 
                 if should_apply_gravity {
-                    self.vertical_velocity =
-                        crate::constants::apply_gravity(self.vertical_velocity, dt);
+                    self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
                 }
             }
         }

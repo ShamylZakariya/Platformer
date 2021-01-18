@@ -1,7 +1,6 @@
 CURRENTLY:
-    - CameraController ought to own the camera?
-TODO:
     - Refactor State.rs into components, e.g. RenderState, EntityState, etc
+TODO:
     - Enemies
 
 BUGS:

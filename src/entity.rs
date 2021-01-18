@@ -3,6 +3,7 @@ use std::{collections::HashSet, time::Duration};
 use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
+use crate::event_dispatch::*;
 use crate::map;
 use crate::sprite::{self, collision, rendering};
 use crate::tileset;
@@ -130,126 +131,30 @@ pub trait Entity {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-/// An Event payload for Message
-#[derive(Debug, Clone)]
-pub enum Event {
-    /// Received by an Entity when contacted by the character
-    CharacterContact,
-
-    /// Sent by Firebrand to State to signal request to shoot fireball.
-    /// If State determines a fireball may be shot (there is some rate limiting)
-    /// State will reply with DidShootFireball
-    TryShootFireball {
-        origin: Point2<f32>,
-        direction: crate::entities::fireball::Direction,
-        velocity: f32,
-    },
-
-    /// Sent to Firebrand when a fireball was successfully shot
-    DidShootFireball,
-
-    /// Received by an entity when hit by Firebrand's fireball
-    HitByFireball {
-        // direction of fireball travel, -1 for left, +1 for right
-        direction: i32,
-    },
-
-    /// Sent by an entity to Global to signal request to spawn an entity.
-    /// Generally sent by SpawnPoint to request spawning their enemy type.
-    /// Global responds with EntityWasSpawned to signal spawn result.
-    SpawnEntity {
-        class_name: String,
-        spawn_point_sprite: sprite::Sprite,
-        spawn_point_tile: tileset::Tile,
-    },
-
-    /// Response from Global to signal if requested entity was spawned.
-    /// Bears the spawned entity id on success, None otherwise.
-    EntityWasSpawned { entity_id: Option<u32> },
-
-    /// Sent by a spawned entity to its spawn point when it dies
-    SpawnedEntityDidDie,
-
-    /// Sent by a dying entity to Global to request display of a death animation
-    PlayEntityDeathAnimation {
-        // position of death animation
-        position: Point2<f32>,
-        // direction it should travel, -1 being left, +1 for right
-        direction: i32,
-    },
+pub struct EntityComponents {
+    pub entity: Box<dyn Entity>,
+    pub sprite: crate::sprite::rendering::EntityDrawable,
+    pub uniforms: crate::sprite::rendering::Uniforms,
 }
 
-/// A Message to be sent to an Entity instance.
-#[derive(Debug, Clone)]
-pub struct Message {
-    /// The entity that sent this message.
-    /// If None, then the State sent the message.
-    pub sender_entity_id: Option<u32>,
-
-    /// The entity to which to route this Message.
-    /// If None, the State will process the message
-    pub recipient_entity_id: Option<u32>,
-    /// The event payload describing whatever happened
-    pub event: Event,
-}
-
-impl Message {
-    /// Creates a message to be processed by the global handler
-    pub fn entity_to_global(sender: u32, event: Event) -> Self {
-        Message {
-            sender_entity_id: Some(sender),
-            recipient_entity_id: None,
-            event,
+impl EntityComponents {
+    pub fn new(
+        entity: Box<dyn Entity>,
+        sprite: crate::sprite::rendering::EntityDrawable,
+        uniforms: crate::sprite::rendering::Uniforms,
+    ) -> Self {
+        Self {
+            entity,
+            sprite,
+            uniforms,
         }
     }
 
-    /// Creates a message to be routed from one entity to another
-    pub fn entity_to_entity(sender: u32, recipient: u32, event: Event) -> Self {
-        Message {
-            sender_entity_id: Some(sender),
-            recipient_entity_id: Some(recipient),
-            event,
-        }
+    pub fn id(&self) -> u32 {
+        self.entity.entity_id()
     }
 
-    pub fn global_to_entity(recipient: u32, event: Event) -> Self {
-        Message {
-            sender_entity_id: None,
-            recipient_entity_id: Some(recipient),
-            event,
-        }
-    }
-}
-
-pub trait MessageHandler {
-    fn handle_message(&mut self, message: &Message);
-}
-
-pub struct Dispatcher {
-    pub messages: Vec<Message>,
-}
-
-impl Default for Dispatcher {
-    fn default() -> Self {
-        Dispatcher { messages: vec![] }
-    }
-}
-
-impl Dispatcher {
-    pub fn enqueue(&mut self, message: Message) {
-        self.messages.push(message);
-    }
-
-    // TODO: I would prefer dispatch to be a member fn, not static. But State owns
-    // the dispatcher, and as such can't be a message handler too since
-    pub fn dispatch(messages: &Vec<Message>, handler: &mut dyn MessageHandler) {
-        for m in messages {
-            handler.handle_message(m);
-        }
-    }
-
-    /// Returns the current message buffer, and clears it.
-    pub fn drain(&mut self) -> Vec<Message> {
-        std::mem::take(&mut self.messages)
+    pub fn class(&self) -> crate::entities::EntityClass {
+        self.entity.entity_class()
     }
 }

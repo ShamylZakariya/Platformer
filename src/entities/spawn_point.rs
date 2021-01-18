@@ -3,7 +3,9 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    entity::{self, Dispatcher, Entity, Event, Message},
+    entity::Entity,
+    event_dispatch::*,
+    gamestate::events::Event,
     map,
     sprite::{self, collision},
     tileset,
@@ -102,11 +104,11 @@ impl Entity for SpawnPoint {
 
     fn handle_message(&mut self, message: &Message) {
         match message.event {
-            entity::Event::SpawnedEntityDidDie => {
+            Event::SpawnedEntityDidDie => {
                 assert!(message.sender_entity_id == self.spawned_entity_id);
                 self.spawned_entity_id = None;
             }
-            entity::Event::EntityWasSpawned { entity_id } => {
+            Event::EntityWasSpawned { entity_id } => {
                 self.spawned_entity_id = entity_id;
             }
             _ => {}
