@@ -298,7 +298,10 @@
  </tile>
  <tile id="47">
   <properties>
-   <property name="collision_shape" value="none"/>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="death_0"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="48">
@@ -403,7 +406,10 @@
  </tile>
  <tile id="63">
   <properties>
-   <property name="collision_shape" value="none"/>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="death_1"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="64">
@@ -494,6 +500,14 @@
   <properties>
    <property name="cycle" value="fly_shoot_2"/>
    <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="79">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="death_2"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="80">
@@ -596,6 +610,14 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="95">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="death_3"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
  <tile id="96">
   <properties>
    <property name="cycle" value="injured"/>
@@ -630,6 +652,14 @@
   <properties>
    <property name="cycle" value="wall_shoot"/>
    <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="111">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="death_4"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="112">

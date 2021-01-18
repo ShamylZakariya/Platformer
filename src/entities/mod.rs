@@ -5,6 +5,7 @@ use crate::map;
 use crate::sprite::{self, collision};
 use crate::tileset;
 
+pub mod death_animation;
 pub mod falling_bridge;
 pub mod fire_sprite;
 pub mod fireball;
@@ -13,6 +14,7 @@ pub mod spawn_point;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityClass {
+    DeathAnimation,
     Firebrand,
     Fireball,
     FallingBridge,

@@ -149,7 +149,10 @@ pub enum Event {
     DidShootFireball,
 
     /// Received by an entity when hit by Firebrand's fireball
-    HitByFireball,
+    HitByFireball {
+        // direction of fireball travel, -1 for left, +1 for right
+        direction: i32,
+    },
 
     /// Sent by an entity to Global to signal request to spawn an entity.
     /// Generally sent by SpawnPoint to request spawning their enemy type.
@@ -166,6 +169,14 @@ pub enum Event {
 
     /// Sent by a spawned entity to its spawn point when it dies
     SpawnedEntityDidDie,
+
+    /// Sent by a dying entity to Global to request display of a death animation
+    PlayEntityDeathAnimation {
+        // position of death animation
+        position: Point2<f32>,
+        // direction it should travel, -1 being left, +1 for right
+        direction: i32,
+    },
 }
 
 /// A Message to be sent to an Entity instance.

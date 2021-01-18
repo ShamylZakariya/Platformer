@@ -43,6 +43,7 @@ pub struct FireSprite {
     current_movement: MovementDir,
     alive: bool,
     hit_points: i32,
+    death_animation_dir: i32,
 }
 
 impl Default for FireSprite {
@@ -57,6 +58,7 @@ impl Default for FireSprite {
             current_movement: MovementDir::East,
             alive: true,
             hit_points: 2,
+            death_animation_dir: 0,
         }
     }
 }
@@ -117,6 +119,15 @@ impl Entity for FireSprite {
                 self.entity_id(),
                 self.spawn_point_id,
                 Event::SpawnedEntityDidDie,
+            ));
+
+            // send death animation message
+            message_dispatcher.enqueue(Message::entity_to_global(
+                self.entity_id(),
+                Event::PlayEntityDeathAnimation {
+                    position: self.position.xy(),
+                    direction: self.death_animation_dir,
+                },
             ));
 
             return;
@@ -244,8 +255,9 @@ impl Entity for FireSprite {
 
     fn handle_message(&mut self, message: &Message) {
         match message.event {
-            Event::HitByFireball => {
+            Event::HitByFireball { direction } => {
                 self.hit_points = (self.hit_points - 1).max(0);
+                self.death_animation_dir = direction;
             }
             _ => {}
         }

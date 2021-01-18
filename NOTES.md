@@ -1,11 +1,6 @@
 CURRENTLY:
-    FireSprite
-        - needs to do the left/right/left/right march
-        - needs to die when shot twice
-
-
 TODO:
-    - Refactor State.rs into components, e.g. RenderState, EntityState, etc
+q    - Refactor State.rs into components, e.g. RenderState, EntityState, etc
     - CameraController ought to own the camera?
     - Enemies
 

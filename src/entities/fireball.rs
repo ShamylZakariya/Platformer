@@ -72,7 +72,12 @@ impl Entity for Fireball {
                 message_dispatcher.enqueue(Message::entity_to_entity(
                     self.entity_id(),
                     target_entity_id,
-                    Event::HitByFireball,
+                    Event::HitByFireball {
+                        direction: match self.direction {
+                            Direction::East => 1,
+                            Direction::West => -1,
+                        },
+                    },
                 ));
             }
             self.alive = false;

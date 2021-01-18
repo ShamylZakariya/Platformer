@@ -962,6 +962,20 @@ impl entity::MessageHandler for State {
                     }
                 }
 
+                entity::Event::PlayEntityDeathAnimation {
+                    position,
+                    direction,
+                } => {
+                    let direction = match direction {
+                        -1 => entities::death_animation::Direction::West,
+                        _ => entities::death_animation::Direction::East,
+                    };
+                    self.add_entity(Box::new(entities::death_animation::DeathAnimation::new(
+                        point3(position.x, position.y, sprite_layers::FOREGROUND),
+                        direction,
+                    )));
+                }
+
                 entity::Event::SpawnEntity {
                     class_name,
                     spawn_point_sprite,
