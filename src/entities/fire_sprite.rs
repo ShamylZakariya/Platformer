@@ -114,6 +114,9 @@ impl Entity for FireSprite {
         if self.hit_points == 0 {
             self.alive = false;
 
+            // remove self from collision space
+            collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id());
+
             // send death message to spawn point
             message_dispatcher.enqueue(Message::entity_to_entity(
                 self.entity_id(),

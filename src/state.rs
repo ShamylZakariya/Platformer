@@ -993,10 +993,6 @@ impl entity::MessageHandler for State {
                         Some(&mut self.entity_id_vendor),
                     ) {
                         Ok(entity) => {
-                            println!(
-                                "State::handle_message[SpawnEntity] - Spawned \"{}\"",
-                                class_name
-                            );
                             let id = self.add_entity(entity);
                             self.message_dispatcher.enqueue(Message::global_to_entity(
                                 message.sender_entity_id.unwrap(),

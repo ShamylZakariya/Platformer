@@ -67,11 +67,6 @@ impl Entity for SpawnPoint {
                 .expect("Spawn point must have \"spawned_entity_class\" property on tile")
                 .to_string();
 
-            println!(
-                "SpawnPoint[{}]::update - sending SpawnEntity request for entity class \"{}\"",
-                self.entity_id(),
-                class_name
-            );
             message_dispatcher.enqueue(Message::entity_to_global(
                 self.entity_id(),
                 Event::SpawnEntity {
@@ -109,30 +104,16 @@ impl Entity for SpawnPoint {
         match message.event {
             entity::Event::SpawnedEntityDidDie => {
                 assert!(message.sender_entity_id == self.spawned_entity_id);
-                println!(
-                    "SpawnPoint[{}]::handle_message[SpawnedEntityDidDie]",
-                    self.entity_id()
-                );
                 self.spawned_entity_id = None;
             }
             entity::Event::EntityWasSpawned { entity_id } => {
                 self.spawned_entity_id = entity_id;
-                println!(
-                    "SpawnPoint[{}]::handle_message[EntityWasSpawned] - entity_id: {:?}",
-                    self.entity_id(),
-                    entity_id
-                );
             }
             _ => {}
         }
     }
 
     fn did_enter_viewport(&mut self) {
-        println!("SpawnPoint[{}]::did_enter_viewport", self.entity_id());
         self.did_become_visible = true;
-    }
-
-    fn did_exit_viewport(&mut self) {
-        println!("SpawnPoint[{}]::did_exit_viewport", self.entity_id());
     }
 }
