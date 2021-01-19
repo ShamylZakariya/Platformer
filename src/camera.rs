@@ -246,7 +246,7 @@ impl CameraController {
         let delta_scale = match delta {
             MouseScrollDelta::LineDelta(_, scroll) => *scroll * 0.05,
             MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => {
-                *scroll as f32 * 0.05
+                *scroll as f32 * -0.05
             }
         };
         let new_scale = self.projection.scale + delta_scale * self.projection.scale;

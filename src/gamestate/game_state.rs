@@ -1,7 +1,6 @@
 use cgmath::*;
 use gpu_state::GpuState;
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     path::Path,
     rc::Rc,
