@@ -11,15 +11,13 @@ mod camera;
 mod entities;
 mod entity;
 mod event_dispatch;
-mod gamestate;
+mod state;
 mod geom;
 mod input;
 mod map;
 mod sprite;
 mod texture;
 mod tileset;
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -30,8 +28,8 @@ fn main() {
         .with_title("Gargoyle's Quest")
         .build(&event_loop)
         .unwrap();
-    let gpu = block_on(gamestate::gpu_state::GpuState::new(&window));
-    let mut state = gamestate::AppState::new(&window, gpu);
+    let gpu = block_on(state::gpu_state::GpuState::new(&window));
+    let mut state = state::app_state::AppState::new(&window, gpu);
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {

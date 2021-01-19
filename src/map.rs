@@ -8,7 +8,7 @@ use xml::reader::{EventReader, XmlEvent};
 
 use crate::entities;
 use crate::entity;
-use crate::gamestate::constants::sprite_masks::*;
+use crate::state::constants::sprite_masks::*;
 use crate::sprite::{self, collision};
 use crate::tileset;
 

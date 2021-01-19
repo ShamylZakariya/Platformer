@@ -5,7 +5,7 @@ use cgmath::*;
 use crate::{
     entity::Entity,
     event_dispatch::*,
-    gamestate::events::Event,
+    state::events::Event,
     map,
     sprite::{collision, rendering},
 };
@@ -62,7 +62,7 @@ impl Entity for Fireball {
         message_dispatcher: &mut Dispatcher,
     ) {
         let dt = dt.as_secs_f32();
-        let mask = crate::gamestate::constants::sprite_masks::SHOOTABLE;
+        let mask = crate::state::constants::sprite_masks::SHOOTABLE;
 
         let next_position = match self.direction {
             Direction::East => point2(self.position.x + self.velocity * dt, self.position.y),

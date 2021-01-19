@@ -1,15 +1,8 @@
-pub mod constants;
-pub mod events;
-pub mod game_state;
-pub mod gpu_state;
-pub mod ui;
-
-use game_state::GameState;
-use gpu_state::GpuState;
-use ui::InputHandler;
 use winit::{event::WindowEvent, window::Window};
 
-use self::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
+use super::{constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE}, ui::{DisplayState, InputHandler, InputState}};
+
+use super::{game_state::GameState, gpu_state::GpuState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -121,7 +114,7 @@ impl AppState {
             let display_state = self.current_display_state();
 
             let ui = self.imgui.frame();
-            let mut ui_input_state = ui::InputState::default();
+            let mut ui_input_state = InputState::default();
 
             //
             // Build the UI, mutating ui_input_state to indicate user interaction.
@@ -210,12 +203,12 @@ impl AppState {
 // ---------------------------------------------------------------------------------------------------------------------
 
 impl InputHandler for AppState {
-    fn current_display_state(&self) -> ui::DisplayState {
+    fn current_display_state(&self) -> DisplayState {
         let firebrand = self.game_state.get_firebrand();
         let position = firebrand.entity.position();
         let cc = &self.game_state.camera_controller;
 
-        ui::DisplayState {
+        DisplayState {
             camera_tracks_character: self.game_state.camera_tracks_character,
             camera_position: cc.camera.position(),
             zoom: cc.projection.scale(),
@@ -225,7 +218,7 @@ impl InputHandler for AppState {
         }
     }
 
-    fn process_input(&mut self, ui_input_state: &ui::InputState) {
+    fn process_input(&mut self, ui_input_state: &InputState) {
         if let Some(z) = ui_input_state.zoom {
             self.game_state.camera_controller.projection.set_scale(z);
         }

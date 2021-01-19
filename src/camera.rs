@@ -4,7 +4,7 @@ use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
-use crate::gamestate::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
+use crate::state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

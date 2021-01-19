@@ -5,7 +5,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::Entity,
     event_dispatch::*,
-    gamestate::{
+    state::{
         constants::sprite_masks::{self, COLLIDER},
         events::Event,
     },

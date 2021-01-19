@@ -7,7 +7,7 @@ use crate::{
     entities::fireball::Direction,
     entity::Entity,
     event_dispatch::*,
-    gamestate::{
+    state::{
         constants::{self, sprite_layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },

@@ -1,4 +1,4 @@
-use crate::gamestate::events::Event;
+use crate::state::events::Event;
 
 /// A Message to be sent to an Entity instance.
 #[derive(Debug, Clone)]

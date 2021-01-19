@@ -5,7 +5,7 @@ use cgmath::*;
 use crate::{
     entity::Entity,
     event_dispatch::*,
-    gamestate::{constants, events::Event},
+    state::{constants, events::Event},
     map,
     sprite::{self, collision, rendering},
     tileset,
