@@ -718,4 +718,12 @@
    <property name="role" value="root"/>
   </properties>
  </tile>
+ <tile id="130">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="flying_fish"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
 </tileset>

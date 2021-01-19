@@ -115,6 +115,12 @@
    <property name="spawned_entity_class" value="FireSprite"/>
   </properties>
  </tile>
+ <tile id="39">
+  <properties>
+   <property name="entity_class" value="SpawnPoint"/>
+   <property name="spawned_entity_class" value="FlyingFish"/>
+  </properties>
+ </tile>
  <tile id="40">
   <properties>
    <property name="animation" value="fire_window"/>

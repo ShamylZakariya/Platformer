@@ -3,6 +3,7 @@ pub mod falling_bridge;
 pub mod fire_sprite;
 pub mod fireball;
 pub mod firebrand;
+pub mod flying_fish;
 pub mod spawn_point;
 
 use anyhow::Result;
@@ -18,6 +19,7 @@ pub enum EntityClass {
     Firebrand,
     Fireball,
     FallingBridge,
+    FlyingFish,
     SpawnPoint,
     FireSprite,
 }
@@ -30,6 +32,9 @@ pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entit
         "Firebrand" => Some(Box::new(firebrand::Firebrand::default()) as Box<dyn entity::Entity>),
         "FireSprite" => {
             Some(Box::new(fire_sprite::FireSprite::default()) as Box<dyn entity::Entity>)
+        }
+        "FlyingFish" => {
+            Some(Box::new(flying_fish::FlyingFish::default()) as Box<dyn entity::Entity>)
         }
         "SpawnPoint" => {
             Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
