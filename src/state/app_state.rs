@@ -61,8 +61,13 @@ impl AppState {
         //
 
         self.game_state.render(&mut self.gpu, &frame, &mut encoder);
-        self.overlay_ui
-            .render(window, &mut self.game_state, &mut self.gpu, &frame, &mut encoder);
+        self.overlay_ui.render(
+            window,
+            &mut self.game_state,
+            &mut self.gpu,
+            &frame,
+            &mut encoder,
+        );
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));

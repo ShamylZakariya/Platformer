@@ -8,8 +8,8 @@ use xml::reader::{EventReader, XmlEvent};
 
 use crate::entities;
 use crate::entity;
-use crate::state::constants::sprite_masks::*;
 use crate::sprite::{self, collision};
+use crate::state::constants::sprite_masks::*;
 use crate::tileset;
 
 #[derive(Clone, Debug)]

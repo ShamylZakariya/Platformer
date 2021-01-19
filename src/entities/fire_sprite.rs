@@ -5,12 +5,12 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::Entity,
     event_dispatch::*,
+    map,
+    sprite::{self, collision, rendering},
     state::{
         constants::sprite_masks::{self, COLLIDER},
         events::Event,
     },
-    map,
-    sprite::{self, collision, rendering},
     tileset,
 };
 

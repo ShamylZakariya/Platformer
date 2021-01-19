@@ -6,8 +6,13 @@ use super::{
     game_state::GameState,
     gpu_state::GpuState,
 };
+
+/// UiStateInput is the input data which will be used to render an ImGUI UI
+/// The method OverlayUi::create_ui_state_input is responsible for vending an
+/// instance that represents the data needed to populate the ImGUI UI.
+/// User interaction with the UI will be used to populate UiInteractionOutput.
 #[derive(Clone, Debug)]
-struct DisplayState {
+struct UiStateInput {
     camera_tracks_character: bool,
     camera_position: Point3<f32>,
     zoom: f32,
@@ -16,21 +21,12 @@ struct DisplayState {
     draw_stage_collision_info: bool,
 }
 
-impl Default for DisplayState {
-    fn default() -> Self {
-        DisplayState {
-            camera_tracks_character: true,
-            camera_position: [0.0, 0.0, 0.0].into(),
-            zoom: 1.0,
-            character_position: [0.0, 0.0].into(),
-            character_cycle: "".to_string(),
-            draw_stage_collision_info: true,
-        }
-    }
-}
-
+/// UiInteractionOutput represents the values from UiSTateInput which changed
+/// due to user interaction, which then need to be promoted to the game state.
+/// Any non-None value is a value that changed, and must be handled in
+/// OverlayUi::handle_ui_interaction_output
 #[derive(Default)]
-struct InputState {
+struct UiInteractionOutput {
     camera_tracks_character: Option<bool>,
     zoom: Option<f32>,
     draw_stage_collision_info: Option<bool>,
@@ -103,10 +99,10 @@ impl OverlayUi {
             .prepare_frame(self.imgui.io_mut(), window)
             .expect("Failed to prepare frame");
 
-        let display_state = self.current_display_state(game_state);
+        let display_state = self.create_ui_state_input(game_state);
 
         let ui = self.imgui.frame();
-        let mut ui_input_state = InputState::default();
+        let mut ui_input_state = UiInteractionOutput::default();
 
         //
         // Build the UI, mutating ui_input_state to indicate user interaction.
@@ -177,15 +173,15 @@ impl OverlayUi {
                 .expect("Imgui render failed");
         }
 
-        self.process_input(&ui_input_state, game_state);
+        self.handle_ui_interaction_output(&ui_input_state, game_state);
     }
 
-    fn current_display_state(&self, game_state: &GameState) -> DisplayState {
+    fn create_ui_state_input(&self, game_state: &GameState) -> UiStateInput {
         let firebrand = game_state.get_firebrand();
         let position = firebrand.entity.position();
         let cc = &game_state.camera_controller;
 
-        DisplayState {
+        UiStateInput {
             camera_tracks_character: game_state.camera_tracks_character,
             camera_position: cc.camera.position(),
             zoom: cc.projection.scale(),
@@ -195,7 +191,11 @@ impl OverlayUi {
         }
     }
 
-    fn process_input(&mut self, ui_input_state: &InputState, game_state: &mut GameState) {
+    fn handle_ui_interaction_output(
+        &mut self,
+        ui_input_state: &UiInteractionOutput,
+        game_state: &mut GameState,
+    ) {
         if let Some(z) = ui_input_state.zoom {
             game_state.camera_controller.projection.set_scale(z);
         }

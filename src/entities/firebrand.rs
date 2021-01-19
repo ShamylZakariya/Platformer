@@ -7,13 +7,13 @@ use crate::{
     entities::fireball::Direction,
     entity::Entity,
     event_dispatch::*,
+    input::*,
+    map,
+    sprite::{self, collision, rendering},
     state::{
         constants::{self, sprite_layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },
-    input::*,
-    map,
-    sprite::{self, collision, rendering},
     tileset,
 };
 

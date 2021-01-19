@@ -176,8 +176,10 @@ impl GameState {
         // Build the sprite render pipeline
 
         let mut stage_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
-        let mut stage_debug_draw_overlap_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
-        let mut stage_debug_draw_contact_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_debug_draw_overlap_uniforms =
+            SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_debug_draw_contact_uniforms =
+            SpriteUniforms::new(&gpu.device, sprite_size_px);
 
         let sprite_render_pipeline_layout =
             gpu.device
@@ -258,7 +260,6 @@ impl GameState {
             })
             .collect::<Vec<_>>();
 
-
         //
         // Write unchanging values into their uniform buffers
         //
@@ -284,7 +285,6 @@ impl GameState {
             .data
             .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         stage_debug_draw_contact_uniforms.write(&mut gpu.queue);
-
 
         Self {
             camera_controller,

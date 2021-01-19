@@ -11,11 +11,11 @@ mod camera;
 mod entities;
 mod entity;
 mod event_dispatch;
-mod state;
 mod geom;
 mod input;
 mod map;
 mod sprite;
+mod state;
 mod texture;
 mod tileset;
 
