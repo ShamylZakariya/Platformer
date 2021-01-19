@@ -3,4 +3,4 @@ pub mod constants;
 pub mod events;
 pub mod game_state;
 pub mod gpu_state;
-pub mod ui;
+pub mod overlay_ui;
