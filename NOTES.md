@@ -1,6 +1,4 @@
 CURRENTLY:
-    - Refactor State.rs into components, e.g. RenderState, EntityState, etc
-TODO:
     - Enemies
 
 BUGS:
