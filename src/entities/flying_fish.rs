@@ -1,5 +1,4 @@
 use cgmath::*;
-use core::time;
 use std::{f32::consts::PI, time::Duration};
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -8,10 +7,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::{
-        constants::sprite_masks::{self, COLLIDER},
-        events::Event,
-    },
+    state::{constants::sprite_masks, events::Event},
     tileset,
 };
 
@@ -35,6 +31,7 @@ pub struct FlyingFish {
     death_animation_dir: i32,
     time_in_phase: f32,
     phase: i32,
+    sprite_size_px: Vector2<f32>,
 }
 
 impl Default for FlyingFish {
@@ -50,6 +47,7 @@ impl Default for FlyingFish {
             death_animation_dir: 0,
             time_in_phase: 0.0,
             phase: 0,
+            sprite_size_px: vec2(0.0, 0.0),
         }
     }
 }
@@ -60,7 +58,7 @@ impl Entity for FlyingFish {
         entity_id: u32,
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
-        _map: &map::Map,
+        map: &map::Map,
         collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
@@ -70,12 +68,14 @@ impl Entity for FlyingFish {
 
         self.position = sprite.origin;
         self.centroid = sprite.origin.xy();
+        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
         self.sprite = *sprite;
         self.sprite.entity_id = Some(entity_id);
-        self.sprite.mask = sprite_masks::SHOOTABLE | sprite_masks::COLLIDER;
+        self.sprite.mask =
+            sprite_masks::SHOOTABLE | sprite_masks::COLLIDER | sprite_masks::CONTACT_DAMAGE;
         self.sprite.collision_shape = sprite::CollisionShape::Square;
         collision_space.add_dynamic_sprite(&self.sprite);
     }
@@ -163,7 +163,7 @@ impl Entity for FlyingFish {
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.phase % 2 {
-            0 => (-1.0, 1.0),
+            0 => (-1.0, 1.0 - 1.0 / self.sprite_size_px.x),
             _ => (1.0, 0.0),
         };
         uniforms

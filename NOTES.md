@@ -1,5 +1,9 @@
 CURRENTLY:
     - Enemies
+    - Firebrand needs to detect when contacting a enemy sprite
+
+TODO:
+    collision::Space::get_static_sprite should return Option<&Sprite> not a copy
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping

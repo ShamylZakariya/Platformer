@@ -93,6 +93,52 @@ impl Space {
         self.add_dynamic_sprite(sprite);
     }
 
+    /// Tests the specified rect against just the dynamic sprites in this Space
+    pub fn test_rect_against_dynamic_sprites<C>(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        mask: u32,
+        mut callback: C,
+    ) where
+        C: FnMut(&Sprite) -> bool,
+    {
+        for (_, sprite) in self.dynamic_sprites.iter() {
+            if sprite.mask & mask != 0 && sprite.rect_intersection(origin, extent, 0.0, true) {
+                if callback(sprite) {
+                    return;
+                }
+            }
+        }
+    }
+
+    /// Tests the specified rect against just the static sprites in this Space calling the callback for each
+    /// match, while the callback returns false. On returning true, the search will finish, signalling that the
+    /// callback is "done"
+    pub fn test_rect_against_static_sprites<C>(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        mask: u32,
+        mut callback: C,
+    ) where
+        C: FnMut(&Sprite) -> bool,
+    {
+        let extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
+        let a = point2(origin.x.floor() as i32, origin.y.floor() as i32);
+        let b = point2(a.x + extent.x, a.y);
+        let c = point2(a.x, a.y + extent.y);
+        let d = point2(a.x + extent.x, a.y + extent.y);
+
+        for p in [a, b, c, d].iter() {
+            if let Some(sprite) = self.get_static_sprite_at(*p, mask) {
+                if callback(&sprite) {
+                    return;
+                }
+            }
+        }
+    }
+
     /// Tests if a point in the sprites' coordinate system intersects with a sprite.
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, dynamic sprites will be returned before static,

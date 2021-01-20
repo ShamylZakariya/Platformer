@@ -686,6 +686,20 @@ impl Entity for Firebrand {
         self.character_state.facing = self.character_facing();
 
         //
+        //  Test against dynamic sprites (e.g., enemies) in scene
+        //
+
+        collision_space.test_rect_against_dynamic_sprites(
+            &self.character_state.position.xy(),
+            &vec2(1.0, 1.0),
+            CONTACT_DAMAGE,
+            |sprite| {
+                self.handle_collision_with(sprite);
+                false
+            },
+        );
+
+        //
         //  Remove any sprites in the contacting set from the overlapping set.
         //
 
@@ -1387,16 +1401,17 @@ impl Firebrand {
     }
 
     fn is_in_water(&self, collision_space: &collision::Space, position: Point2<f32>) -> bool {
-        let a = point2(position.x.floor() as i32, position.y.floor() as i32);
-        let b = point2(a.x + 1, a.y);
-        let c = point2(a.x, a.y + 1);
-        let d = point2(a.x + 1, a.y + 1);
+        let mut in_water = false;
+        collision_space.test_rect_against_static_sprites(
+            &position,
+            &vec2(1.0, 1.0),
+            WATER,
+            |_sprite| {
+                in_water = true;
+                true
+            },
+        );
 
-        for p in [a, b, c, d].iter() {
-            if collision_space.get_static_sprite_at(*p, WATER).is_some() {
-                return true;
-            }
-        }
-        return false;
+        in_water
     }
 }
