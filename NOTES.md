@@ -1,6 +1,5 @@
 CURRENTLY:
     - Enemies
-    - Firebrand needs to detect when contacting a enemy sprite
 
 TODO:
     collision::Space::get_static_sprite should return Option<&Sprite> not a copy
