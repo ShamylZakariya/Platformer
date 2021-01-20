@@ -44,11 +44,11 @@ impl Space {
         }
     }
 
-    pub fn get_static_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<Sprite> {
+    pub fn get_static_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<&Sprite> {
         self.static_unit_sprites
             .get(&(point))
             .filter(|s| s.mask & mask != 0)
-            .map(|s| *s)
+            .map(|s| s)
     }
 
     pub fn add_static_sprite(&mut self, sprite: &Sprite) {

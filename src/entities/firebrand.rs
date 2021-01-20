@@ -224,16 +224,16 @@ pub enum ProbeDir {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum ProbeResult {
+pub enum ProbeResult<'a> {
     None,
     OneHit {
         dist: f32,
-        sprite: sprite::Sprite,
+        sprite: &'a sprite::Sprite,
     },
     TwoHits {
         dist: f32,
-        sprite_0: sprite::Sprite,
-        sprite_1: sprite::Sprite,
+        sprite_0: &'a sprite::Sprite,
+        sprite_1: &'a sprite::Sprite,
     },
 }
 
@@ -304,7 +304,7 @@ impl sprite::collision::Space {
         dir: ProbeDir,
         max_steps: i32,
         mask: u32,
-    ) -> Option<(f32, sprite::Sprite)> {
+    ) -> Option<(f32, &sprite::Sprite)> {
         let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
         let mut result = None;
         match dir {
@@ -605,7 +605,7 @@ impl Entity for Firebrand {
                 if self.character_state.stance == Stance::InAir
                     || self.character_state.stance == Stance::Flying
                 {
-                    self.set_stance(Stance::WallHold(wall_contact));
+                    self.set_stance(Stance::WallHold(*wall_contact));
                 }
             }
         }
@@ -952,13 +952,13 @@ impl Firebrand {
     /// - may apply_correction: Icharacterf player were lower
     ///
     /// If player is contacting any surfaces, they will be passed to handle_collision_with()
-    fn find_character_footing(
+    fn find_character_footing<'a>(
         &mut self,
-        collision_space: &collision::Space,
+        collision_space: &'a collision::Space,
         position: Point2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
-    ) -> (Point2<f32>, Option<sprite::Sprite>) {
+    ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
         let mut position = position;
         let mut tracking = None;
 
@@ -993,15 +993,15 @@ impl Firebrand {
             use crate::sprite::core::CollisionShape;
 
             if let Some(s) = collision_space.get_static_sprite_at(*test_point, COLLIDER) {
-                if can_collide_width(&position, &s) {
+                if can_collide_width(&position, s) {
                     match s.collision_shape {
                         CollisionShape::Square => {
                             if s.unit_rect_intersection(
                                 &position,
-                                inset_for_sprite(&s),
+                                inset_for_sprite(s),
                                 contacts_are_collision,
                             ) {
-                                self.handle_collision_with(&s);
+                                self.handle_collision_with(s);
                                 tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = s.origin.y + s.extent.y;
@@ -1013,7 +1013,7 @@ impl Firebrand {
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
                             ) {
-                                self.handle_collision_with(&s);
+                                self.handle_collision_with(s);
                                 tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = intersection.y;
@@ -1022,7 +1022,7 @@ impl Firebrand {
                         }
                         _ => (),
                     }
-                    self.overlapping_sprites.insert(s);
+                    self.overlapping_sprites.insert(*s);
                 }
             }
         }
@@ -1034,12 +1034,12 @@ impl Firebrand {
     /// Returns tuple of updated position, and an optional sprite representing the wall surface the
     /// character may have contacted. The character can collide with up to two sprites if on fractional
     /// y coord, so this returns the one closer to the character's y position)
-    fn apply_lateral_movement(
+    fn apply_lateral_movement<'a>(
         &mut self,
-        collision_space: &collision::Space,
+        collision_space: &'a collision::Space,
         position: Point2<f32>,
         dt: f32,
-    ) -> (Point2<f32>, Option<sprite::Sprite>) {
+    ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
         // this is a no-op while wallholding
         if self.is_wallholding() {
             return (position, None);
@@ -1074,7 +1074,7 @@ impl Firebrand {
             delta_x = self.injury_kickback_vel * dt;
         }
 
-        let mut contacted: Option<sprite::Sprite> = None;
+        let mut contacted: Option<&sprite::Sprite> = None;
 
         //
         // Check if moving left or right would cause a collision, and adjust distance accordingly
