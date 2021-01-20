@@ -1,6 +1,6 @@
 use winit::{event::WindowEvent, window::Window};
 
-use super::overlay_ui::OverlayUi;
+use super::debug_overlay::DebugOverlay;
 
 use super::{game_state::GameState, gpu_state::GpuState};
 
@@ -9,23 +9,23 @@ use super::{game_state::GameState, gpu_state::GpuState};
 pub struct AppState {
     gpu: GpuState,
     game_state: GameState,
-    overlay_ui: OverlayUi,
+    overlay: DebugOverlay,
 }
 
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState) -> Self {
         let game_state = GameState::new(&mut gpu);
-        let overlay_ui = OverlayUi::new(window, &mut gpu);
+        let overlay_ui = DebugOverlay::new(window, &mut gpu);
 
         Self {
             gpu,
             game_state,
-            overlay_ui,
+            overlay: overlay_ui,
         }
     }
 
     pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
-        self.overlay_ui.event(window, event);
+        self.overlay.event(window, event);
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -38,7 +38,7 @@ impl AppState {
     }
 
     pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
-        self.overlay_ui.update(window, dt);
+        self.overlay.update(window, dt);
         self.game_state.update(dt, &mut self.gpu);
     }
 
@@ -61,7 +61,7 @@ impl AppState {
         //
 
         self.game_state.render(&mut self.gpu, &frame, &mut encoder);
-        self.overlay_ui.render(
+        self.overlay.render(
             window,
             &mut self.game_state,
             &mut self.gpu,

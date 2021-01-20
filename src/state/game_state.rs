@@ -1,5 +1,4 @@
 use cgmath::*;
-use gpu_state::GpuState;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -15,15 +14,14 @@ use winit::{
 use crate::{
     camera,
     entities::{self, EntityClass},
+    entity,
     entity::EntityComponents,
+    event_dispatch,
     event_dispatch::{Dispatcher, Message, MessageHandler},
+    map,
     sprite::rendering::Uniforms as SpriteUniforms,
-    texture,
-};
-use crate::{
-    entity, event_dispatch, map,
     sprite::{collision, rendering},
-    tileset,
+    texture, tileset,
 };
 
 use super::{
@@ -78,7 +76,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(gpu: &mut GpuState) -> Self {
+    pub fn new(gpu: &mut gpu_state::GpuState) -> Self {
         // Load the stage map
         let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -365,7 +363,7 @@ impl GameState {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration, gpu: &mut GpuState) {
+    pub fn update(&mut self, dt: std::time::Duration, gpu: &mut gpu_state::GpuState) {
         //
         //  Process entity additions
         //
@@ -447,7 +445,7 @@ impl GameState {
 
     pub fn render(
         &mut self,
-        gpu: &mut GpuState,
+        gpu: &mut gpu_state::GpuState,
         frame: &SwapChainFrame,
         encoder: &mut CommandEncoder,
     ) {
@@ -620,7 +618,7 @@ impl GameState {
     }
 
     /// Adds the entity specified in the request
-    fn add_entity(&mut self, gpu: &mut GpuState, mut req: EntityAdditionRequest) {
+    fn add_entity(&mut self, gpu: &mut gpu_state::GpuState, mut req: EntityAdditionRequest) {
         if req.needs_init {
             req.entity
                 .init(req.entity_id, &self.map, &mut self.collision_space);

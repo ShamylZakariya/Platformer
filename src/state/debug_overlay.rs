@@ -33,13 +33,13 @@ struct UiInteractionOutput {
     draw_entity_debug: Option<bool>,
 }
 
-pub struct OverlayUi {
+pub struct DebugOverlay {
     winit_platform: imgui_winit_support::WinitPlatform,
     imgui: imgui::Context,
     imgui_renderer: imgui_wgpu::Renderer,
 }
 
-impl OverlayUi {
+impl DebugOverlay {
     pub fn new(window: &Window, gpu: &GpuState) -> Self {
         let hidpi_factor = window.scale_factor();
         let mut imgui = imgui::Context::create();
