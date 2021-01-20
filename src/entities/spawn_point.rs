@@ -72,7 +72,7 @@ impl Entity for SpawnPoint {
             message_dispatcher.enqueue(Message::entity_to_global(
                 self.entity_id(),
                 Event::SpawnEntity {
-                    class_name: class_name,
+                    class_name,
                     spawn_point_sprite: sprite,
                     spawn_point_tile: tile,
                 },

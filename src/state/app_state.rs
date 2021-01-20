@@ -15,7 +15,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState) -> Self {
         let game_state = GameState::new(&mut gpu);
-        let overlay_ui = DebugOverlay::new(window, &mut gpu);
+        let overlay_ui = DebugOverlay::new(window, &gpu);
 
         Self {
             gpu,

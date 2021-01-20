@@ -197,12 +197,9 @@ impl Entity for FlyingFish {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        match message.event {
-            Event::HitByFireball { direction } => {
-                self.hit_points = (self.hit_points - 1).max(0);
-                self.death_animation_dir = direction;
-            }
-            _ => {}
+        if let Event::HitByFireball { direction } = message.event {
+            self.hit_points = (self.hit_points - 1).max(0);
+            self.death_animation_dir = direction;
         }
     }
 }

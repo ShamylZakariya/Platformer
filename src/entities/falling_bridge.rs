@@ -65,22 +65,20 @@ impl Entity for FallingBridge {
         if self.is_falling {
             self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
             self.position.y += self.vertical_velocity * dt;
-        } else {
-            if let Some(mut time_remaining) = self.time_remaining {
-                time_remaining -= dt;
-                if time_remaining <= 0.0 {
-                    // we're done!
-                    self.is_falling = true;
-                    self.time_remaining = None;
+        } else if let Some(mut time_remaining) = self.time_remaining {
+            time_remaining -= dt;
+            if time_remaining <= 0.0 {
+                // we're done!
+                self.is_falling = true;
+                self.time_remaining = None;
 
-                    collision_space.remove_static_sprite(
-                        &self
-                            .sprite
-                            .expect("Should have a sprite associated with FallingBridge instance"),
-                    );
-                } else {
-                    self.time_remaining = Some(time_remaining);
-                }
+                collision_space.remove_static_sprite(
+                    &self
+                        .sprite
+                        .expect("Should have a sprite associated with FallingBridge instance"),
+                );
+            } else {
+                self.time_remaining = Some(time_remaining);
             }
         }
     }
@@ -119,14 +117,11 @@ impl Entity for FallingBridge {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        match message.event {
-            Event::CharacterContact => {
-                if self.time_remaining.is_none() {
-                    self.position.y -= 2.0 / self.sprite_size_px.y;
-                    self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
-                }
+        if let Event::CharacterContact = message.event {
+            if self.time_remaining.is_none() {
+                self.position.y -= 2.0 / self.sprite_size_px.y;
+                self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
             }
-            _ => {}
         }
     }
 }

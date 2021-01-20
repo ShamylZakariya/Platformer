@@ -23,7 +23,7 @@ pub const ORIGINAL_VIEWPORT_TILES_WIDE: i32 = 10;
 pub const MIN_CAMERA_SCALE: f32 = ORIGINAL_VIEWPORT_TILES_WIDE as f32;
 pub const MAX_CAMERA_SCALE: f32 = 32.0;
 
-pub const GRAVITY_VEL: f32 = -1.0 / 0.12903225806451613;
+pub const GRAVITY_VEL: f32 = -1.0 / 0.129_032_25;
 pub fn apply_gravity(vertical_velocity: f32, dt: f32) -> f32 {
     vertical_velocity + (2.5 * dt * (GRAVITY_VEL - vertical_velocity))
 }

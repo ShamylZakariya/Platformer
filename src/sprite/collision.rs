@@ -3,6 +3,10 @@ use std::{collections::HashMap, unimplemented};
 
 use crate::sprite::core::*;
 
+fn rel_eq(a: f32, b: f32) -> bool {
+    (a - b).abs() < f32::EPSILON
+}
+
 pub struct Space {
     static_unit_sprites: HashMap<Point2<i32>, Sprite>,
     dynamic_sprites: HashMap<u32, Sprite>,
@@ -25,7 +29,7 @@ impl Space {
 
         for sprite in static_sprites {
             // copy sprites into appropriate storage
-            if sprite.extent.x == 1.0 && sprite.extent.y == 1.0 {
+            if rel_eq(sprite.extent.x, 1.0) && rel_eq(sprite.extent.y, 1.0) {
                 unit_sprite_map.insert(
                     point2(
                         sprite.origin.x.floor() as i32,
@@ -104,10 +108,11 @@ impl Space {
         C: FnMut(&Sprite) -> bool,
     {
         for (_, sprite) in self.dynamic_sprites.iter() {
-            if sprite.mask & mask != 0 && sprite.rect_intersection(origin, extent, 0.0, true) {
-                if callback(sprite) {
-                    return;
-                }
+            if sprite.mask & mask != 0
+                && sprite.rect_intersection(origin, extent, 0.0, true)
+                && callback(sprite)
+            {
+                return;
             }
         }
     }
@@ -153,7 +158,7 @@ impl Space {
         self.static_unit_sprites
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
-            .map(|s| *s)
+            .copied()
     }
 }
 

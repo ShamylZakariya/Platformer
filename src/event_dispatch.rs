@@ -63,7 +63,7 @@ impl Dispatcher {
 
     // TODO: I would prefer dispatch to be a member fn, not static. But State owns
     // the dispatcher, and as such can't be a message handler too since
-    pub fn dispatch(messages: &Vec<Message>, handler: &mut dyn MessageHandler) {
+    pub fn dispatch(messages: &[Message], handler: &mut dyn MessageHandler) {
         for m in messages {
             handler.handle_message(m);
         }

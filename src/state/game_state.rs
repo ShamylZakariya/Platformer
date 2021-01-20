@@ -143,13 +143,13 @@ impl GameState {
 
             let mut all_sprites = vec![];
             all_sprites.extend(bg_sprites);
-            all_sprites.extend(level_sprites.clone());
+            all_sprites.extend(level_sprites);
 
             let sm =
                 crate::sprite::rendering::Mesh::new(&all_sprites, 0, &gpu.device, "Sprite Mesh");
             (
                 stage_sprite_material.clone(),
-                rendering::Drawable::with(sm, stage_sprite_material.clone()),
+                rendering::Drawable::with(sm, stage_sprite_material),
                 collision_space,
                 entities,
                 stage_animation_flipbooks,
@@ -301,7 +301,7 @@ impl GameState {
             firebrand_entity_id,
             visible_entities: HashSet::new(),
             entities_to_add: Vec::new(),
-            flipbook_animations: flipbook_animations,
+            flipbook_animations,
 
             last_mouse_pos: (0, 0).into(),
             mouse_pressed: false,

@@ -59,7 +59,7 @@ impl SpriteFlipbookAnimation {
         let mut durations = vec![];
 
         // ensure our frame sequence is in order by "animation_frame" property
-        let mut sequence: Vec<&tileset::Tile> = sequence.iter().map(|t| *t).collect();
+        let mut sequence: Vec<&tileset::Tile> = sequence.iter().copied().collect();
         sequence.sort_by(|a, b| {
             let a_frame = a.get_property("animation_frame").expect(
                 "Tiles passed to SpriteAnimationSequence must have \"animation_frame\" property",
@@ -257,9 +257,9 @@ impl Map {
                 Ok(XmlEvent::Characters(characters)) if handle_current_layer_data => {
                     if let Some(layer) = &mut current_layer {
                         for line in characters.split_whitespace() {
-                            for index in line.split(",") {
+                            for index in line.split(',') {
                                 let index = index.trim();
-                                if index.len() > 0 {
+                                if !index.is_empty() {
                                     let index = index.parse::<u32>().with_context(|| {
                                         format!("Expected to parse '{}' to u32", index)
                                     })?;
@@ -273,8 +273,8 @@ impl Map {
                         );
                     }
                 }
-                Ok(XmlEvent::EndElement { name }) => match name.local_name.as_str() {
-                    "layer" => {
+                Ok(XmlEvent::EndElement { name }) => {
+                    if name.local_name.as_str() == "layer" {
                         let layer = current_layer.take().context("Expected current_layer to have been populated when finishing <layer> block.")?;
                         let expected_count = layer.width as usize * layer.height as usize;
                         if layer.tile_data.len() != expected_count {
@@ -286,8 +286,7 @@ impl Map {
                         }
                         layers.push(layer);
                     }
-                    _ => {}
-                },
+                }
                 Err(_) => {}
                 _ => {}
             }
@@ -386,7 +385,7 @@ impl Map {
             z_depth,
             |sprite, tile| {
                 if sprite.mask & ENTITY == 0 && !tile.has_property("animation") {
-                    sprites.push(sprite.clone());
+                    sprites.push(*sprite);
                 }
             },
         );
@@ -420,10 +419,9 @@ impl Map {
                         collision_space,
                         None,
                     )
-                    .expect(&format!(
-                        "Unable to instantiate Entity with class name \"{}\"",
-                        name
-                    ));
+                    .unwrap_or_else(|_| {
+                        panic!("Unable to instantiate Entity with class name \"{}\"", name)
+                    });
                     entities.push(entity);
                 }
             },

@@ -51,14 +51,16 @@ fn main() {
                 if !state.input(&window, &event) {
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
-                        WindowEvent::KeyboardInput { input, .. } => match input {
-                            KeyboardInput {
+                        WindowEvent::KeyboardInput { input, .. } => {
+                            if let KeyboardInput {
                                 state: ElementState::Pressed,
                                 virtual_keycode: Some(VirtualKeyCode::Escape),
                                 ..
-                            } => *control_flow = ControlFlow::Exit,
-                            _ => {}
-                        },
+                            } = input
+                            {
+                                *control_flow = ControlFlow::Exit
+                            }
+                        }
                         WindowEvent::Resized(physical_size) => {
                             state.resize(&window, physical_size);
                         }

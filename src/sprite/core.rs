@@ -270,7 +270,7 @@ impl Sprite {
             CollisionShape::Square => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
-                &vec![
+                &[
                     point2(self.origin.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
@@ -280,7 +280,7 @@ impl Sprite {
             CollisionShape::NorthEast => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
-                &vec![
+                &[
                     point2(self.origin.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y),
                     point2(self.origin.x, self.origin.y + self.extent.y),
@@ -289,7 +289,7 @@ impl Sprite {
             CollisionShape::SouthEast => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
-                &vec![
+                &[
                     point2(self.origin.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
                     point2(self.origin.x, self.origin.y + self.extent.y),
@@ -298,7 +298,7 @@ impl Sprite {
             CollisionShape::SouthWest => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
-                &vec![
+                &[
                     point2(self.origin.x + self.extent.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),
                     point2(self.origin.x, self.origin.y + self.extent.y),
@@ -307,7 +307,7 @@ impl Sprite {
             CollisionShape::NorthWest => geom::intersection::line_convex_poly_closest(
                 a,
                 b,
-                &vec![
+                &[
                     point2(self.origin.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y),
                     point2(self.origin.x + self.extent.x, self.origin.y + self.extent.y),

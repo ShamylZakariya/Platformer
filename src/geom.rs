@@ -73,7 +73,7 @@ pub mod intersection {
     pub fn line_convex_poly(
         a: &Point2<f32>,
         b: &Point2<f32>,
-        convex_poly: &Vec<Point2<f32>>,
+        convex_poly: &[Point2<f32>],
     ) -> Vec<Point2<f32>> {
         let mut intersections = vec![];
         for i in 0..convex_poly.len() {
@@ -89,7 +89,7 @@ pub mod intersection {
     pub fn line_convex_poly_closest(
         a: &Point2<f32>,
         b: &Point2<f32>,
-        convex_poly: &Vec<Point2<f32>>,
+        convex_poly: &[Point2<f32>],
     ) -> Option<Point2<f32>> {
         let mut intersections = vec![];
         for i in 0..convex_poly.len() {

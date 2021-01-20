@@ -89,11 +89,8 @@ pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
 
 fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
     move |_dist: f32, sprite: &sprite::Sprite| -> bool {
-        if position.y < sprite.top() && sprite.mask & RATCHET != 0 {
-            false
-        } else {
-            true
-        }
+        // ignore collision if the sprite is a ratched and position is below sprite
+        !(position.y < sprite.top() && sprite.mask & RATCHET != 0)
     }
 }
 
@@ -152,7 +149,7 @@ pub struct CharacterState {
 impl CharacterState {
     fn new(position: Point2<f32>) -> Self {
         CharacterState {
-            position: position,
+            position,
             position_offset: Zero::zero(),
             cycle: CYCLE_DEFAULT,
             stance: Stance::Standing,
@@ -170,7 +167,7 @@ struct FirebrandInputState {
 impl Default for FirebrandInputState {
     fn default() -> Self {
         Self {
-            input_state: InputState::for_keys(&vec![
+            input_state: InputState::for_keys(&[
                 VirtualKeyCode::W,
                 VirtualKeyCode::A,
                 VirtualKeyCode::D,
@@ -459,9 +456,8 @@ impl Entity for Firebrand {
         self.time += dt;
         self.step += 1;
 
-        match self.input_state.fire() {
-            ButtonState::Pressed => self.shoot_fireball(message_dispatcher),
-            _ => {}
+        if let ButtonState::Pressed = self.input_state.fire() {
+            self.shoot_fireball(message_dispatcher);
         }
 
         //
@@ -562,17 +558,12 @@ impl Entity for Firebrand {
                 }
 
                 if self.character_state.stance == Stance::Flying
-                    || (self.character_state.stance == Stance::InAir
-                        && self.vertical_velocity > 0.0)
+                    || self.character_state.stance == Stance::InAir
                     || self.is_wallholding()
                 {
                     (self.character_state.position, contacting_ground)
                 } else {
-                    if self.character_state.stance == Stance::InAir {
-                        (self.character_state.position, contacting_ground)
-                    } else {
-                        (position, contacting_ground)
-                    }
+                    (position, contacting_ground)
                 }
             }
         };
@@ -648,7 +639,7 @@ impl Entity for Firebrand {
                 }
 
                 // Decrement remaining flight time
-                self.flight_countdown = self.flight_countdown - dt;
+                self.flight_countdown -= dt;
                 if self.flight_countdown <= 0.0 {
                     self.flight_countdown = 0.0;
                     self.set_stance(Stance::InAir);
@@ -791,11 +782,8 @@ impl Entity for Firebrand {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        match message.event {
-            Event::DidShootFireball => {
-                self.last_shoot_time = self.time;
-            }
-            _ => {}
+        if let Event::DidShootFireball = message.event {
+            self.last_shoot_time = self.time;
         }
     }
 
@@ -973,11 +961,7 @@ impl Firebrand {
 
         let can_collide_width = |p: &Point2<f32>, s: &sprite::Sprite| -> bool {
             // if character is more than 75% up a ratchet block consider it a collision
-            if s.mask & RATCHET != 0 && p.y < (s.top() - 0.25) {
-                false
-            } else {
-                true
-            }
+            !(s.mask & RATCHET != 0 && p.y < (s.top() - 0.25))
         };
 
         let sprite_size_px = self.sprite_size_px.x;
@@ -1158,15 +1142,13 @@ impl Firebrand {
         //
 
         if let Some(c) = contacted {
-            if c.mask & CONTACT_DAMAGE != 0 {
-                contacted = None;
-            } else if collision_space
-                .get_static_sprite_at(point2(c.origin.x as i32, c.origin.y as i32 + 1), mask)
-                .is_none()
+            if c.mask & CONTACT_DAMAGE != 0
+                || (collision_space
+                    .get_static_sprite_at(point2(c.origin.x as i32, c.origin.y as i32 + 1), mask)
+                    .is_none()
+                    && position.y > c.origin.y + (c.extent.y * 0.5))
             {
-                if position.y > c.origin.y + (c.extent.y * 0.5) {
-                    contacted = None;
-                }
+                contacted = None;
             }
         }
 

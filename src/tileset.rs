@@ -205,18 +205,17 @@ impl TileSet {
                         _ => {}
                     }
                 }
-                Ok(XmlEvent::EndElement { name }) => match name.local_name.as_str() {
-                    //
-                    //  Closes the <tile> block by assigning the current_tile
-                    //
-                    "tile" => {
+                Ok(XmlEvent::EndElement { name }) => {
+                    if name.local_name.as_str() == "tile" {
+                        //
+                        //  Closes the <tile> block by assigning the current_tile
+                        //
                         let tile = current_tile
                             .take()
                             .context("Expected to have a valid Tile when reaching </tile>")?;
                         tiles.push(tile);
                     }
-                    _ => {}
-                },
+                }
                 Err(_) => {}
                 _ => {}
             }
@@ -242,7 +241,7 @@ impl TileSet {
             tiles_map.insert(tile.id, tile);
         }
         for idx in 0..tile_count {
-            tiles_map.entry(idx).or_insert(Tile::new(idx));
+            tiles_map.entry(idx).or_insert_with(|| Tile::new(idx));
         }
 
         Ok(TileSet {
@@ -282,7 +281,7 @@ impl TileSet {
     pub fn get_tile_position(&self, tile: &Tile) -> Point2<u32> {
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
-        return point2(col, row);
+        point2(col, row)
     }
 
     /// Returns the tile at a given row/col position (where (0,0) is the first or top-left tile in the tileset)

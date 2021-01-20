@@ -309,7 +309,7 @@ pub struct Mesh {
 }
 
 impl Mesh {
-    pub fn new(sprites: &Vec<Sprite>, material: usize, device: &wgpu::Device, name: &str) -> Self {
+    pub fn new(sprites: &[Sprite], material: usize, device: &wgpu::Device, name: &str) -> Self {
         let mut vertices = vec![];
         let mut indices = vec![];
         let mut sprite_element_indices: HashMap<Sprite, u32> = HashMap::new();
@@ -371,11 +371,11 @@ impl Mesh {
             vertices.push(sv_d);
 
             sprite_element_indices.insert(*sprite, indices.len() as u32);
-            indices.push((idx + 0) as u32);
+            indices.push(idx as u32);
             indices.push((idx + 1) as u32);
             indices.push((idx + 2) as u32);
 
-            indices.push((idx + 0) as u32);
+            indices.push(idx as u32);
             indices.push((idx + 2) as u32);
             indices.push((idx + 3) as u32);
         }
@@ -546,7 +546,10 @@ impl EntityDrawable {
         let mut root_tiles_by_cycle: HashMap<&str, &tileset::Tile> = HashMap::new();
         for tile in tiles {
             let cycle = tile.get_property("cycle").unwrap();
-            tiles_by_cycle.entry(cycle).or_insert(Vec::new()).push(tile);
+            tiles_by_cycle
+                .entry(cycle)
+                .or_insert_with(Vec::new)
+                .push(tile);
 
             if tile.get_property("role") == Some("root") {
                 root_tiles_by_cycle.insert(cycle, tile);
@@ -580,13 +583,13 @@ impl EntityDrawable {
 
                 sprites_by_cycle
                     .entry(cycle)
-                    .or_insert(Vec::new())
+                    .or_insert_with(Vec::new)
                     .push(sprite);
             }
         }
 
         // Convert sprites to sprite meshes
-        Self::new(&mut sprites_by_cycle, material, device)
+        Self::new(&sprites_by_cycle, material, device)
     }
 
     pub fn new(
