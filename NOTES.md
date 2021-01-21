@@ -2,7 +2,6 @@ CURRENTLY:
     - Enemies
 
 TODO:
-    collision::Space::get_static_sprite should return Option<&Sprite> not a copy
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping

@@ -1,4 +1,5 @@
 use cgmath::*;
+use rand::{prelude::*, Rng};
 use std::{f32::consts::PI, time::Duration};
 use winit::event::{ElementState, VirtualKeyCode};
 
@@ -13,7 +14,8 @@ use crate::{
 
 // --------------------------------------------------------------------------------------------------------------------
 
-const PARABOLA_HALF_HEIGHT: f32 = 2.0;
+const PARABOLA_HALF_HEIGHT_SHORT: f32 = 2.0;
+const PARABOLA_HALF_HEIGHT_TALL: f32 = 3.0;
 const PARABOLA_HALF_WIDTH: f32 = 1.0;
 const PARABOLA_MOTION_DURATION: f32 = 1.1;
 const HIT_POINTS: i32 = 1;
@@ -32,6 +34,9 @@ pub struct FlyingFish {
     time_in_phase: f32,
     phase: i32,
     sprite_size_px: Vector2<f32>,
+    jump_phase: i32,
+    jump_height: f32,
+    rng: ThreadRng,
 }
 
 impl Default for FlyingFish {
@@ -48,6 +53,9 @@ impl Default for FlyingFish {
             time_in_phase: 0.0,
             phase: 0,
             sprite_size_px: vec2(0.0, 0.0),
+            jump_phase: 0,
+            jump_height: PARABOLA_HALF_HEIGHT_SHORT,
+            rng: thread_rng(),
         }
     }
 }
@@ -69,6 +77,9 @@ impl Entity for FlyingFish {
         self.position = sprite.origin;
         self.centroid = sprite.origin.xy();
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
+
+        // offset phase such that neighbor fish don't jump in same dir
+        self.phase = self.position.x as i32 % 2;
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
@@ -142,7 +153,7 @@ impl Entity for FlyingFish {
         };
 
         let x = phase_circular.cos() * PARABOLA_HALF_WIDTH;
-        let y = phase_circular.sin() * PARABOLA_HALF_HEIGHT;
+        let y = phase_circular.sin() * self.jump_height;
         self.position.x = self.centroid.x + x;
         self.position.y = self.centroid.y + y;
 
@@ -150,6 +161,14 @@ impl Entity for FlyingFish {
         if self.time_in_phase > PARABOLA_MOTION_DURATION {
             self.time_in_phase -= PARABOLA_MOTION_DURATION;
             self.phase += 1;
+
+            if self.rng.gen::<f32>() < 0.25 {
+                self.jump_phase += 1;
+                self.jump_height = match self.jump_phase % 2 {
+                    0 => PARABOLA_HALF_HEIGHT_SHORT,
+                    _ => PARABOLA_HALF_HEIGHT_TALL,
+                };
+            }
         }
 
         //
