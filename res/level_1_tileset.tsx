@@ -163,4 +163,10 @@
    <property name="animation_frame" value="5"/>
   </properties>
  </tile>
+ <tile id="46">
+  <properties>
+   <property name="entity_class" value="SpawnPoint"/>
+   <property name="spawned_entity_class" value="Hoodie"/>
+  </properties>
+ </tile>
 </tileset>
