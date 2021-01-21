@@ -654,6 +654,60 @@
    <property name="name" value="firebrand"/>
   </properties>
  </tile>
+ <tile id="102">
+  <properties>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="103">
+  <properties>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="104">
+  <properties>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="105">
+  <properties>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="106">
+  <properties>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="107">
+  <properties>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="108">
+  <properties>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="109">
+  <properties>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="110">
+  <properties>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
  <tile id="111">
   <properties>
    <property name="collision_shape" value="square"/>
@@ -700,6 +754,66 @@
   <properties>
    <property name="cycle" value="wall_shoot"/>
    <property name="name" value="firebrand"/>
+  </properties>
+ </tile>
+ <tile id="118">
+  <properties>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="119">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="120">
+  <properties>
+   <property name="cycle" value="walk_0"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="121">
+  <properties>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="122">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="123">
+  <properties>
+   <property name="cycle" value="walk_1"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="124">
+  <properties>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
+  </properties>
+ </tile>
+ <tile id="125">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="126">
+  <properties>
+   <property name="cycle" value="walk_2"/>
+   <property name="name" value="hoodie"/>
   </properties>
  </tile>
  <tile id="128">
