@@ -1,7 +1,10 @@
 CURRENTLY:
+    - Bat
     - Enemies
 
 TODO:
+    - Gotta get rid of the suicide keypress on enemies
+    - Implement game UI
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
