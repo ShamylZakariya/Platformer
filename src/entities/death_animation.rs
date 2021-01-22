@@ -9,18 +9,14 @@ use crate::{
     sprite::{collision, rendering},
 };
 
+use super::util::Direction;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 const CYCLE_DURATION: f32 = 0.1;
 const BLOWBACK_VEL: f32 = 1.5 / 0.4;
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy)]
-pub enum Direction {
-    East,
-    West,
-}
 
 pub struct DeathAnimation {
     entity_id: u32,

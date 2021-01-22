@@ -684,14 +684,10 @@ impl MessageHandler for GameState {
                     position,
                     direction,
                 } => {
-                    let direction = match direction {
-                        -1 => entities::death_animation::Direction::West,
-                        _ => entities::death_animation::Direction::East,
-                    };
                     self.request_add_entity(Box::new(
                         entities::death_animation::DeathAnimation::new(
                             point3(position.x, position.y, sprite_layers::FOREGROUND),
-                            direction,
+                            *direction,
                         ),
                     ));
                 }

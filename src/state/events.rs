@@ -1,6 +1,6 @@
 use cgmath::*;
 
-use crate::{sprite, tileset};
+use crate::{entities::util::Direction, sprite, tileset};
 
 /// An Event payload for Message
 #[derive(Debug, Clone)]
@@ -13,7 +13,7 @@ pub enum Event {
     /// State will reply with DidShootFireball
     TryShootFireball {
         origin: Point2<f32>,
-        direction: crate::entities::fireball::Direction,
+        direction: Direction,
         velocity: f32,
     },
 
@@ -23,7 +23,7 @@ pub enum Event {
     /// Received by an entity when hit by Firebrand's fireball
     HitByFireball {
         // direction of fireball travel, -1 for left, +1 for right
-        direction: i32,
+        direction: Direction,
     },
 
     /// Sent by an entity to Global to signal request to spawn an entity.
@@ -47,6 +47,6 @@ pub enum Event {
         // position of death animation
         position: Point2<f32>,
         // direction it should travel, -1 being left, +1 for right
-        direction: i32,
+        direction: Direction,
     },
 }

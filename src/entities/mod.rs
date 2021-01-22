@@ -6,7 +6,7 @@ pub mod firebrand;
 pub mod flying_fish;
 pub mod hoodie;
 pub mod spawn_point;
-mod util;
+pub mod util;
 
 use anyhow::Result;
 

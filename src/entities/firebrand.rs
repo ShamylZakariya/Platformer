@@ -4,7 +4,6 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    entities::fireball::Direction,
     entity::Entity,
     event_dispatch::*,
     input::*,
@@ -16,6 +15,8 @@ use crate::{
     },
     tileset,
 };
+
+use super::util::Direction;
 
 // ---------------------------------------------------------------------------------------------------------------------
 

@@ -8,9 +8,11 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::{constants::sprite_masks, events::Event},
+    state::constants::sprite_masks,
     tileset,
 };
+
+use super::util::{Direction, HitPointState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -28,15 +30,13 @@ pub struct FlyingFish {
     sprite: sprite::Sprite,
     centroid: Point2<f32>,
     position: Point3<f32>,
-    alive: bool,
-    hit_points: i32,
-    death_animation_dir: i32,
     time_in_phase: f32,
     phase: i32,
     sprite_size_px: Vector2<f32>,
     jump_phase: i32,
     jump_height: f32,
     rng: ThreadRng,
+    life: HitPointState,
 }
 
 impl Default for FlyingFish {
@@ -47,15 +47,13 @@ impl Default for FlyingFish {
             sprite: sprite::Sprite::default(),
             centroid: point2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
-            alive: true,
-            hit_points: HIT_POINTS,
-            death_animation_dir: 0,
             time_in_phase: 0.0,
             phase: 0,
             sprite_size_px: vec2(0.0, 0.0),
             jump_phase: 0,
             jump_height: PARABOLA_HALF_HEIGHT_SHORT,
             rng: thread_rng(),
+            life: HitPointState::new(HIT_POINTS),
         }
     }
 }
@@ -92,10 +90,10 @@ impl Entity for FlyingFish {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.alive {
+        if self.life.is_alive() {
             if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
                 println!("BOOM");
-                self.hit_points = 0;
+                self.life.injure(self.life.hit_points(), Direction::East);
                 true
             } else {
                 false
@@ -114,28 +112,13 @@ impl Entity for FlyingFish {
     ) {
         let dt = dt.as_secs_f32();
 
-        if self.hit_points == 0 {
-            self.alive = false;
-
-            // remove self from collision space
-            collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id());
-
-            // send death message to spawn point
-            message_dispatcher.enqueue(Message::entity_to_entity(
-                self.entity_id(),
-                self.spawn_point_id,
-                Event::SpawnedEntityDidDie,
-            ));
-
-            // send death animation message
-            message_dispatcher.enqueue(Message::entity_to_global(
-                self.entity_id(),
-                Event::PlayEntityDeathAnimation {
-                    position: self.position.xy(),
-                    direction: self.death_animation_dir,
-                },
-            ));
-
+        if !self.life.update(
+            self.entity_id(),
+            self.spawn_point_id,
+            self.position(),
+            collision_space,
+            message_dispatcher,
+        ) {
             return;
         }
 
@@ -200,7 +183,7 @@ impl Entity for FlyingFish {
     }
 
     fn is_alive(&self) -> bool {
-        self.alive
+        self.life.is_alive()
     }
 
     fn position(&self) -> Point3<f32> {
@@ -216,9 +199,6 @@ impl Entity for FlyingFish {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::HitByFireball { direction } = message.event {
-            self.hit_points = (self.hit_points - 1).max(0);
-            self.death_animation_dir = direction;
-        }
+        self.life.handle_message(message);
     }
 }

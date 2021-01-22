@@ -7,33 +7,17 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::{
-        constants::sprite_masks::{self, COLLIDER},
-        events::Event,
-    },
+    state::constants::sprite_masks::{self, COLLIDER},
     tileset,
 };
+
+use super::util::{Direction, HitPointState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 0.5; // units per second
 const HIT_POINTS: i32 = 1;
-
-#[derive(Debug)]
-enum MovementDir {
-    East,
-    West,
-}
-
-impl MovementDir {
-    fn invert(&self) -> MovementDir {
-        match self {
-            MovementDir::East => MovementDir::West,
-            MovementDir::West => MovementDir::East,
-        }
-    }
-}
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -45,10 +29,8 @@ pub struct Hoodie {
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
-    current_movement: MovementDir,
-    alive: bool,
-    hit_points: i32,
-    death_animation_dir: i32,
+    current_movement: Direction,
+    life: HitPointState,
 }
 
 impl Default for Hoodie {
@@ -61,10 +43,8 @@ impl Default for Hoodie {
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
-            current_movement: MovementDir::East,
-            alive: true,
-            hit_points: HIT_POINTS,
-            death_animation_dir: 0,
+            current_movement: Direction::East,
+            life: HitPointState::new(HIT_POINTS),
         }
     }
 }
@@ -97,10 +77,10 @@ impl Entity for Hoodie {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.alive {
+        if self.life.is_alive() {
             if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
                 println!("BOOM");
-                self.hit_points = 0;
+                self.life.injure(self.life.hit_points(), Direction::East);
                 true
             } else {
                 false
@@ -117,30 +97,13 @@ impl Entity for Hoodie {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) {
-        let dt = dt.as_secs_f32();
-
-        if self.hit_points == 0 {
-            self.alive = false;
-
-            // remove self from collision space
-            collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id());
-
-            // send death message to spawn point
-            message_dispatcher.enqueue(Message::entity_to_entity(
-                self.entity_id(),
-                self.spawn_point_id,
-                Event::SpawnedEntityDidDie,
-            ));
-
-            // send death animation message
-            message_dispatcher.enqueue(Message::entity_to_global(
-                self.entity_id(),
-                Event::PlayEntityDeathAnimation {
-                    position: self.position.xy(),
-                    direction: self.death_animation_dir,
-                },
-            ));
-
+        if !self.life.update(
+            self.entity_id(),
+            self.spawn_point_id,
+            self.position(),
+            collision_space,
+            message_dispatcher,
+        ) {
             return;
         }
 
@@ -148,10 +111,11 @@ impl Entity for Hoodie {
         //  Update position - firesprite simply marches left/right stopping at "cliffs" or obstacles
         //
 
+        let dt = dt.as_secs_f32();
         let next_position = self.position.xy()
             + match self.current_movement {
-                MovementDir::East => vec2(1.0, 0.0),
-                MovementDir::West => vec2(-1.0, 0.0),
+                Direction::East => vec2(1.0, 0.0),
+                Direction::West => vec2(-1.0, 0.0),
             } * dt;
         let snapped_next_position = point2(
             next_position.x.floor() as i32,
@@ -164,7 +128,7 @@ impl Entity for Hoodie {
         let mut should_reverse_direction = false;
 
         match self.current_movement {
-            MovementDir::East => {
+            Direction::East => {
                 // check for obstacle to right
                 if let Some(sprite_to_right) = collision_space
                     .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
@@ -182,7 +146,7 @@ impl Entity for Hoodie {
                     should_reverse_direction = true
                 }
             }
-            MovementDir::West => {
+            Direction::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
                     collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)
@@ -232,8 +196,8 @@ impl Entity for Hoodie {
         let one_px = 1.0 / self.sprite_size_px.x;
 
         let (xscale, xoffset) = match self.current_movement {
-            MovementDir::East => (1.0, 4.0 * one_px),
-            MovementDir::West => (-1.0, 1.0 - 4.0 * one_px),
+            Direction::East => (1.0, 4.0 * one_px),
+            Direction::West => (-1.0, 1.0 - 4.0 * one_px),
         };
 
         uniforms
@@ -251,7 +215,7 @@ impl Entity for Hoodie {
     }
 
     fn is_alive(&self) -> bool {
-        self.alive
+        self.life.is_alive()
     }
 
     fn position(&self) -> Point3<f32> {
@@ -272,9 +236,6 @@ impl Entity for Hoodie {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::HitByFireball { direction } = message.event {
-            self.hit_points = (self.hit_points - 1).max(0);
-            self.death_animation_dir = direction;
-        }
+        self.life.handle_message(message);
     }
 }

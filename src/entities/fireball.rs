@@ -10,17 +10,13 @@ use crate::{
     state::events::Event,
 };
 
+use super::util::Direction;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 const CYCLE_DEFAULT: &str = "default";
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy)]
-pub enum Direction {
-    East,
-    West,
-}
 
 pub struct Fireball {
     entity_id: u32,
@@ -75,10 +71,7 @@ impl Entity for Fireball {
                     self.entity_id(),
                     target_entity_id,
                     Event::HitByFireball {
-                        direction: match self.direction {
-                            Direction::East => 1,
-                            Direction::West => -1,
-                        },
+                        direction: self.direction,
                     },
                 ));
             }
