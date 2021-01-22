@@ -7,11 +7,11 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::constants::sprite_masks::{self, COLLIDER},
+    state::constants::sprite_masks,
     tileset,
 };
 
-use super::util::{Direction, HitPointState};
+use super::util::{Direction, HitPointState, MarchState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -28,8 +28,8 @@ pub struct FireSprite {
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
-    current_movement: Direction,
     life: HitPointState,
+    march: MarchState,
 }
 
 impl Default for FireSprite {
@@ -41,8 +41,8 @@ impl Default for FireSprite {
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
-            current_movement: Direction::East,
             life: HitPointState::new(HIT_POINTS),
+            march: MarchState::new(Direction::East, MOVEMENT_SPEED),
         }
     }
 }
@@ -94,99 +94,39 @@ impl Entity for FireSprite {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) {
-        let dt = dt.as_secs_f32();
-
-        if !self.life.update(
+        if self.life.update(
             self.entity_id(),
             self.spawn_point_id,
             self.position(),
             collision_space,
             message_dispatcher,
         ) {
-            return;
-        }
-
-        //
-        //  Update position - firesprite simply marches left/right stopping at "cliffs" or obstacles
-        //
-
-        let next_position = self.position.xy()
-            + match self.current_movement {
-                Direction::East => vec2(1.0, 0.0),
-                Direction::West => vec2(-1.0, 0.0),
-            } * dt;
-        let snapped_next_position = point2(
-            next_position.x.floor() as i32,
-            next_position.y.floor() as i32,
-        );
-        let snapped_next_position_center = point2(
-            (next_position.x + 0.5).floor() as i32,
-            next_position.y.floor() as i32,
-        );
-        let mut should_reverse_direction = false;
-
-        match self.current_movement {
-            Direction::East => {
-                // check for obstacle to right
-                if let Some(sprite_to_right) = collision_space
-                    .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
-                {
-                    if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
-                    {
-                        should_reverse_direction = true
-                    }
-                }
-                // check if the platform falls away to right
-                if collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
-                    .is_none()
-                {
-                    should_reverse_direction = true
-                }
+            //
+            // Perform basic march behavior
+            //
+            {
+                let next_position = self.march.update(dt, self.position.xy(), collision_space);
+                self.position.x = next_position.x;
+                self.position.y = next_position.y;
             }
-            Direction::West => {
-                // check for obstacle to left
-                if let Some(sprite_to_left) =
-                    collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)
-                {
-                    if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
-                    {
-                        should_reverse_direction = true
-                    }
-                }
-                // check if the platform falls away to left
-                if collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
-                    .is_none()
-                {
-                    should_reverse_direction = true
-                }
+
+            //
+            //  Update the sprite for collision detection
+            //
+
+            self.sprite.origin.x = self.position.x;
+            self.sprite.origin.y = self.position.y;
+            collision_space.update_dynamic_sprite(&self.sprite);
+
+            //
+            //  Update sprite animation cycle
+            //
+
+            self.animation_cycle_tick_countdown -= dt.as_secs_f32();
+            if self.animation_cycle_tick_countdown <= 0.0 {
+                self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
+                self.animation_cycle_tick += 1;
             }
-        }
-
-        if should_reverse_direction {
-            self.current_movement = self.current_movement.invert();
-        } else {
-            self.position.x = next_position.x;
-            self.position.y = next_position.y;
-        }
-
-        //
-        //  Update the sprite for collision detection
-        //
-
-        self.sprite.origin.x = self.position.x;
-        self.sprite.origin.y = self.position.y;
-        collision_space.update_dynamic_sprite(&self.sprite);
-
-        //
-        //  Update sprite animation cycle
-        //
-
-        self.animation_cycle_tick_countdown -= dt;
-        if self.animation_cycle_tick_countdown <= 0.0 {
-            self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
-            self.animation_cycle_tick += 1;
         }
     }
 

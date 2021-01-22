@@ -1,6 +1,9 @@
-use crate::event_dispatch::*;
+use std::time::Duration;
+
+use crate::{event_dispatch::*, state::constants::sprite_masks::COLLIDER};
 use crate::{sprite::collision, state::events::Event};
 use cgmath::*;
+use collision::Space;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
@@ -16,6 +19,8 @@ impl Direction {
         }
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct HitPointState {
     hit_points: i32,
@@ -85,6 +90,100 @@ impl HitPointState {
             true
         } else {
             false
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+pub struct MarchState {
+    current_movement_dir: Direction,
+    velocity: f32,
+}
+
+impl MarchState {
+    pub fn new(initial_movement_dir: Direction, velocity: f32) -> Self {
+        Self {
+            current_movement_dir: initial_movement_dir,
+            velocity,
+        }
+    }
+
+    pub fn current_movement_dir(&self) -> Direction {
+        self.current_movement_dir
+    }
+
+    pub fn update(
+        &mut self,
+        dt: Duration,
+        position: Point2<f32>,
+        collision_space: &Space,
+    ) -> Point2<f32> {
+        let dt = dt.as_secs_f32();
+
+        let next_position = position
+            + match self.current_movement_dir {
+                Direction::East => vec2(1.0, 0.0),
+                Direction::West => vec2(-1.0, 0.0),
+            } * self.velocity
+                * dt;
+
+        let snapped_next_position = point2(
+            next_position.x.floor() as i32,
+            next_position.y.floor() as i32,
+        );
+
+        let snapped_next_position_center = point2(
+            (next_position.x + 0.5).floor() as i32,
+            next_position.y.floor() as i32,
+        );
+
+        let mut should_reverse_direction = false;
+
+        match self.current_movement_dir {
+            Direction::East => {
+                // check for obstacle to right
+                if let Some(sprite_to_right) = collision_space
+                    .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
+                {
+                    if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
+                    {
+                        should_reverse_direction = true
+                    }
+                }
+                // check if the platform falls away to right
+                if collision_space
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
+                    .is_none()
+                {
+                    should_reverse_direction = true
+                }
+            }
+            Direction::West => {
+                // check for obstacle to left
+                if let Some(sprite_to_left) =
+                    collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)
+                {
+                    if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
+                    {
+                        should_reverse_direction = true
+                    }
+                }
+                // check if the platform falls away to left
+                if collision_space
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
+                    .is_none()
+                {
+                    should_reverse_direction = true
+                }
+            }
+        }
+
+        if should_reverse_direction {
+            self.current_movement_dir = self.current_movement_dir.invert();
+            position
+        } else {
+            next_position
         }
     }
 }
