@@ -840,4 +840,94 @@
    <property name="role" value="root"/>
   </properties>
  </tile>
+ <tile id="131">
+  <properties>
+   <property name="cycle" value="default"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="132">
+  <properties>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="133">
+  <properties>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="134">
+  <properties>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="135">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="136">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="137">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="147">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="bat"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="148">
+  <properties>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="149">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="150">
+  <properties>
+   <property name="cycle" value="fly_0"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="151">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="152">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="153">
+  <properties>
+   <property name="cycle" value="fly_1"/>
+   <property name="name" value="bat"/>
+  </properties>
+ </tile>
 </tileset>

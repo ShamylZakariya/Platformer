@@ -169,4 +169,10 @@
    <property name="spawned_entity_class" value="Hoodie"/>
   </properties>
  </tile>
+ <tile id="47">
+  <properties>
+   <property name="entity_class" value="SpawnPoint"/>
+   <property name="spawned_entity_class" value="Bat"/>
+  </properties>
+ </tile>
 </tileset>
