@@ -22,6 +22,8 @@ impl Direction {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Implements a lifecycle system with hitpoints and dispatching a death message to the spawn point and a
+/// death message to the game state on death. This is for enemies in the game, not Firebrand.
 pub struct HitPointState {
     hit_points: i32,
     alive: bool,
@@ -96,6 +98,8 @@ impl HitPointState {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Implements a very basic marching behavior for entities which need to march left/right reversing at cliffs
+/// or obstacles.
 pub struct MarchState {
     current_movement_dir: Direction,
     velocity: f32,
@@ -113,6 +117,8 @@ impl MarchState {
         self.current_movement_dir
     }
 
+    /// Computes next position for the marching behavior, taking the current position and returning the
+    /// updated position.
     pub fn update(
         &mut self,
         dt: Duration,
