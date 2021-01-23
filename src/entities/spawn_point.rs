@@ -70,14 +70,14 @@ impl Entity for SpawnPoint {
                 .expect("Spawn point must have \"spawned_entity_class\" property on tile")
                 .to_string();
 
-            message_dispatcher.enqueue(Message::entity_to_global(
+            message_dispatcher.entity_to_global(
                 self.entity_id(),
                 Event::SpawnEntity {
                     class_name,
                     spawn_point_sprite: sprite,
                     spawn_point_tile: tile,
                 },
-            ));
+            );
         }
 
         self.did_become_visible = false;

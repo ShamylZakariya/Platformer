@@ -68,13 +68,13 @@ impl Entity for Fireball {
 
         if let Some(sprite) = collision_space.test_point(next_position, mask) {
             if let Some(target_entity_id) = sprite.entity_id {
-                message_dispatcher.enqueue(Message::entity_to_entity(
+                message_dispatcher.entity_to_entity(
                     self.entity_id(),
                     target_entity_id,
                     Event::HitByFireball {
                         direction: self.direction,
                     },
-                ));
+                );
             }
             self.alive = false;
         } else {

@@ -828,14 +828,14 @@ impl Firebrand {
             Facing::Left => Direction::West,
             Facing::Right => Direction::East,
         };
-        message_dispatcher.enqueue(Message::entity_to_global(
+        message_dispatcher.entity_to_global(
             self.entity_id(),
             Event::TryShootFireball {
                 origin,
                 direction,
                 velocity: FIREBALL_VELOCITY,
             },
-        ));
+        );
     }
 
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
@@ -845,11 +845,11 @@ impl Firebrand {
                 contact_damage = true;
             }
             if let Some(entity_id) = s.entity_id {
-                message_dispatcher.enqueue(Message::entity_to_entity(
+                message_dispatcher.entity_to_entity(
                     self.entity_id(),
                     entity_id,
                     Event::CharacterContact,
-                ));
+                );
             }
         }
 

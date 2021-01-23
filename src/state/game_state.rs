@@ -648,7 +648,6 @@ impl GameState {
 
 impl event_dispatch::MessageHandler for GameState {
     fn handle_message(&mut self, message: &event_dispatch::Message) {
-        use event_dispatch::*;
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             //
             // if the message has a destination entity, route it - if no destination
@@ -676,10 +675,8 @@ impl event_dispatch::MessageHandler for GameState {
                         )));
 
                         // Reply to firebrand that a shot was fired
-                        self.message_dispatcher.enqueue(Message::global_to_entity(
-                            self.firebrand_entity_id,
-                            Event::DidShootFireball,
-                        ));
+                        self.message_dispatcher
+                            .global_to_entity(self.firebrand_entity_id, Event::DidShootFireball);
                     }
                 }
 
@@ -710,12 +707,12 @@ impl event_dispatch::MessageHandler for GameState {
                     ) {
                         Ok(entity) => {
                             let id = self.request_add_entity(entity);
-                            self.message_dispatcher.enqueue(Message::global_to_entity(
+                            self.message_dispatcher.global_to_entity(
                                 message.sender_entity_id.unwrap(),
                                 Event::EntityWasSpawned {
                                     entity_id: Some(id),
                                 },
-                            ));
+                            );
                         }
                         Err(e) => {
                             println!("Unable to instantiate \"{}\", error: {:?}", class_name, e);

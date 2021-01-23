@@ -74,21 +74,21 @@ impl HitPointState {
             collision_space.remove_dynamic_sprite_with_entity_id(entity_id);
 
             // send death message to spawn point
-            message_dispatcher.enqueue(Message::entity_to_entity(
+            message_dispatcher.entity_to_entity(
                 entity_id,
                 spawn_point_id,
                 Event::SpawnedEntityDidDie,
-            ));
+            );
 
             if self.hit_points <= 0 && !self.terminated {
                 // send death animation message
-                message_dispatcher.enqueue(Message::entity_to_global(
+                message_dispatcher.entity_to_global(
                     entity_id,
                     Event::PlayEntityDeathAnimation {
                         position: position.xy(),
                         direction: self.death_animation_dir,
                     },
-                ));
+                );
             }
         }
 

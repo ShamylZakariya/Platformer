@@ -15,28 +15,10 @@ pub struct Message {
 }
 
 impl Message {
-    /// Creates a message to be processed by the global handler
-    pub fn entity_to_global(sender: u32, event: Event) -> Self {
+    fn new(sender: Option<u32>, recipient: Option<u32>, event: Event) -> Self {
         Message {
-            sender_entity_id: Some(sender),
-            recipient_entity_id: None,
-            event,
-        }
-    }
-
-    /// Creates a message to be routed from one entity to another
-    pub fn entity_to_entity(sender: u32, recipient: u32, event: Event) -> Self {
-        Message {
-            sender_entity_id: Some(sender),
-            recipient_entity_id: Some(recipient),
-            event,
-        }
-    }
-
-    pub fn global_to_entity(recipient: u32, event: Event) -> Self {
-        Message {
-            sender_entity_id: None,
-            recipient_entity_id: Some(recipient),
+            sender_entity_id: sender,
+            recipient_entity_id: recipient,
             event,
         }
     }
@@ -57,12 +39,23 @@ impl Default for Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn enqueue(&mut self, message: Message) {
-        self.messages.push(message);
+    pub fn entity_to_global(&mut self, sender: u32, event: Event) {
+        self.messages.push(Message::new(Some(sender), None, event));
+    }
+
+    pub fn entity_to_entity(&mut self, sender: u32, recipient: u32, event: Event) {
+        self.messages
+            .push(Message::new(Some(sender), Some(recipient), event));
+    }
+
+    pub fn global_to_entity(&mut self, recipient: u32, event: Event) {
+        self.messages
+            .push(Message::new(None, Some(recipient), event));
     }
 
     // TODO: I would prefer dispatch to be a member fn, not static. But State owns
-    // the dispatcher, and as such can't be a message handler too since
+    // the dispatcher, and as such can't be a message handler too since State's handle_message
+    // implementation is necessarily mutating.
     pub fn dispatch(messages: &[Message], handler: &mut dyn MessageHandler) {
         for m in messages {
             handler.handle_message(m);
