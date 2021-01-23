@@ -15,7 +15,7 @@ use super::util::HitPointState;
 // --------------------------------------------------------------------------------------------------------------------
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
-const MOVEMENT_SPEED: f32 = 1.0; // units per second
+const MOVEMENT_SPEED: f32 = 1.0 / 0.3; // units per second
 const HIT_POINTS: i32 = 1;
 const PLAYER_CLOSENESS_THRESHOLD: f32 = (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0) - 1.0;
 const SIN_PI_4: f32 = 0.707_106_77;

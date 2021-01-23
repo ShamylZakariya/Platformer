@@ -1,9 +1,7 @@
 CURRENTLY:
-    - Bat
-    - Enemies
 
 TODO:
-    - Gotta get rid of the suicide keypress on enemies
+    - Boss fish
     - Implement game UI
 
 BUGS:
