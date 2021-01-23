@@ -26,23 +26,23 @@ pub enum Event {
         direction: Direction,
     },
 
-    /// Sent by an entity to Global to signal request to spawn an entity.
+    /// Sent by an entity to GameState to signal request to spawn an entity.
     /// Generally sent by SpawnPoint to request spawning their enemy type.
-    /// Global responds with EntityWasSpawned to signal spawn result.
+    /// GameState responds with EntityWasSpawned to signal spawn result.
     SpawnEntity {
         class_name: String,
         spawn_point_sprite: sprite::Sprite,
         spawn_point_tile: tileset::Tile,
     },
 
-    /// Response from Global to signal if requested entity was spawned.
+    /// Response from GameState to signal if requested entity was spawned.
     /// Bears the spawned entity id on success, None otherwise.
     EntityWasSpawned { entity_id: Option<u32> },
 
     /// Sent by a spawned entity to its spawn point when it dies
     SpawnedEntityDidDie,
 
-    /// Sent by a dying entity to Global to request display of a death animation
+    /// Sent by a dying entity to GameState to request display of a death animation
     PlayEntityDeathAnimation {
         // position of death animation
         position: Point2<f32>,

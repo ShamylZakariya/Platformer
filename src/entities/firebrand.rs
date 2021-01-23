@@ -4,7 +4,7 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     input::*,
     map,
@@ -449,6 +449,7 @@ impl Entity for Firebrand {
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();

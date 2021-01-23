@@ -33,6 +33,16 @@ impl IdVendor {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+/// Entities don't have direct access to game state; but a read-only peek is useful so that
+/// entities may "chase" the player, etc. GameStatePeek is a holder for this information. An proper engine
+/// might store a snapshot of state for each entity in the level, but all we need right now is to know
+/// firebrand's position.
+pub struct GameStatePeek {
+    pub player_position: Point2<f32>,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 pub trait Entity {
     /// Initializes a new Entity using a sprite/tile template loaded from the level map.
     /// # Arguments
@@ -71,6 +81,7 @@ pub trait Entity {
         _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
     }
 

@@ -163,7 +163,7 @@ impl Space {
 }
 
 #[cfg(test)]
-mod sprite_hit_tester {
+mod space_tests {
     use super::*;
 
     #[test]

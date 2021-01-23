@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, collision},
@@ -54,6 +54,7 @@ impl Entity for SpawnPoint {
         _map: &map::Map,
         _collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
         if self.did_become_visible && self.spawned_entity_id.is_none() {
             let sprite = self

@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
@@ -59,6 +59,7 @@ impl Entity for FallingBridge {
         _map: &map::Map,
         collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
         let dt = dt.as_secs_f32();
 

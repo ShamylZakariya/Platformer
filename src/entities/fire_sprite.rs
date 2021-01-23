@@ -1,9 +1,8 @@
 use cgmath::*;
 use std::time::Duration;
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
@@ -73,26 +72,13 @@ impl Entity for FireSprite {
         collision_space.add_dynamic_sprite(&self.sprite);
     }
 
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.life.is_alive() {
-            if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
-                println!("BOOM");
-                self.life.injure(self.life.hit_points(), Direction::East);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    }
-
     fn update(
         &mut self,
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
         if self.life.update(
             self.entity_id(),

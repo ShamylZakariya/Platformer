@@ -31,9 +31,7 @@ pub enum EntityClass {
 
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {
     match classname {
-        "Bat" => {
-            Some(Box::new(bat::Bat::default()) as Box<dyn entity::Entity>)
-        }
+        "Bat" => Some(Box::new(bat::Bat::default()) as Box<dyn entity::Entity>),
         "FallingBridge" => {
             Some(Box::new(falling_bridge::FallingBridge::default()) as Box<dyn entity::Entity>)
         }

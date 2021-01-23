@@ -28,6 +28,7 @@ pub struct HitPointState {
     hit_points: i32,
     alive: bool,
     death_animation_dir: Direction,
+    terminated: bool,
 }
 
 impl HitPointState {
@@ -36,6 +37,7 @@ impl HitPointState {
             hit_points,
             alive: true,
             death_animation_dir: Direction::East,
+            terminated: false,
         }
     }
 
@@ -46,6 +48,11 @@ impl HitPointState {
     pub fn injure(&mut self, reduction: i32, direction: Direction) {
         self.hit_points -= reduction;
         self.death_animation_dir = direction;
+    }
+
+    /// kills entity without playing a death animation - useful for "resetting" an entity after it goes offscreen
+    pub fn terminate(&mut self) {
+        self.terminated = true;
     }
 
     pub fn is_alive(&self) -> bool {
@@ -60,7 +67,7 @@ impl HitPointState {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) -> bool {
-        if self.hit_points <= 0 {
+        if self.terminated || self.hit_points <= 0 {
             self.alive = false;
 
             // remove self from collision space
@@ -73,15 +80,18 @@ impl HitPointState {
                 Event::SpawnedEntityDidDie,
             ));
 
-            // send death animation message
-            message_dispatcher.enqueue(Message::entity_to_global(
-                entity_id,
-                Event::PlayEntityDeathAnimation {
-                    position: position.xy(),
-                    direction: self.death_animation_dir,
-                },
-            ));
+            if self.hit_points <= 0 && !self.terminated {
+                // send death animation message
+                message_dispatcher.enqueue(Message::entity_to_global(
+                    entity_id,
+                    Event::PlayEntityDeathAnimation {
+                        position: position.xy(),
+                        direction: self.death_animation_dir,
+                    },
+                ));
+            }
         }
+
         self.alive
     }
 

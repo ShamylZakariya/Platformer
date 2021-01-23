@@ -1,23 +1,91 @@
 use cgmath::*;
-use std::time::Duration;
-use winit::event::{ElementState, VirtualKeyCode};
+use std::{f32::consts::PI, time::Duration};
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::constants::sprite_masks,
+    state::constants::{sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
     tileset,
 };
 
-use super::util::{Direction, HitPointState};
+use super::util::HitPointState;
 
 // --------------------------------------------------------------------------------------------------------------------
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 1.0; // units per second
 const HIT_POINTS: i32 = 1;
+const PLAYER_CLOSENESS_THRESHOLD: f32 = (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0) - 1.0;
+const SIN_PI_4: f32 = 0.707_106_77;
+const TAU: f32 = 2.0 * PI;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ChaseDir {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
+
+impl ChaseDir {
+    fn new(dir: Vector2<f32>) -> Self {
+        let ndir = dir.normalize();
+        let mut angle = ndir.y.atan2(ndir.x);
+        if angle < 0.0 {
+            angle += TAU;
+        }
+        let sector = (angle / (TAU / 16.0)).round() as i32;
+        match sector {
+            0 | 15 => ChaseDir::East,
+            1 | 2 => ChaseDir::NorthEast,
+            3 | 4 => ChaseDir::North,
+            5 | 6 => ChaseDir::NorthWest,
+            7 | 8 => ChaseDir::West,
+            9 | 10 => ChaseDir::SouthWest,
+            11 | 12 => ChaseDir::South,
+            13 | 14 => ChaseDir::SouthEast,
+            _ => panic!("sector expected to be in range [0,15]"),
+        }
+    }
+
+    fn to_dir(&self) -> Vector2<f32> {
+        let t = SIN_PI_4;
+        match self {
+            ChaseDir::North => vec2(0.0, 1.0),
+            ChaseDir::NorthEast => vec2(t, t),
+            ChaseDir::East => vec2(1.0, 1.0),
+            ChaseDir::SouthEast => vec2(t, -t),
+            ChaseDir::South => vec2(0.0, -1.0),
+            ChaseDir::SouthWest => vec2(-t, -t),
+            ChaseDir::West => vec2(-1.0, 0.0),
+            ChaseDir::NorthWest => vec2(-t, t),
+        }
+    }
+}
+
+#[cfg(test)]
+mod chase_dir_tests {
+    use super::*;
+
+    #[test]
+    fn new_produces_expected_values() {
+        assert_eq!(ChaseDir::new(vec2(0.0, 1.0)), ChaseDir::North);
+        assert_eq!(ChaseDir::new(vec2(0.0, -1.0)), ChaseDir::South);
+        assert_eq!(ChaseDir::new(vec2(1.0, 0.0)), ChaseDir::East);
+        assert_eq!(ChaseDir::new(vec2(-1.0, 0.0)), ChaseDir::West);
+
+        assert_eq!(ChaseDir::new(vec2(1.0, 1.0)), ChaseDir::NorthEast);
+        assert_eq!(ChaseDir::new(vec2(1.0, -1.0)), ChaseDir::SouthEast);
+        assert_eq!(ChaseDir::new(vec2(-1.0, -1.0)), ChaseDir::SouthWest);
+        assert_eq!(ChaseDir::new(vec2(-1.0, 1.0)), ChaseDir::NorthWest);
+    }
+}
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -29,6 +97,7 @@ pub struct Bat {
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
+    chase_dir: Option<ChaseDir>,
     life: HitPointState,
 }
 
@@ -42,6 +111,7 @@ impl Default for Bat {
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
+            chase_dir: None,
             life: HitPointState::new(HIT_POINTS),
         }
     }
@@ -74,26 +144,13 @@ impl Entity for Bat {
         collision_space.add_dynamic_sprite(&self.sprite);
     }
 
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.life.is_alive() {
-            if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
-                println!("BOOM");
-                self.life.injure(self.life.hit_points(), Direction::East);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    }
-
     fn update(
         &mut self,
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
+        game_state_peek: &GameStatePeek,
     ) {
         //
         // Update life state
@@ -106,8 +163,22 @@ impl Entity for Bat {
             collision_space,
             message_dispatcher,
         ) {
-            // Bat is triggered when player comes close, drops, and then goes in one of 8 directions to intercept player
-            // traveling through scenery until offscreen
+            // Determine if the player is close enough for bat to wakeup
+            if self.chase_dir.is_none()
+                && (game_state_peek.player_position.x - self.position.x).abs()
+                    < PLAYER_CLOSENESS_THRESHOLD
+            {
+                self.chase_dir = Some(ChaseDir::new(
+                    game_state_peek.player_position - self.position.xy(),
+                ));
+            }
+
+            let dt = dt.as_secs_f32();
+            if let Some(chase_dir) = self.chase_dir {
+                let dp = chase_dir.to_dir() * MOVEMENT_SPEED * dt;
+                self.position.x += dp.x;
+                self.position.y += dp.y;
+            }
 
             //
             //  Update the sprite for collision detection
@@ -121,7 +192,7 @@ impl Entity for Bat {
             //  Update sprite animation cycle
             //
 
-            self.animation_cycle_tick_countdown -= dt.as_secs_f32();
+            self.animation_cycle_tick_countdown -= dt;
             if self.animation_cycle_tick_countdown <= 0.0 {
                 self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
                 self.animation_cycle_tick += 1;
@@ -154,10 +225,24 @@ impl Entity for Bat {
     }
 
     fn sprite_cycle(&self) -> &str {
-        "default"
+        if self.chase_dir.is_some() {
+            if self.animation_cycle_tick % 2 == 0 {
+                "fly_0"
+            } else {
+                "fly_1"
+            }
+        } else {
+            "default"
+        }
     }
 
     fn handle_message(&mut self, message: &Message) {
         self.life.handle_message(message);
+    }
+
+    fn did_exit_viewport(&mut self) {
+        if self.chase_dir.is_some() {
+            self.life.terminate();
+        }
     }
 }

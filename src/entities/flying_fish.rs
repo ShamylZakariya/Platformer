@@ -1,10 +1,9 @@
 use cgmath::*;
 use rand::{prelude::*, Rng};
 use std::{f32::consts::PI, time::Duration};
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    entity::Entity,
+    entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
@@ -12,7 +11,7 @@ use crate::{
     tileset,
 };
 
-use super::util::{Direction, HitPointState};
+use super::util::HitPointState;
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -89,26 +88,13 @@ impl Entity for FlyingFish {
         collision_space.add_dynamic_sprite(&self.sprite);
     }
 
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.life.is_alive() {
-            if key == VirtualKeyCode::Delete && state == ElementState::Pressed {
-                println!("BOOM");
-                self.life.injure(self.life.hit_points(), Direction::East);
-                true
-            } else {
-                false
-            }
-        } else {
-            false
-        }
-    }
-
     fn update(
         &mut self,
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
+        _game_state_peek: &GameStatePeek,
     ) {
         let dt = dt.as_secs_f32();
 

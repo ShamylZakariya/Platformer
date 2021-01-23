@@ -14,11 +14,8 @@ use winit::{
 use crate::{
     camera,
     entities::{self, EntityClass},
-    entity,
-    entity::EntityComponents,
-    event_dispatch,
-    event_dispatch::{Dispatcher, Message, MessageHandler},
-    map,
+    entity::{self, EntityComponents, GameStatePeek},
+    event_dispatch, map,
     sprite::rendering::Uniforms as SpriteUniforms,
     sprite::{collision, rendering},
     texture, tileset,
@@ -380,6 +377,10 @@ impl GameState {
         //
 
         {
+            let game_state_peek = GameStatePeek {
+                player_position: self.get_firebrand().entity.position().xy(),
+            };
+
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
                 e.entity.update(
@@ -387,6 +388,7 @@ impl GameState {
                     &self.map,
                     &mut self.collision_space,
                     &mut self.message_dispatcher,
+                    &game_state_peek,
                 );
                 e.entity.update_uniforms(&mut e.uniforms);
                 e.uniforms.write(&mut gpu.queue);
@@ -440,7 +442,7 @@ impl GameState {
         // Dispatch collected messages
         //
 
-        Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
+        event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
     pub fn render(
@@ -644,8 +646,9 @@ impl GameState {
     }
 }
 
-impl MessageHandler for GameState {
-    fn handle_message(&mut self, message: &Message) {
+impl event_dispatch::MessageHandler for GameState {
+    fn handle_message(&mut self, message: &event_dispatch::Message) {
+        use event_dispatch::*;
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             //
             // if the message has a destination entity, route it - if no destination
