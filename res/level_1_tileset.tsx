@@ -175,4 +175,13 @@
    <property name="spawned_entity_class" value="Bat"/>
   </properties>
  </tile>
+ <tile id="48">
+  <properties>
+   <property name="arena_height" value="10"/>
+   <property name="arena_width" value="17"/>
+   <property name="entity_class" value="SpawnPoint"/>
+   <property name="spawned_entity_class" value="BossFish"/>
+   <property name="water_height" value="4"/>
+  </properties>
+ </tile>
 </tileset>
