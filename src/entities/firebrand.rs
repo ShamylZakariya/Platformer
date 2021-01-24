@@ -120,12 +120,6 @@ impl Display for Stance {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Facing {
-    Left,
-    Right,
-}
-
 // ---------------------------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
@@ -144,7 +138,7 @@ pub struct CharacterState {
     pub stance: Stance,
 
     // the direction the character is currently facing
-    pub facing: Facing,
+    pub facing: Direction,
 }
 
 impl CharacterState {
@@ -154,7 +148,7 @@ impl CharacterState {
             position_offset: Zero::zero(),
             cycle: CYCLE_DEFAULT,
             stance: Stance::Standing,
-            facing: Facing::Left,
+            facing: Direction::East,
         }
     }
 }
@@ -720,8 +714,8 @@ impl Entity for Firebrand {
 
         {
             let (xscale, xoffset) = match self.character_state.facing {
-                Facing::Left => (-1.0, 1.0),
-                Facing::Right => (1.0, 0.0),
+                Direction::West => (-1.0, 1.0),
+                Direction::East => (1.0, 0.0),
             };
 
             uniforms
@@ -824,15 +818,11 @@ impl Firebrand {
 
     fn shoot_fireball(&mut self, message_dispatcher: &mut Dispatcher) {
         let origin = self.character_state.position + vec2(0.5, 0.7);
-        let direction = match self.character_facing() {
-            Facing::Left => Direction::West,
-            Facing::Right => Direction::East,
-        };
         message_dispatcher.entity_to_global(
             self.entity_id(),
             Event::TryShootFireball {
                 origin,
-                direction,
+                direction: self.character_facing(),
                 velocity: FIREBALL_VELOCITY,
             },
         );
@@ -923,8 +913,8 @@ impl Firebrand {
                     let sign = if self.is_wallholding() { -1.0 } else { 1.0 };
                     self.injury_kickback_vel = sign
                         * match self.character_facing() {
-                            Facing::Left => INJURY_KICKBACK_VEL,
-                            Facing::Right => -INJURY_KICKBACK_VEL,
+                            Direction::West => INJURY_KICKBACK_VEL,
+                            Direction::East => -INJURY_KICKBACK_VEL,
                         };
                 }
                 _ => {}
@@ -1363,22 +1353,22 @@ impl Firebrand {
         }
     }
 
-    fn character_facing(&self) -> Facing {
+    fn character_facing(&self) -> Direction {
         match self.character_state.stance {
             Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
                 if self.input_state.move_left().is_active() {
-                    Facing::Left
+                    Direction::West
                 } else if self.input_state.move_right().is_active() {
-                    Facing::Right
+                    Direction::East
                 } else {
                     self.character_state.facing
                 }
             }
             Stance::WallHold(attached_to) => {
                 if attached_to.left() > self.character_state.position.x {
-                    Facing::Left
+                    Direction::West
                 } else {
-                    Facing::Right
+                    Direction::East
                 }
             }
         }
