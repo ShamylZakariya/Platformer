@@ -1,4 +1,5 @@
 pub mod bat;
+pub mod boss_fish;
 pub mod death_animation;
 pub mod falling_bridge;
 pub mod fire_sprite;
@@ -19,6 +20,7 @@ use crate::tileset;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EntityClass {
     Bat,
+    BossFish,
     DeathAnimation,
     Firebrand,
     Fireball,
@@ -31,6 +33,7 @@ pub enum EntityClass {
 
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {
     match classname {
+        "BossFish" => Some(Box::new(boss_fish::BossFish::default()) as Box<dyn entity::Entity>),
         "Bat" => Some(Box::new(bat::Bat::default()) as Box<dyn entity::Entity>),
         "FallingBridge" => {
             Some(Box::new(falling_bridge::FallingBridge::default()) as Box<dyn entity::Entity>)
