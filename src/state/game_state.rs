@@ -389,6 +389,7 @@ impl GameState {
                     &mut self.collision_space,
                     &mut self.message_dispatcher,
                     &game_state_peek,
+                    &e.drawable,
                 );
                 e.entity.update_uniforms(&mut e.uniforms);
                 e.uniforms.write(&mut gpu.queue);
@@ -522,7 +523,7 @@ impl GameState {
         // render entities
         for e in self.entities.values() {
             if e.entity.is_alive() && e.entity.should_draw() {
-                e.sprite.draw(
+                e.drawable.draw(
                     &mut render_pass,
                     &self.camera_controller.uniforms,
                     &e.uniforms,

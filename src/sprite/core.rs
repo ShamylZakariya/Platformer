@@ -439,7 +439,7 @@ impl Sprite {
 }
 
 #[cfg(test)]
-mod sprite_desc_tests {
+mod sprite_tests {
     use super::*;
 
     fn test_points(

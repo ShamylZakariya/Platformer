@@ -932,7 +932,6 @@
  </tile>
  <tile id="160">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_2"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -946,14 +945,12 @@
  </tile>
  <tile id="162">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_2"/>
    <property name="name" value="boss_fish"/>
   </properties>
  </tile>
  <tile id="163">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_1"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -967,14 +964,12 @@
  </tile>
  <tile id="165">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_1"/>
    <property name="name" value="boss_fish"/>
   </properties>
  </tile>
  <tile id="166">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_0"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -988,7 +983,6 @@
  </tile>
  <tile id="168">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="a_0"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -1124,7 +1118,6 @@
  </tile>
  <tile id="208">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_2"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -1138,14 +1131,12 @@
  </tile>
  <tile id="210">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_2"/>
    <property name="name" value="boss_fish"/>
   </properties>
  </tile>
  <tile id="211">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_1"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -1159,14 +1150,12 @@
  </tile>
  <tile id="213">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_1"/>
    <property name="name" value="boss_fish"/>
   </properties>
  </tile>
  <tile id="214">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_0"/>
    <property name="name" value="boss_fish"/>
   </properties>
@@ -1180,7 +1169,6 @@
  </tile>
  <tile id="216">
   <properties>
-   <property name="collision_shape" value="square"/>
    <property name="cycle" value="b_0"/>
    <property name="name" value="boss_fish"/>
   </properties>

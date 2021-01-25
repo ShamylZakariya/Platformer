@@ -16,7 +16,7 @@ use super::util::{Direction, HitPointState};
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 0.5; // units per second
-const HIT_POINTS: i32 = 2;
+const HIT_POINTS: i32 = 5;
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -60,7 +60,7 @@ impl Entity for BossFish {
             .entity_id
             .expect("Spawned entities expect to find a spawn point id from the sprite");
 
-        self.position = sprite.origin;
+        self.position = sprite.origin + vec3(0.0, -3.0, 0.0);
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
@@ -71,6 +71,8 @@ impl Entity for BossFish {
         self.sprite.collision_shape = sprite::CollisionShape::Square;
         self.update_sprite_extents();
         collision_space.add_dynamic_sprite(&self.sprite);
+
+        println!("BossFish::init_from_map_sprite position: {:?} sprite: {:?}", self.position(), &self.sprite);
     }
 
     fn update(
@@ -79,8 +81,15 @@ impl Entity for BossFish {
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
+        _drawable: &rendering::EntityDrawable,
     ) {
+        self.facing = if game_state_peek.player_position.x - self.position.x > 0.0 {
+            Direction::East
+        } else {
+            Direction::West
+        };
+
         if self.life.update(
             self.entity_id(),
             self.spawn_point_id,
@@ -110,7 +119,7 @@ impl Entity for BossFish {
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.facing {
             Direction::East => (1.0, 0.0),
-            Direction::West => (-1.0, -1.0),
+            Direction::West => (-1.0, 1.0),
         };
 
         uniforms
@@ -155,10 +164,10 @@ impl Entity for BossFish {
 
 impl BossFish {
     fn update_sprite_extents(&mut self) {
-        // sprite is 3x3 with root centered at bottom
+        // sprite is 3x2 with root centered at bottom
         self.sprite.origin.x = self.position.x - 1.0;
         self.sprite.origin.y = self.position.y;
         self.sprite.extent.x = 3.0;
-        self.sprite.extent.y = 3.0;
+        self.sprite.extent.y = 2.0;
     }
 }

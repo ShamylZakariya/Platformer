@@ -97,6 +97,7 @@ impl HitPointState {
 
     pub fn handle_message(&mut self, message: &Message) -> bool {
         if let Event::HitByFireball { direction } = message.event {
+            println!("HitPointState[{:?}]::handle_message - HitByFireball", message.recipient_entity_id);
             self.hit_points = (self.hit_points - 1).max(0);
             self.death_animation_dir = direction;
             true

@@ -524,6 +524,9 @@ pub struct EntityDrawable {
 
     // TODO: this should be &Material so multiple entities can share a single spritesheet?
     material: Rc<Material>,
+
+    // maps a string, e.g., "face_right" to a the sprites it is made up of
+    sprites: HashMap<String, Vec<Sprite>>,
 }
 
 impl EntityDrawable {
@@ -557,7 +560,7 @@ impl EntityDrawable {
         }
 
         // now for each root tile, assemble Sprites
-        let mut sprites_by_cycle: HashMap<&str, Vec<Sprite>> = HashMap::new();
+        let mut sprites_by_cycle: HashMap<String, Vec<Sprite>> = HashMap::new();
         for cycle in root_tiles_by_cycle.keys() {
             let root_tile = *root_tiles_by_cycle.get(cycle).unwrap();
             let tiles = tiles_by_cycle.get(cycle).unwrap();
@@ -582,18 +585,18 @@ impl EntityDrawable {
                 );
 
                 sprites_by_cycle
-                    .entry(cycle)
+                    .entry(cycle.to_string())
                     .or_insert_with(Vec::new)
                     .push(sprite);
             }
         }
 
         // Convert sprites to sprite meshes
-        Self::new(&sprites_by_cycle, material, device)
+        Self::new(sprites_by_cycle, material, device)
     }
 
     pub fn new(
-        sprites: &HashMap<&str, Vec<Sprite>>,
+        sprites: HashMap<String, Vec<Sprite>>,
         material: Rc<Material>,
         device: &wgpu::Device,
     ) -> Self {
@@ -606,6 +609,7 @@ impl EntityDrawable {
         }
 
         EntityDrawable {
+            sprites,
             meshes_by_cycle: sprite_states,
             material,
         }

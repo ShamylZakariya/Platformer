@@ -60,6 +60,7 @@ impl Entity for FallingBridge {
         collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
+        _drawable: &rendering::EntityDrawable,
     ) {
         let dt = dt.as_secs_f32();
 
