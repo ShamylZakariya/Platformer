@@ -47,6 +47,20 @@ impl Tile {
         self.get_property(name) == Some("true")
     }
 
+    pub fn float_property(&self, name: &str) -> f32 {
+        self.get_property(name)
+            .unwrap_or_else(|| panic!("Expected property\"{}\"", name))
+            .parse::<f32>()
+            .unwrap_or_else(|_| panic!("Expected property \"{}\" to parse to f32", name))
+    }
+
+    pub fn int_property(&self, name: &str) -> i32 {
+        self.get_property(name)
+            .unwrap_or_else(|| panic!("Expected property\"{}\"", name))
+            .parse::<i32>()
+            .unwrap_or_else(|_| panic!("Expected property \"{}\" to parse to i32", name))
+    }
+
     pub fn get_property(&self, name: &str) -> Option<&str> {
         self.properties.get(name).map(|p| p.as_str())
     }

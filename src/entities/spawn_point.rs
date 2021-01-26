@@ -2,7 +2,14 @@ use std::time::Duration;
 
 use cgmath::*;
 
-use crate::{entity::{Entity, GameStatePeek}, event_dispatch::*, map, sprite::{self, collision, rendering}, state::events::Event, tileset};
+use crate::{
+    entity::{Entity, GameStatePeek},
+    event_dispatch::*,
+    map,
+    sprite::{self, collision, rendering},
+    state::events::Event,
+    tileset,
+};
 
 pub struct SpawnPoint {
     entity_id: u32,
