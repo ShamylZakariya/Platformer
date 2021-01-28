@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 
 use crate::{event_dispatch::*, state::constants::sprite_masks::COLLIDER};
 use crate::{sprite::collision, state::events::Event};
@@ -17,6 +17,112 @@ impl Direction {
             Direction::East => Direction::West,
             Direction::West => Direction::East,
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const SIN_PI_4: f32 = 0.707_106_77;
+const TAU: f32 = 2.0 * PI;
+
+#[derive(Debug, Copy, Clone)]
+pub enum Axis {
+    Horizontal,
+    Vertical,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CompassDir {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
+
+impl CompassDir {
+    /// Creates the CompassDir which most closely matches the (not-necessarily-normalized) input dir.
+    pub fn new(dir: Vector2<f32>) -> Self {
+        use CompassDir::*;
+        let ndir = dir.normalize();
+        let mut angle = ndir.y.atan2(ndir.x);
+        if angle < 0.0 {
+            angle += TAU;
+        }
+        let sector = ((angle / (TAU / 16.0)).round() as i32) % 16;
+        match sector {
+            0 | 15 => East,
+            1 | 2 => NorthEast,
+            3 | 4 => North,
+            5 | 6 => NorthWest,
+            7 | 8 => West,
+            9 | 10 => SouthWest,
+            11 | 12 => South,
+            13 | 14 => SouthEast,
+            _ => panic!("sector expected to be in range [0,15]"),
+        }
+    }
+
+    pub fn to_dir(&self) -> Vector2<f32> {
+        use CompassDir::*;
+        let t = SIN_PI_4;
+        match self {
+            North => vec2(0.0, 1.0),
+            NorthEast => vec2(t, t),
+            East => vec2(1.0, 0.0),
+            SouthEast => vec2(t, -t),
+            South => vec2(0.0, -1.0),
+            SouthWest => vec2(-t, -t),
+            West => vec2(-1.0, 0.0),
+            NorthWest => vec2(-t, t),
+        }
+    }
+
+    pub fn mirrored(&self, axis: Axis) -> Self {
+        use CompassDir::*;
+        match axis {
+            Axis::Horizontal => match self {
+                North => South,
+                NorthEast => SouthEast,
+                East => East,
+                SouthEast => NorthEast,
+                South => North,
+                SouthWest => NorthWest,
+                West => West,
+                NorthWest => SouthWest,
+            },
+            Axis::Vertical => match self {
+                North => North,
+                NorthEast => NorthWest,
+                East => West,
+                SouthEast => SouthWest,
+                South => South,
+                SouthWest => SouthEast,
+                West => East,
+                NorthWest => NorthEast,
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod chase_dir_tests {
+    use super::*;
+
+    #[test]
+    fn new_produces_expected_values() {
+        assert_eq!(CompassDir::new(vec2(0.0, 1.0)), CompassDir::North);
+        assert_eq!(CompassDir::new(vec2(0.0, -1.0)), CompassDir::South);
+        assert_eq!(CompassDir::new(vec2(1.0, 0.0)), CompassDir::East);
+        assert_eq!(CompassDir::new(vec2(-1.0, 0.0)), CompassDir::West);
+
+        assert_eq!(CompassDir::new(vec2(1.0, 1.0)), CompassDir::NorthEast);
+        assert_eq!(CompassDir::new(vec2(1.0, -1.0)), CompassDir::SouthEast);
+        assert_eq!(CompassDir::new(vec2(-1.0, -1.0)), CompassDir::SouthWest);
+        assert_eq!(CompassDir::new(vec2(-1.0, 1.0)), CompassDir::NorthWest);
     }
 }
 

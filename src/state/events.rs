@@ -49,4 +49,11 @@ pub enum Event {
         // direction it should travel, -1 being left, +1 for right
         direction: Direction,
     },
+
+    /// Sent by BossFish to launch a FireSprite
+    ShootFiresprite {
+        position: Point2<f32>,
+        dir: Vector2<f32>,
+        velocity: f32,
+    },
 }

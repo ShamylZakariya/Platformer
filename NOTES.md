@@ -1,5 +1,6 @@
 CURRENTLY:
-    - Boss fish can't really get away with being 3x2, it should be made up of a non-rectangular set of sprites, however, sprite::collision::Space will not allow multiple dynamic sprites with same entity_id...
+    - BossFish targets where player *was*, and since latency is high, it's weird. Instead of packing target_y and such so early on, maybe we just keep rising until we exceed player height? Similarly for x position at raise time
+
 
 TODO:
     - Boss fish

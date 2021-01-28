@@ -7,25 +7,29 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::constants::{sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
+    state::{
+        constants::{sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
+        events::Event,
+    },
     tileset,
 };
 
-use super::util::{Direction, HitPointState};
+use super::util::{Axis, CompassDir, Direction, HitPointState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 3.0 / 1.9; // units per second
-const SUBMERGED_DURATION: f32 = 2.0;
+const FIRESPRITE_MOVEMENT_SPEED: f32 = MOVEMENT_SPEED * 2.0;
+const SUBMERGED_DURATION: f32 = 1.0;
 const HIT_POINTS: i32 = 5;
 const SPRITE_SIZE: Vector2<f32> = vec2(3.0, 3.0);
 
 #[derive(Debug, Clone, Copy)]
 enum AttackPhase {
     Submerged { time_started: f32 },
-    Raising { target_y: f32 },
-    Attacking { target_x: f32, shooting: bool },
+    Raising,
+    Attacking { target_x: f32 },
     Submerging,
 }
 
@@ -53,6 +57,7 @@ pub struct BossFish {
     arena_origin: Point2<f32>,
     arena_extent: Vector2<f32>,
     water_height: f32,
+    should_launch_firesprites: bool,
 }
 
 impl Default for BossFish {
@@ -72,6 +77,7 @@ impl Default for BossFish {
             arena_origin: point2(0.0, 0.0),
             arena_extent: vec2(0.0, 0.0),
             water_height: 0.0,
+            should_launch_firesprites: false,
         }
     }
 }
@@ -130,7 +136,7 @@ impl Entity for BossFish {
             //  Update position and sprite
             //
 
-            self.update_position(dt, game_state_peek);
+            self.update_position(dt, game_state_peek, message_dispatcher);
             self.update_sprite(collision_space);
 
             //
@@ -192,9 +198,16 @@ impl Entity for BossFish {
 }
 
 impl BossFish {
-    fn update_position(&mut self, dt: f32, game_state_peek: &GameStatePeek) {
+    fn update_position(
+        &mut self,
+        dt: f32,
+        game_state_peek: &GameStatePeek,
+        message_dispatcher: &mut Dispatcher,
+    ) {
         match self.attack_phase {
             AttackPhase::Submerged { time_started } => {
+                self.position.y = self.submersion_depth();
+
                 if self.time - time_started > SUBMERGED_DURATION {
                     // move from Submerged to Raising. Pick an emergence point that is half the original
                     // viewport width away, with a lowish probability of being right under player.
@@ -204,7 +217,7 @@ impl BossFish {
                     } else {
                         -max_dist
                     };
-                    if self.rng.gen_bool(0.3) {
+                    if self.rng.gen_bool(0.2) {
                         dist = 0.0
                     };
                     let x = (game_state_peek.player_position.x + dist)
@@ -212,32 +225,57 @@ impl BossFish {
                         .min(self.arena_origin.x + self.arena_extent.x - 2.0);
                     self.position.x = x;
                     self.position.y = self.arena_origin.y - self.water_height - SPRITE_SIZE.y;
-                    let target_y = self.arena_origin.y
-                        + self.rng.gen_range(0.0..self.arena_extent.y - SPRITE_SIZE.y);
-                    self.set_attack_phase(AttackPhase::Raising { target_y });
-
-                    self.facing = if game_state_peek.player_position.x - self.position.x > 0.0 {
-                        Direction::East
-                    } else {
-                        Direction::West
-                    };
+                    self.set_attack_phase(AttackPhase::Raising);
                 }
             }
-            AttackPhase::Raising { target_y } => {
+            AttackPhase::Raising => {
+                self.facing = if game_state_peek.player_position.x - self.position.x > 0.0 {
+                    Direction::East
+                } else {
+                    Direction::West
+                };
+
                 // Raise self; when reaching attack height, transition to attack
                 self.position.y += MOVEMENT_SPEED * dt;
-                if self.position.y >= target_y {
-                    self.position.y = target_y;
+                if self.position.y >= game_state_peek.player_position.y {
+                    self.position.y = game_state_peek.player_position.y;
+                    self.should_launch_firesprites = self.rng.gen_bool(0.5);
                     self.set_attack_phase(AttackPhase::Attacking {
                         target_x: game_state_peek.player_position.x,
-                        shooting: false,
                     });
                 }
             }
-            AttackPhase::Attacking {
-                target_x,
-                shooting: _,
-            } => {
+            AttackPhase::Attacking { target_x } => {
+                // if we are supposed to fire at player, wait until we're close, then launch 2
+                if self.should_launch_firesprites {
+                    let dist = (target_x - self.position.x).abs();
+                    if dist < 3.0 {
+                        let offset = vec2(0.25, 0.25);
+                        let dir =
+                            CompassDir::new(game_state_peek.player_position - self.position.xy());
+                        match dir {
+                            CompassDir::North | CompassDir::South => { // no-op
+                            }
+                            _ => {
+                                for (dir, offset) in
+                                    [(dir, offset), (dir.mirrored(Axis::Horizontal), -offset)]
+                                        .iter()
+                                {
+                                    message_dispatcher.entity_to_global(
+                                        self.entity_id,
+                                        Event::ShootFiresprite {
+                                            position: self.position.xy() + offset,
+                                            dir: dir.to_dir(),
+                                            velocity: FIRESPRITE_MOVEMENT_SPEED,
+                                        },
+                                    );
+                                }
+                            }
+                        }
+                        self.should_launch_firesprites = false;
+                    }
+                }
+
                 // Advance towards player until we reach the target_x, then start submersion
                 let done_advancing = if target_x < self.position.x {
                     self.position.x -= MOVEMENT_SPEED * dt;
@@ -253,7 +291,7 @@ impl BossFish {
             AttackPhase::Submerging => {
                 // Submerge until we reach target depth, then switch to waiting submersion phase
                 self.position.y -= MOVEMENT_SPEED * dt;
-                if self.position.y < self.arena_origin.y - self.water_height - SPRITE_SIZE.y {
+                if self.position.y < self.submersion_depth() {
                     self.set_attack_phase(AttackPhase::Submerged {
                         time_started: self.time,
                     });
@@ -264,8 +302,8 @@ impl BossFish {
 
     fn set_attack_phase(&mut self, new_phase: AttackPhase) {
         println!(
-            "BossFish::set_attack_phase old_phase: {:?} -> new_phase {:?}",
-            self.attack_phase, new_phase
+            "BossFish::set_attack_phase time: {} old_phase: {:?} -> new_phase {:?}",
+            self.time, self.attack_phase, new_phase
         );
         self.attack_phase = new_phase;
     }
@@ -276,5 +314,9 @@ impl BossFish {
         self.sprite.origin.y = self.position.y;
         self.sprite.extent = SPRITE_SIZE;
         collision_space.update_dynamic_sprite(&self.sprite);
+    }
+
+    fn submersion_depth(&self) -> f32 {
+        self.arena_origin.y - self.water_height - SPRITE_SIZE.y
     }
 }

@@ -722,6 +722,18 @@ impl event_dispatch::MessageHandler for GameState {
                     }
                 }
 
+                Event::ShootFiresprite {
+                    position,
+                    dir,
+                    velocity,
+                } => {
+                    self.request_add_entity(Box::new(entities::fire_sprite::FireSprite::launch(
+                        point3(position.x, position.y, 0.0),
+                        *dir,
+                        *velocity,
+                    )));
+                }
+
                 _ => {}
             }
         }
