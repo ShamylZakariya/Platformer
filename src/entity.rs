@@ -114,11 +114,16 @@ pub trait Entity {
         (self.position().xy(), vec2(1.0, 1.0))
     }
 
-    /// The name identifying the entity's sprites in the Entity spritesheet. E.g., "firebrand" or "falling_bridge"
-    fn sprite_name(&self) -> &str;
+    /// The name identifying the entity's sprites in the Entity spritesheet. E.g., "firebrand" or "falling_bridge".
+    /// If returning an empty string, no EntityDrawable will be created.
+    fn sprite_name(&self) -> &str {
+        ""
+    }
 
     /// The current sprite "cycle", e.g., "walk_0", "default", etc.
-    fn sprite_cycle(&self) -> &str;
+    fn sprite_cycle(&self) -> &str {
+        ""
+    }
 
     /// Handle receipt of a dispatched message.
     fn handle_message(&mut self, _message: &Message) {}
@@ -138,6 +143,12 @@ pub trait Entity {
 
     /// Called when the entity entered the viewport
     fn did_exit_viewport(&mut self) {}
+
+    /// Most entities are rendered via an EntityDrawable, but some (RisingFloor, ExitDoor) draw stage sprites,
+    /// and use a sprite::Drawable. To do so, return a vector of Sprite here and an empty string from sprite_name.
+    fn stage_sprites(&self) -> Option<Vec<sprite::Sprite>> {
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -1,12 +1,14 @@
 pub mod bat;
 pub mod boss_fish;
 pub mod death_animation;
+pub mod exit_door;
 pub mod falling_bridge;
 pub mod fire_sprite;
 pub mod fireball;
 pub mod firebrand;
 pub mod flying_fish;
 pub mod hoodie;
+pub mod rising_floor;
 pub mod spawn_point;
 pub mod util;
 
@@ -22,11 +24,13 @@ pub enum EntityClass {
     Bat,
     BossFish,
     DeathAnimation,
+    ExitDoor,
     Firebrand,
     Fireball,
     FallingBridge,
     FlyingFish,
     Hoodie,
+    RisingFloor,
     SpawnPoint,
     FireSprite,
 }

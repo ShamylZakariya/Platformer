@@ -27,11 +27,19 @@ use super::{
     gpu_state,
 };
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 struct EntityAdditionRequest {
     entity_id: u32,
     entity: Box<dyn entity::Entity>,
     needs_init: bool,
 }
+
+fn build_stage_entities() -> Vec<Box<dyn entity::Entity>> {
+    todo!();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct GameState {
     // Camera
@@ -41,7 +49,7 @@ pub struct GameState {
     sprite_render_pipeline: wgpu::RenderPipeline,
 
     // Stage rendering
-    stage_material: Rc<crate::sprite::rendering::Material>,
+    stage_material: Rc<rendering::Material>,
     stage_uniforms: SpriteUniforms,
     stage_debug_draw_overlap_uniforms: SpriteUniforms,
     stage_debug_draw_contact_uniforms: SpriteUniforms,
@@ -55,7 +63,7 @@ pub struct GameState {
     // Entity rendering
     entity_id_vendor: entity::IdVendor,
     entity_tileset: tileset::TileSet,
-    entity_material: Rc<crate::sprite::rendering::Material>,
+    entity_material: Rc<rendering::Material>,
     entities: HashMap<u32, entity::EntityComponents>,
     firebrand_entity_id: u32,
     visible_entities: HashSet<u32>,
@@ -84,13 +92,13 @@ impl GameState {
             map.tileset.tile_height as f32,
         );
 
-        let material_bind_group_layout =
-            crate::sprite::rendering::Material::bind_group_layout(&gpu.device);
+        let material_bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let (
             stage_sprite_material,
             stage_sprite_drawable,
             collision_space,
             entities,
+            stage_entities,
             stage_animation_flipbooks,
         ) = {
             let stage_sprite_material = {
@@ -98,7 +106,7 @@ impl GameState {
                 let spritesheet =
                     texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false)
                         .unwrap();
-                Rc::new(crate::sprite::rendering::Material::new(
+                Rc::new(rendering::Material::new(
                     &gpu.device,
                     "Sprite Material",
                     spritesheet,
@@ -115,6 +123,12 @@ impl GameState {
             let entity_layer = map
                 .layer_named("Entities")
                 .expect("Expected layer named 'Entities'");
+            let rising_floor_layer = map
+                .layer_named("RisingFloor")
+                .expect("Expect layer named 'RidingFloor'");
+            let exit_door_layer = map
+                .layer_named("ExitDoor")
+                .expect("Expect layer named 'ExitDoor'");
 
             // generate level sprites
             let bg_sprites = map.generate_sprites(bg_layer, |_, _| sprite_layers::BACKGROUND);
@@ -125,6 +139,16 @@ impl GameState {
                     sprite_layers::LEVEL
                 }
             });
+
+            let rising_floor_sprites =
+                map.generate_sprites(rising_floor_layer, |_, _| sprite_layers::FOREGROUND);
+            let exit_door_sprites =
+                map.generate_sprites(exit_door_layer, |_, _| sprite_layers::FOREGROUND);
+
+            let rising_floor_entity = Box::new(entities::rising_floor::RisingFloor::new(
+                rising_floor_sprites,
+            ));
+            let exit_door_entity = Box::new(entities::exit_door::ExitDoor::new(exit_door_sprites));
 
             // generate level entities
             let mut collision_space = collision::Space::new(&level_sprites);
@@ -143,13 +167,16 @@ impl GameState {
             all_sprites.extend(bg_sprites);
             all_sprites.extend(level_sprites);
 
-            let sm =
-                crate::sprite::rendering::Mesh::new(&all_sprites, 0, &gpu.device, "Sprite Mesh");
+            let sm = rendering::Mesh::new(&all_sprites, 0, &gpu.device, "Stage Sprite Mesh");
             (
                 stage_sprite_material.clone(),
                 rendering::Drawable::with(sm, stage_sprite_material),
                 collision_space,
                 entities,
+                vec![
+                    rising_floor_entity as Box<dyn entity::Entity>,
+                    exit_door_entity as Box<dyn entity::Entity>,
+                ],
                 stage_animation_flipbooks,
             )
         };
@@ -189,7 +216,7 @@ impl GameState {
                     push_constant_ranges: &[],
                 });
 
-        let sprite_render_pipeline = crate::sprite::rendering::create_render_pipeline(
+        let sprite_render_pipeline = rendering::create_render_pipeline(
             &gpu.device,
             &sprite_render_pipeline_layout,
             gpu.sc_desc.format,
@@ -206,7 +233,7 @@ impl GameState {
             let spritesheet =
                 texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
 
-            crate::sprite::rendering::Material::new(
+            rendering::Material::new(
                 &gpu.device,
                 "Sprite Material",
                 spritesheet,
@@ -227,7 +254,7 @@ impl GameState {
                 e.entity_id(),
                 entity::EntityComponents::with_entity_drawable(
                     e,
-                    crate::sprite::rendering::EntityDrawable::load(
+                    rendering::EntityDrawable::load(
                         &entity_tileset,
                         entity_material.clone(),
                         &gpu.device,
@@ -282,7 +309,7 @@ impl GameState {
             .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         stage_debug_draw_contact_uniforms.write(&mut gpu.queue);
 
-        Self {
+        let mut game_state = Self {
             camera_controller,
             sprite_render_pipeline,
             stage_material: stage_sprite_material,
@@ -307,7 +334,13 @@ impl GameState {
 
             draw_stage_collision_info: false,
             camera_tracks_character: true,
+        };
+
+        for se in stage_entities {
+            game_state.request_add_entity(se);
         }
+
+        game_state
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -532,6 +565,13 @@ impl GameState {
                         e.entity.sprite_cycle(),
                     );
                 }
+                if let Some(ref drawable) = e.sprite_drawable {
+                    drawable.draw(
+                        &mut render_pass,
+                        &self.camera_controller.uniforms,
+                        &e.uniforms,
+                    );
+                }
             }
         }
     }
@@ -630,28 +670,50 @@ impl GameState {
                 .init(req.entity_id, &self.map, &mut self.collision_space);
         }
 
-        let sprite_name = req.entity.sprite_name().to_string();
-        let components = EntityComponents::with_entity_drawable(
-            req.entity,
-            crate::sprite::rendering::EntityDrawable::load(
-                &self.entity_tileset,
-                self.entity_material.clone(),
-                &gpu.device,
-                &sprite_name,
-                0,
-            ),
-            SpriteUniforms::new(
-                &gpu.device,
-                self.map.tileset.get_sprite_size().cast().unwrap(),
-            ),
+        let uniforms = SpriteUniforms::new(
+            &gpu.device,
+            self.map.tileset.get_sprite_size().cast().unwrap(),
         );
 
-        self.entities.insert(components.id(), components);
+        let components = if !req.entity.sprite_name().is_empty() {
+            let sprite_name = req.entity.sprite_name().to_string();
+            // The Entity has specified a sprite name, which means it's using
+            // an EntityDrawable to render.
+            Some(EntityComponents::with_entity_drawable(
+                req.entity,
+                rendering::EntityDrawable::load(
+                    &self.entity_tileset,
+                    self.entity_material.clone(),
+                    &gpu.device,
+                    &sprite_name,
+                    0,
+                ),
+                uniforms,
+            ))
+        } else if let Some(sprites) = req.entity.stage_sprites() {
+            // The Entity has specified sprites to render, which means its using a
+            // sprite::Drawable using the stage material to render.
+            let mesh = rendering::Mesh::new(&sprites, 0, &gpu.device, "Entity Stage Sprite Mesh");
+            let drawable = rendering::Drawable::with(mesh, self.stage_material.clone());
+
+            Some(EntityComponents::with_sprite_drawable(
+                req.entity, drawable, uniforms,
+            ))
+        } else {
+            None
+        };
+
+        if let Some(c) = components {
+            self.entities.insert(c.id(), c);
+        }
     }
 
-    fn boss_fight_started(&mut self) {}
+    fn boss_fight_started(&mut self) {
+        println!("\n\nBOSS FIGHT!!\n\n");
+    }
 
     fn boss_was_defeated(&mut self) {
+        println!("\n\nBOSS DEFEATED!!\n\n");
         //
         // Clear all entities from the stage
         //
@@ -664,6 +726,8 @@ impl GameState {
         //  - this can be done by having a layer with white tiles in it? And alpha fading it over
         //  4 values to match gamebody palette.
         //
+
+        self.message_dispatcher.broadcast(Event::RaiseExitFloor);
     }
 }
 
@@ -678,9 +742,13 @@ impl event_dispatch::MessageHandler for GameState {
                 e.entity.handle_message(&message);
             }
         } else {
-            //
-            //  The message has no destination, so we handle it
-            //
+            // In the case that we have neither a sender nor receiver this is a global
+            // broadcast and we send to everybody.
+            if message.sender_entity_id.is_none() && message.recipient_entity_id.is_none() {
+                for e in self.entities.values_mut() {
+                    e.entity.handle_message(message);
+                }
+            }
 
             match &message.event {
                 Event::TryShootFireball {

@@ -37,7 +37,9 @@ pub enum Event {
 
     /// Response from GameState to signal if requested entity was spawned.
     /// Bears the spawned entity id on success, None otherwise.
-    EntityWasSpawned { entity_id: Option<u32> },
+    EntityWasSpawned {
+        entity_id: Option<u32>,
+    },
 
     /// Sent by a spawned entity to its spawn point when it dies
     SpawnedEntityDidDie,
@@ -62,4 +64,10 @@ pub enum Event {
 
     /// Sent by boss to GameState when defeated
     BossDefeated,
+
+    /// Sent after boiss fight finishes to raise the floor to make exit door accessible
+    RaiseExitFloor,
+
+    // Sent after the floor finishes raising, to signal opening of the exit door.
+    OpenExitDoor,
 }
