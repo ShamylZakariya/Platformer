@@ -82,7 +82,6 @@ impl Entity for Hoodie {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         //
         // Update life state

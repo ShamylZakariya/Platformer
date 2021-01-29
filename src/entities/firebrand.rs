@@ -444,7 +444,6 @@ impl Entity for Firebrand {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();

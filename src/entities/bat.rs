@@ -83,7 +83,6 @@ impl Entity for Bat {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         //
         // Update life state

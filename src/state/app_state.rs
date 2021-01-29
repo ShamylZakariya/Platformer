@@ -38,6 +38,10 @@ impl AppState {
     }
 
     pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
+        // Set a max timestep - this is crude, but prevents explosions when stopping
+        // execution in the debugger, and we get a HUGE timestep after resuming.
+        let dt = dt.min(std::time::Duration::from_millis(32));
+
         self.overlay.update(window, dt);
         self.game_state.update(dt, &mut self.gpu);
     }

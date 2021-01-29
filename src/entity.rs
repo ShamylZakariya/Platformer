@@ -82,7 +82,6 @@ pub trait Entity {
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _entity_drawable: &rendering::EntityDrawable,
     ) {
     }
 
@@ -147,19 +146,34 @@ pub trait Entity {
 /// for updating state, and drawing.
 pub struct EntityComponents {
     pub entity: Box<dyn Entity>,
-    pub drawable: crate::sprite::rendering::EntityDrawable,
+    pub entity_drawable: Option<crate::sprite::rendering::EntityDrawable>,
+    pub sprite_drawable: Option<crate::sprite::rendering::Drawable>,
     pub uniforms: crate::sprite::rendering::Uniforms,
 }
 
 impl EntityComponents {
-    pub fn new(
+    pub fn with_entity_drawable(
         entity: Box<dyn Entity>,
-        drawable: crate::sprite::rendering::EntityDrawable,
+        entity_drawable: crate::sprite::rendering::EntityDrawable,
         uniforms: crate::sprite::rendering::Uniforms,
     ) -> Self {
         Self {
             entity,
-            drawable,
+            entity_drawable: Some(entity_drawable),
+            sprite_drawable: None,
+            uniforms,
+        }
+    }
+
+    pub fn with_sprite_drawable(
+        entity: Box<dyn Entity>,
+        sprite_drawable: crate::sprite::rendering::Drawable,
+        uniforms: crate::sprite::rendering::Uniforms,
+    ) -> Self {
+        Self {
+            entity,
+            entity_drawable: None,
+            sprite_drawable: Some(sprite_drawable),
             uniforms,
         }
     }

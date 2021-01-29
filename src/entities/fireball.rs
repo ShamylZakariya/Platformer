@@ -57,7 +57,6 @@ impl Entity for Fireball {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         let dt = dt.as_secs_f32();
         let mask = crate::state::constants::sprite_masks::SHOOTABLE;

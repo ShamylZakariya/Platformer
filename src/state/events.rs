@@ -56,4 +56,10 @@ pub enum Event {
         dir: Vector2<f32>,
         velocity: f32,
     },
+
+    /// Sent by boss to GameState when the boss fight starts
+    BossEncountered,
+
+    /// Sent by boss to GameState when defeated
+    BossDefeated,
 }

@@ -41,6 +41,7 @@ pub struct GameState {
     sprite_render_pipeline: wgpu::RenderPipeline,
 
     // Stage rendering
+    stage_material: Rc<crate::sprite::rendering::Material>,
     stage_uniforms: SpriteUniforms,
     stage_debug_draw_overlap_uniforms: SpriteUniforms,
     stage_debug_draw_contact_uniforms: SpriteUniforms,
@@ -224,7 +225,7 @@ impl GameState {
             let name = e.sprite_name().to_string();
             entity_components.insert(
                 e.entity_id(),
-                entity::EntityComponents::new(
+                entity::EntityComponents::with_entity_drawable(
                     e,
                     crate::sprite::rendering::EntityDrawable::load(
                         &entity_tileset,
@@ -284,6 +285,7 @@ impl GameState {
         Self {
             camera_controller,
             sprite_render_pipeline,
+            stage_material: stage_sprite_material,
             stage_uniforms,
             stage_debug_draw_overlap_uniforms,
             stage_debug_draw_contact_uniforms,
@@ -389,7 +391,6 @@ impl GameState {
                     &mut self.collision_space,
                     &mut self.message_dispatcher,
                     &game_state_peek,
-                    &e.drawable,
                 );
                 e.entity.update_uniforms(&mut e.uniforms);
                 e.uniforms.write(&mut gpu.queue);
@@ -523,12 +524,14 @@ impl GameState {
         // render entities
         for e in self.entities.values() {
             if e.entity.is_alive() && e.entity.should_draw() {
-                e.drawable.draw(
-                    &mut render_pass,
-                    &self.camera_controller.uniforms,
-                    &e.uniforms,
-                    e.entity.sprite_cycle(),
-                );
+                if let Some(ref drawable) = e.entity_drawable {
+                    drawable.draw(
+                        &mut render_pass,
+                        &self.camera_controller.uniforms,
+                        &e.uniforms,
+                        e.entity.sprite_cycle(),
+                    );
+                }
             }
         }
     }
@@ -628,7 +631,7 @@ impl GameState {
         }
 
         let sprite_name = req.entity.sprite_name().to_string();
-        let components = EntityComponents::new(
+        let components = EntityComponents::with_entity_drawable(
             req.entity,
             crate::sprite::rendering::EntityDrawable::load(
                 &self.entity_tileset,
@@ -644,6 +647,23 @@ impl GameState {
         );
 
         self.entities.insert(components.id(), components);
+    }
+
+    fn boss_fight_started(&mut self) {}
+
+    fn boss_was_defeated(&mut self) {
+        //
+        // Clear all entities from the stage
+        //
+
+        self.entities
+            .retain(|_, e| !e.entity.entity_class().is_enemy());
+
+        //
+        //  TODO: start animating the ground up, when complete, draw white tiles over door tiles
+        //  - this can be done by having a layer with white tiles in it? And alpha fading it over
+        //  4 values to match gamebody palette.
+        //
     }
 }
 
@@ -732,6 +752,14 @@ impl event_dispatch::MessageHandler for GameState {
                         *dir,
                         *velocity,
                     )));
+                }
+
+                Event::BossEncountered => {
+                    self.boss_fight_started();
+                }
+
+                Event::BossDefeated => {
+                    self.boss_was_defeated();
                 }
 
                 _ => {}

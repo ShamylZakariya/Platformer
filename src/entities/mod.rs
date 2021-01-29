@@ -31,6 +31,30 @@ pub enum EntityClass {
     FireSprite,
 }
 
+impl EntityClass {
+    pub fn is_enemy(&self) -> bool {
+        match self {
+            EntityClass::Bat
+            | EntityClass::FlyingFish
+            | EntityClass::FireSprite
+            | EntityClass::Hoodie => true,
+            _ => false,
+        }
+    }
+    pub fn is_boss(&self) -> bool {
+        match self {
+            EntityClass::BossFish => true,
+            _ => false,
+        }
+    }
+    pub fn is_player(&self) -> bool {
+        match self {
+            EntityClass::Firebrand => true,
+            _ => false,
+        }
+    }
+}
+
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {
     match classname {
         "BossFish" => Some(Box::new(boss_fish::BossFish::default()) as Box<dyn entity::Entity>),

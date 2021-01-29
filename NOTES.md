@@ -1,9 +1,9 @@
 CURRENTLY:
-    - BossFish targets where player *was*, and since latency is high, it's weird. Instead of packing target_y and such so early on, maybe we just keep rising until we exceed player height? Similarly for x position at raise time
-
+    - Boss fish
+        - Needs to switch to open-mouth sprites when about to shootbruta
+        - When defeated we need to animate the floor rising up and the door opening (just a fade transition)
 
 TODO:
-    - Boss fish
     - Implement game UI
 
 BUGS:

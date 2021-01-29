@@ -104,7 +104,6 @@ impl Entity for FireSprite {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         if let Some(launch_velocity) = self.launch_velocity {
             let dt = dt.as_secs_f32();

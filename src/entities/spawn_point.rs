@@ -6,7 +6,7 @@ use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{self, collision},
     state::events::Event,
     tileset,
 };
@@ -55,7 +55,6 @@ impl Entity for SpawnPoint {
         _collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
         if self.did_become_visible && self.spawned_entity_id.is_none() {
             let sprite = self

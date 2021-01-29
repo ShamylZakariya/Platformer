@@ -14,7 +14,7 @@ use crate::{
     tileset,
 };
 
-use super::util::{Axis, CompassDir, Direction, HitPointState};
+use super::util::{Axis, CompassDir, Direction};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -22,6 +22,8 @@ const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const MOVEMENT_SPEED: f32 = 3.0 / 1.9; // units per second
 const FIRESPRITE_MOVEMENT_SPEED: f32 = MOVEMENT_SPEED * 2.0;
 const SUBMERGED_DURATION: f32 = 1.0;
+const DEATH_ANIMATION_DURATION: f32 = 2.0;
+const DEATH_BLINK_PERIOD: f32 = ANIMATION_CYCLE_DURATION;
 const HIT_POINTS: i32 = 5;
 const SPRITE_SIZE: Vector2<f32> = vec2(3.0, 3.0);
 
@@ -32,13 +34,6 @@ enum AttackPhase {
     Attacking { target_x: f32 },
     Submerging,
 }
-
-/*
-
-8:15.883 -> 8:17.786 -> raised 3 units
-8:18.249 -> 8:20.183 -> translated 3 units
-
-*/
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -52,7 +47,11 @@ pub struct BossFish {
     time: f32,
     rng: ThreadRng,
     attack_phase: AttackPhase,
-    life: HitPointState,
+    hit_points: i32,
+    sent_encountered_message: bool,
+    sent_death_message: bool,
+    death_animation_countdown: f32,
+    alive: bool,
     facing: Direction,
     arena_origin: Point2<f32>,
     arena_extent: Vector2<f32>,
@@ -72,7 +71,11 @@ impl Default for BossFish {
             time: 0.0,
             rng: thread_rng(),
             attack_phase: AttackPhase::Submerged { time_started: 0.0 },
-            life: HitPointState::new(HIT_POINTS),
+            hit_points: HIT_POINTS,
+            sent_encountered_message: false,
+            sent_death_message: false,
+            alive: true,
+            death_animation_countdown: DEATH_ANIMATION_DURATION,
             facing: Direction::West,
             arena_origin: point2(0.0, 0.0),
             arena_extent: vec2(0.0, 0.0),
@@ -120,18 +123,15 @@ impl Entity for BossFish {
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
-        _drawable: &rendering::EntityDrawable,
     ) {
+        if !self.sent_encountered_message {
+            message_dispatcher.entity_to_global(self.entity_id, Event::BossEncountered);
+        }
+
         let dt = dt.as_secs_f32();
         self.time += dt;
 
-        if self.life.update(
-            self.entity_id(),
-            self.spawn_point_id,
-            self.position(),
-            collision_space,
-            message_dispatcher,
-        ) {
+        if self.hit_points > 0 {
             //
             //  Update position and sprite
             //
@@ -148,6 +148,20 @@ impl Entity for BossFish {
                 self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
                 self.animation_cycle_tick += 1;
             }
+        } else {
+            // Send the defeat message to clear stage and kick off the ending changes to the level
+            if !self.sent_death_message {
+                message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
+                self.sent_death_message = true;
+            }
+
+            // countdown our death animation, before actually terminating
+            if self.death_animation_countdown > 0.0 {
+                self.death_animation_countdown -= dt;
+                if self.death_animation_countdown < 0.0 {
+                    self.alive = false;
+                }
+            }
         }
     }
 
@@ -157,8 +171,21 @@ impl Entity for BossFish {
             Direction::West => (-1.0, 1.0),
         };
 
+        let alpha = if self.hit_points > 0 {
+            1.0
+        } else {
+            let blink_phase = ((DEATH_ANIMATION_DURATION - self.death_animation_countdown)
+                / DEATH_BLINK_PERIOD) as i32;
+            if blink_phase % 2 == 0 {
+                1.0
+            } else {
+                0.0
+            }
+        };
+
         uniforms
             .data
+            .set_color(vec4(1.0, 1.0, 1.0, alpha))
             .set_model_position(self.position + vec3(xoffset, 0.0, 0.0))
             .set_sprite_scale(vec2(xscale, 1.0));
     }
@@ -172,7 +199,7 @@ impl Entity for BossFish {
     }
 
     fn is_alive(&self) -> bool {
-        self.life.is_alive()
+        self.alive
     }
 
     fn position(&self) -> Point3<f32> {
@@ -193,7 +220,9 @@ impl Entity for BossFish {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        self.life.handle_message(message);
+        if let Event::HitByFireball { direction: _ } = message.event {
+            self.hit_points = (self.hit_points - 1).max(0);
+        }
     }
 }
 
