@@ -6,22 +6,30 @@ use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
-    state::constants::sprite_layers::FOREGROUND,
+    sprite::{self, bounds, collision, rendering},
+    state::{constants::sprite_layers::FOREGROUND, events::Event},
 };
+
+const OPEN_SPEED: f32 = 1.0;
 
 pub struct ExitDoor {
     entity_id: u32,
     position: Point3<f32>,
     stage_sprites: Vec<sprite::Sprite>,
+    bounds: (Point2<f32>, Vector2<f32>),
+    opening: bool,
 }
 
 impl ExitDoor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
+        let bounds = bounds(&stage_sprites);
+        println!("ExitDoor bounds: {:?}", bounds);
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
             stage_sprites,
+            bounds,
+            opening: false,
         }
     }
 }
@@ -33,12 +41,20 @@ impl Entity for ExitDoor {
 
     fn update(
         &mut self,
-        _dt: Duration,
+        dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {
+        if self.opening {
+            self.position.x -= OPEN_SPEED * dt.as_secs_f32();
+            if self.position.x < self.bounds.0.x - self.bounds.1.x {
+                self.position.x = self.bounds.0.x - self.bounds.1.x;
+                println!("Done opening door...");
+                self.opening = false;
+            }
+        }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -63,5 +79,12 @@ impl Entity for ExitDoor {
 
     fn stage_sprites(&self) -> Option<Vec<sprite::Sprite>> {
         Some(self.stage_sprites.clone())
+    }
+
+    fn handle_message(&mut self, message: &Message) {
+        if let Event::OpenExitDoor = message.event {
+            println!("Opening Exit Door!");
+            self.opening = true;
+        }
     }
 }

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use futures::executor::block_on;
+use structopt::StructOpt;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -21,14 +22,24 @@ mod tileset;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(StructOpt, Debug)]
+struct Options {
+    ///Display a debug overlay
+    #[structopt(short, long)]
+    debug_overlay: bool,
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 fn main() {
+    let opt = Options::from_args();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Gargoyle's Quest")
         .build(&event_loop)
         .unwrap();
     let gpu = block_on(state::gpu_state::GpuState::new(&window));
-    let mut state = state::app_state::AppState::new(&window, gpu);
+    let mut state = state::app_state::AppState::new(&window, gpu, opt.debug_overlay);
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {

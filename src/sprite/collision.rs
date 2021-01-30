@@ -160,6 +160,20 @@ impl Space {
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
             .copied()
     }
+
+    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<&Sprite> {
+        for s in self.dynamic_sprites.values() {
+            if s.mask & mask != 0 && s.contains(&point2(point.x as f32 + 0.5, point.y as f32 + 0.5))
+            {
+                return Some(s);
+            }
+        }
+
+        self.static_unit_sprites
+            .get(&(point))
+            .filter(|s| s.mask & mask != 0)
+            .map(|s| s)
+    }
 }
 
 #[cfg(test)]

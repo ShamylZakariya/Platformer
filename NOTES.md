@@ -4,6 +4,8 @@ CURRENTLY:
         - When defeated we need to animate the floor rising up and the door opening (just a fade transition)
 
 TODO:
+    - I don't like how we create EntityComponent in GameState; maybe have the EntityComponent::new method "do the right thing" with Entity to create the right draw components
+    -
     - Implement game UI
 
 BUGS:

@@ -41,7 +41,7 @@ enum AttackPhase {
 pub struct BossFish {
     entity_id: u32,
     spawn_point_id: u32,
-    sprite: sprite::Sprite,
+    collider: sprite::Sprite,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
@@ -65,7 +65,7 @@ impl Default for BossFish {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            sprite: sprite::Sprite::default(),
+            collider: sprite::Sprite::default(),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
@@ -110,11 +110,10 @@ impl Entity for BossFish {
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.sprite = *sprite;
-        self.sprite.entity_id = Some(entity_id);
-        self.sprite.mask =
-            sprite_masks::SHOOTABLE | sprite_masks::COLLIDER | sprite_masks::CONTACT_DAMAGE;
-        self.sprite.collision_shape = sprite::CollisionShape::Square;
+        self.collider = *sprite;
+        self.collider.entity_id = Some(entity_id);
+        self.collider.mask = sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
+        self.collider.collision_shape = sprite::CollisionShape::Square;
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -162,6 +161,8 @@ impl Entity for BossFish {
                 self.animation_cycle_tick += 1;
             }
         } else {
+            collision_space.remove_dynamic_sprite(&self.collider);
+
             // Send the defeat message to clear stage and kick off the ending changes to the level
             if !self.sent_death_message {
                 message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
@@ -352,10 +353,10 @@ impl BossFish {
 
     fn update_sprite(&mut self, collision_space: &mut collision::Space) {
         // sprite is 3x3 with root centered at bottom
-        self.sprite.origin.x = self.position.x - 1.0;
-        self.sprite.origin.y = self.position.y;
-        self.sprite.extent = SPRITE_SIZE;
-        collision_space.update_dynamic_sprite(&self.sprite);
+        self.collider.origin.x = self.position.x - 1.0;
+        self.collider.origin.y = self.position.y;
+        self.collider.extent = SPRITE_SIZE;
+        collision_space.update_dynamic_sprite(&self.collider);
     }
 
     fn submersion_depth(&self) -> f32 {

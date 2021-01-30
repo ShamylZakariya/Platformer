@@ -968,7 +968,7 @@ impl Firebrand {
         for test_point in [below_center, center].iter() {
             use crate::sprite::core::CollisionShape;
 
-            if let Some(s) = collision_space.get_static_sprite_at(*test_point, COLLIDER) {
+            if let Some(s) = collision_space.get_sprite_at(*test_point, COLLIDER) {
                 if can_collide_width(&position, s) {
                     match s.collision_shape {
                         CollisionShape::Square => {

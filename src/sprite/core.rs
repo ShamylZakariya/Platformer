@@ -1,4 +1,5 @@
 use cgmath::*;
+use core::f32;
 use std::hash::Hash;
 
 use crate::geom;
@@ -436,6 +437,19 @@ impl Sprite {
             flipped_vertically: self.flipped_vertically,
         }
     }
+}
+
+/// Returns the bounding rect containing all the provided sprites
+pub fn bounds(sprites: &[Sprite]) -> (Point2<f32>, Vector2<f32>) {
+    let mut min: Point2<f32> = point2(f32::MAX, f32::MAX);
+    let mut max: Point2<f32> = point2(f32::MIN, f32::MIN);
+    for s in sprites {
+        min.x = min.x.min(s.origin.x);
+        min.y = min.y.min(s.origin.y);
+        max.x = max.x.max(s.origin.x + s.extent.x);
+        max.y = max.y.max(s.origin.y + s.extent.y);
+    }
+    (min, (max - min))
 }
 
 #[cfg(test)]

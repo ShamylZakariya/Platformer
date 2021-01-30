@@ -18,6 +18,7 @@ imgui = "0.5"
 imgui-wgpu = "0.11.0"
 rand = '0.8'
 raw-window-handle = "0.3"
+structopt = "0.3"
 wgpu = "0.6"
 wgpu-subscriber = "0.1"
 winit = "0.22"

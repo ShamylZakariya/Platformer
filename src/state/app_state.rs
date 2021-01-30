@@ -9,13 +9,17 @@ use super::{game_state::GameState, gpu_state::GpuState};
 pub struct AppState {
     gpu: GpuState,
     game_state: GameState,
-    overlay: DebugOverlay,
+    overlay: Option<DebugOverlay>,
 }
 
 impl AppState {
-    pub fn new(window: &Window, mut gpu: GpuState) -> Self {
+    pub fn new(window: &Window, mut gpu: GpuState, debug_overlay: bool) -> Self {
         let game_state = GameState::new(&mut gpu);
-        let overlay_ui = DebugOverlay::new(window, &gpu);
+        let overlay_ui = if debug_overlay {
+            Some(DebugOverlay::new(window, &gpu))
+        } else {
+            None
+        };
 
         Self {
             gpu,
@@ -25,7 +29,9 @@ impl AppState {
     }
 
     pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
-        self.overlay.event(window, event);
+        if let Some(ref mut overlay) = self.overlay {
+            overlay.event(window, event);
+        }
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -42,7 +48,9 @@ impl AppState {
         // execution in the debugger, and we get a HUGE timestep after resuming.
         let dt = dt.min(std::time::Duration::from_millis(32));
 
-        self.overlay.update(window, dt);
+        if let Some(ref mut overlay) = self.overlay {
+            overlay.update(window, dt);
+        }
         self.game_state.update(dt, &mut self.gpu);
     }
 
@@ -65,13 +73,16 @@ impl AppState {
         //
 
         self.game_state.render(&mut self.gpu, &frame, &mut encoder);
-        self.overlay.render(
-            window,
-            &mut self.game_state,
-            &mut self.gpu,
-            &frame,
-            &mut encoder,
-        );
+
+        if let Some(ref mut overlay) = self.overlay {
+            overlay.render(
+                window,
+                &mut self.game_state,
+                &mut self.gpu,
+                &frame,
+                &mut encoder,
+            );
+        }
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
