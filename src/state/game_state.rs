@@ -16,7 +16,7 @@ use crate::{
     entities::{self, EntityClass},
     entity::{self, EntityComponents, GameStatePeek},
     event_dispatch,
-    geom::Bounds,
+    geom::{hermite, lerp, Bounds},
     map,
     sprite::rendering::Uniforms as SpriteUniforms,
     sprite::{collision, rendering},
@@ -40,6 +40,10 @@ struct EntityAdditionRequest {
 fn build_stage_entities() -> Vec<Box<dyn entity::Entity>> {
     todo!();
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const BOSS_FIGHT_START_TIME_ARENA_CONTRACTION_DURATION: f32 = 2.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -83,7 +87,10 @@ pub struct GameState {
     pub camera_tracks_character: bool,
 
     // General game state
-    boss_fight_arena_bounds: Option<Bounds>,
+    time: f32,
+    boss_fight_start_time: Option<f32>,
+    boss_fight_arena_left_bounds: Option<f32>,
+    viewport_left_when_boss_encountered: Option<f32>,
 }
 
 impl GameState {
@@ -331,7 +338,11 @@ impl GameState {
 
             draw_stage_collision_info: false,
             camera_tracks_character: true,
-            boss_fight_arena_bounds: None,
+
+            time: 0.0,
+            boss_fight_start_time: None,
+            boss_fight_arena_left_bounds: None,
+            viewport_left_when_boss_encountered: None,
         };
 
         for se in stage_entities {
@@ -394,6 +405,8 @@ impl GameState {
     }
 
     pub fn update(&mut self, dt: std::time::Duration, gpu: &mut gpu_state::GpuState) {
+        self.time += dt.as_secs_f32();
+
         //
         //  Process entity additions
         //
@@ -605,11 +618,7 @@ impl GameState {
         // get the viewport - outset it by 1 unit in each edge to "pad" it.
         // since enemy re-spawning isn't exactly a matter of going offscreen,
         // but more like going "a little offscreen".
-        let viewport = self.camera_controller.viewport_bounds(
-            &self.camera_controller.camera,
-            &self.camera_controller.projection,
-            -1.0,
-        );
+        let viewport = self.camera_controller.viewport_bounds(-1.0);
 
         let previously_visible_entities = std::mem::take(&mut self.visible_entities);
         for e in self.entities.values() {
@@ -710,9 +719,12 @@ impl GameState {
         }
     }
 
-    fn boss_fight_started(&mut self, arena_bounds: Bounds) {
+    fn boss_fight_started(&mut self, arena_left_bounds: f32) {
         println!("\n\nBOSS FIGHT!!\n\n");
-        self.boss_fight_arena_bounds = Some(arena_bounds);
+        self.boss_fight_start_time = Some(self.time);
+        self.boss_fight_arena_left_bounds = Some(arena_left_bounds);
+        self.viewport_left_when_boss_encountered =
+            Some(self.camera_controller.viewport_bounds(0.0).left());
     }
 
     fn boss_was_defeated(&mut self) {
@@ -725,9 +737,7 @@ impl GameState {
             .retain(|_, e| !e.entity.entity_class().is_enemy());
 
         //
-        //  TODO: start animating the ground up, when complete, draw white tiles over door tiles
-        //  - this can be done by having a layer with white tiles in it? And alpha fading it over
-        //  4 values to match gamebody palette.
+        //  Kick off the floor raise.
         //
 
         self.message_dispatcher.broadcast(Event::RaiseExitFloor);
@@ -735,8 +745,22 @@ impl GameState {
 
     fn current_map_bounds(&self) -> Bounds {
         let map_bounds = self.map.bounds();
-        if let Some(arena_bounds) = self.boss_fight_arena_bounds {
-            let origin = point2(arena_bounds.left(), map_bounds.bottom());
+        // println!("vpb.left: {} player.x {}", self.camera_controller.viewport_bounds(0.0).left(), self.get_firebrand().entity.position().x);
+
+        if let Some(arena_left_bounds) = self.boss_fight_arena_left_bounds {
+            let elapsed = self.time
+                - self
+                    .boss_fight_start_time
+                    .expect("Expect boss_fight_start_time to be set");
+
+            let t = (elapsed / BOSS_FIGHT_START_TIME_ARENA_CONTRACTION_DURATION).min(1.0);
+
+            let vpl = self
+                .viewport_left_when_boss_encountered
+                .expect("Expect viewport_left_when_boss_encountered to be set");
+            let x = lerp(hermite(t), vpl, arena_left_bounds);
+            let origin = point2(x, map_bounds.bottom());
+
             Bounds::new(
                 origin,
                 vec2(map_bounds.right() - origin.x, map_bounds.top() - origin.y),
@@ -838,8 +862,8 @@ impl event_dispatch::MessageHandler for GameState {
                     )));
                 }
 
-                Event::BossEncountered { arena_bounds } => {
-                    self.boss_fight_started(*arena_bounds);
+                Event::BossEncountered { arena_left } => {
+                    self.boss_fight_started(*arena_left);
                 }
 
                 Event::BossDefeated => {

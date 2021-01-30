@@ -261,19 +261,14 @@ impl CameraController {
     }
 
     /// Return the bounds of the camera viewport expressed as (bottom_left,extent)
-    pub fn viewport_bounds(
-        &self,
-        camera: &Camera,
-        projection: &Projection,
-        inset_by: f32,
-    ) -> Bounds {
+    pub fn viewport_bounds(&self, inset_by: f32) -> Bounds {
         let viewport_size = vec2(
-            projection.scale - 2.0 * inset_by,
-            (projection.scale / projection.aspect) - 2.0 * inset_by,
+            self.projection.scale - 2.0 * inset_by,
+            (self.projection.scale / self.projection.aspect) - 2.0 * inset_by,
         );
         let bottom_left = point2(
-            camera.position.x - viewport_size.x / 2.0,
-            camera.position.y - viewport_size.y / 2.0,
+            self.camera.position.x - viewport_size.x / 2.0,
+            self.camera.position.y - viewport_size.y / 2.0,
         );
         Bounds::new(bottom_left, viewport_size)
     }

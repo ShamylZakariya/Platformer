@@ -31,7 +31,6 @@ pub struct ExitDoor {
 impl ExitDoor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
         let bounds = find_bounds(&stage_sprites);
-        println!("ExitDoor bounds: {:?}", bounds);
         Self {
             entity_id: 0,
             offset: point3(0.0, 0.0, BACKGROUND),
@@ -107,7 +106,6 @@ impl Entity for ExitDoor {
 
     fn handle_message(&mut self, message: &Message) {
         if let Event::OpenExitDoor = message.event {
-            println!("Opening Exit Door!");
             self.mode = Mode::Opening;
         }
     }

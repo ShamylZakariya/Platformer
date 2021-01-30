@@ -1,6 +1,6 @@
 use cgmath::*;
 
-use crate::{entities::util::Direction, geom::Bounds, sprite, tileset};
+use crate::{entities::util::Direction, sprite, tileset};
 
 /// An Event payload for Message
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ pub enum Event {
 
     /// Sent by boss to GameState when the boss fight starts
     BossEncountered {
-        arena_bounds: Bounds,
+        arena_left: f32,
     },
 
     /// Sent by boss to GameState when defeated

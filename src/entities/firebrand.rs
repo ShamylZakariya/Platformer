@@ -6,7 +6,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    geom::Bounds,
+    geom::{clamp, lerp, Bounds},
     input::*,
     map,
     sprite::{self, collision, rendering},
@@ -74,20 +74,6 @@ const INVULNERABILITY_BLINK_PERIOD: f32 = 0.1;
 const FIREBALL_CYCLE_DURATION: f32 = 0.3;
 
 // ---------------------------------------------------------------------------------------------------------------------
-
-pub fn lerp(t: f32, a: f32, b: f32) -> f32 {
-    a + t * (b - a)
-}
-
-pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
-    if v < min {
-        min
-    } else if v > max {
-        max
-    } else {
-        v
-    }
-}
 
 fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
     move |_dist: f32, sprite: &sprite::Sprite| -> bool {
@@ -378,7 +364,6 @@ pub struct Firebrand {
     flight_countdown: f32,
     wallgrab_jump_lateral_motion_countdown: f32,
     wallgrab_jump_dir: f32, // -1 for left, +1 for right
-    map_bounds: Bounds,
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
     injury_kickback_vel: f32,
@@ -404,7 +389,6 @@ impl Default for Firebrand {
             flight_countdown: FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_countdown: 0.0,
             wallgrab_jump_dir: 0.0,
-            map_bounds: Bounds::default(),
             cycle_animation_time_elapsed: None,
             in_water: false,
             injury_kickback_vel: 1.0,
@@ -427,7 +411,6 @@ impl Entity for Firebrand {
         self.entity_id = entity_id;
         self.sprite = Some(*sprite);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
-        self.map_bounds = map.bounds();
         self.character_state.position = sprite.origin.xy();
     }
 
@@ -441,7 +424,7 @@ impl Entity for Firebrand {
         _map: &map::Map,
         collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
     ) {
         self.overlapping_sprites.clear();
         self.contacting_sprites.clear();
@@ -574,7 +557,12 @@ impl Entity for Firebrand {
         //  Apply character movement
         //
 
-        let (position, wall_contact) = self.apply_lateral_movement(collision_space, position, dt);
+        let (position, wall_contact) = self.apply_lateral_movement(
+            collision_space,
+            position,
+            dt,
+            &game_state_peek.current_map_bounds,
+        );
 
         if self.character_state.stance != Stance::Injury {
             //
@@ -1013,6 +1001,7 @@ impl Firebrand {
         collision_space: &'a collision::Space,
         position: Point2<f32>,
         dt: f32,
+        map_bounds: &Bounds,
     ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
         // this is a no-op while wallholding
         if self.is_wallholding() {
@@ -1150,13 +1139,13 @@ impl Firebrand {
             point2(
                 clamp(
                     position.x + delta_x,
-                    self.map_bounds.origin.x,
-                    self.map_bounds.origin.x + self.map_bounds.extent.x - 1.0,
+                    map_bounds.origin.x,
+                    map_bounds.origin.x + map_bounds.extent.x - 1.0,
                 ),
                 clamp(
                     position.y,
-                    self.map_bounds.origin.y,
-                    self.map_bounds.origin.y + self.map_bounds.extent.y - 1.0,
+                    map_bounds.origin.y,
+                    map_bounds.origin.y + map_bounds.extent.y - 1.0,
                 ),
             ),
             contacted,

@@ -6,7 +6,6 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    geom::Bounds,
     map,
     sprite::{self, collision, rendering},
     state::{
@@ -52,7 +51,6 @@ pub struct BossFish {
     rng: ThreadRng,
     attack_phase: AttackPhase,
     hit_points: i32,
-    sent_encountered_message: bool,
     sent_death_message: bool,
     death_animation_countdown: f32,
     alive: bool,
@@ -78,7 +76,6 @@ impl Default for BossFish {
             rng: thread_rng(),
             attack_phase: AttackPhase::Submerged { time_started: 0.0 },
             hit_points: HIT_POINTS,
-            sent_encountered_message: false,
             sent_death_message: false,
             alive: true,
             death_animation_countdown: DEATH_ANIMATION_DURATION,
@@ -142,16 +139,6 @@ impl Entity for BossFish {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
-        if !self.sent_encountered_message {
-            message_dispatcher.entity_to_global(
-                self.entity_id,
-                Event::BossEncountered {
-                    arena_bounds: Bounds::new(self.arena_origin, self.arena_extent),
-                },
-            );
-            self.sent_encountered_message = true;
-        }
-
         let dt = dt.as_secs_f32();
         self.time += dt;
 

@@ -1,5 +1,24 @@
 use cgmath::*;
 
+pub fn lerp(t: f32, a: f32, b: f32) -> f32 {
+    a + t * (b - a)
+}
+
+pub fn hermite(t: f32) -> f32 {
+    let t = t.min(1.0).max(0.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
+    if v < min {
+        min
+    } else if v > max {
+        max
+    } else {
+        v
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Bounds {
     pub origin: Point2<f32>,

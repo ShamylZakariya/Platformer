@@ -184,4 +184,9 @@
    <property name="water_height" value="4"/>
   </properties>
  </tile>
+ <tile id="50">
+  <properties>
+   <property name="entity_class" value="BossFightTrigger"/>
+  </properties>
+ </tile>
 </tileset>
