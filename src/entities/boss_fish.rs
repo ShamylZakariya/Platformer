@@ -27,6 +27,8 @@ const DEATH_ANIMATION_DURATION: f32 = 2.0;
 const DEATH_BLINK_PERIOD: f32 = ANIMATION_CYCLE_DURATION;
 const HIT_POINTS: i32 = 5;
 const SPRITE_SIZE: Vector2<f32> = vec2(3.0, 3.0);
+const SHOOT_DISTANCE: f32 = 3.0;
+const SHOOT_CYCLE_PERIOD: f32 = 0.5;
 
 #[derive(Debug, Clone, Copy)]
 enum AttackPhase {
@@ -58,6 +60,8 @@ pub struct BossFish {
     arena_extent: Vector2<f32>,
     water_height: f32,
     should_launch_firesprites: bool,
+    shoot_countdown: Option<f32>,
+    post_shoot_countdown: Option<f32>,
 }
 
 impl Default for BossFish {
@@ -82,6 +86,8 @@ impl Default for BossFish {
             arena_extent: vec2(0.0, 0.0),
             water_height: 0.0,
             should_launch_firesprites: false,
+            shoot_countdown: None,
+            post_shoot_countdown: None,
         }
     }
 }
@@ -148,7 +154,7 @@ impl Entity for BossFish {
             //  Update position and sprite
             //
 
-            self.update_position(dt, game_state_peek, message_dispatcher);
+            self.update_phase(dt, game_state_peek, message_dispatcher);
             self.update_sprite(collision_space);
 
             //
@@ -221,11 +227,29 @@ impl Entity for BossFish {
     }
 
     fn sprite_cycle(&self) -> &str {
-        // TODO: Handle shooting animation cycle
-        if self.animation_cycle_tick % 2 == 0 {
-            "a_0"
+        // Determine the shoot cycle from our countdowns
+        let shoot_cycle = if let Some(countdown) = self.shoot_countdown {
+            let t = SHOOT_CYCLE_PERIOD - countdown;
+            1 + (t / (SHOOT_CYCLE_PERIOD * 0.5)) as i32
+        } else if let Some(countdown) = self.post_shoot_countdown {
+            let t = countdown;
+            1 + (t / (SHOOT_CYCLE_PERIOD * 0.5)) as i32
         } else {
-            "b_0"
+            0
+        };
+
+        if self.animation_cycle_tick % 2 == 0 {
+            match shoot_cycle {
+                1 => "a_1",
+                2 => "a_2",
+                _ => "a_0",
+            }
+        } else {
+            match shoot_cycle {
+                1 => "b_1",
+                2 => "b_2",
+                _ => "b_0",
+            }
         }
     }
 
@@ -237,12 +261,14 @@ impl Entity for BossFish {
 }
 
 impl BossFish {
-    fn update_position(
+    fn update_phase(
         &mut self,
         dt: f32,
         game_state_peek: &GameStatePeek,
         message_dispatcher: &mut Dispatcher,
     ) {
+        let distance_to_player = (game_state_peek.player_position.x - self.position.x).abs();
+
         match self.attack_phase {
             AttackPhase::Submerged { time_started } => {
                 self.position.y = self.submersion_depth();
@@ -285,34 +311,10 @@ impl BossFish {
                 }
             }
             AttackPhase::Attacking { target_x } => {
-                // if we are supposed to fire at player, wait until we're close, then launch 2
-                if self.should_launch_firesprites {
-                    let dist = (target_x - self.position.x).abs();
-                    if dist < 3.0 {
-                        let offset = vec2(0.25, 0.25);
-                        let dir =
-                            CompassDir::new(game_state_peek.player_position - self.position.xy());
-                        match dir {
-                            CompassDir::North | CompassDir::South => { // no-op
-                            }
-                            _ => {
-                                for (dir, offset) in
-                                    [(dir, offset), (dir.mirrored(Axis::Horizontal), -offset)]
-                                        .iter()
-                                {
-                                    message_dispatcher.entity_to_global(
-                                        self.entity_id,
-                                        Event::ShootFiresprite {
-                                            position: self.position.xy() + offset,
-                                            dir: dir.to_dir(),
-                                            velocity: FIRESPRITE_MOVEMENT_SPEED,
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                        self.should_launch_firesprites = false;
-                    }
+                // Don't shoot until we're within a threshold of player
+                if self.should_launch_firesprites && distance_to_player < SHOOT_DISTANCE {
+                    self.shoot_countdown = Some(SHOOT_CYCLE_PERIOD);
+                    self.should_launch_firesprites = false;
                 }
 
                 // Advance towards player until we reach the target_x, then start submersion
@@ -334,6 +336,46 @@ impl BossFish {
                     self.set_attack_phase(AttackPhase::Submerged {
                         time_started: self.time,
                     });
+                }
+            }
+        }
+
+        if let Some(mut countdown) = self.shoot_countdown {
+            if countdown > 0.0 {
+                countdown -= dt;
+                self.shoot_countdown = Some(countdown);
+                if countdown <= 0.0 {
+                    self.shoot_countdown = None;
+                    self.post_shoot_countdown = Some(SHOOT_CYCLE_PERIOD);
+
+                    let offset = vec2(0.25, 0.25);
+                    let dir = CompassDir::new(game_state_peek.player_position - self.position.xy());
+                    match dir {
+                        CompassDir::North | CompassDir::South => { // no-op
+                        }
+                        _ => {
+                            for (dir, offset) in
+                                [(dir, offset), (dir.mirrored(Axis::Horizontal), -offset)].iter()
+                            {
+                                message_dispatcher.entity_to_global(
+                                    self.entity_id,
+                                    Event::ShootFiresprite {
+                                        position: self.position.xy() + offset,
+                                        dir: dir.to_dir(),
+                                        velocity: FIRESPRITE_MOVEMENT_SPEED,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        } else if let Some(mut countdown) = self.post_shoot_countdown {
+            if countdown > 0.0 {
+                countdown -= dt;
+                self.post_shoot_countdown = Some(countdown);
+                if countdown < 0.0 {
+                    self.post_shoot_countdown = None;
                 }
             }
         }

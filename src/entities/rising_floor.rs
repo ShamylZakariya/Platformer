@@ -8,7 +8,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::{constants::sprite_layers::FOREGROUND, events::Event},
+    state::events::Event,
 };
 
 const RISE_SPEED: f32 = 1.0;

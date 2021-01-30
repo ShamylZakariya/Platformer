@@ -1,6 +1,5 @@
 CURRENTLY:
     - Boss fish
-        - Needs to switch to open-mouth sprites when about to shoot
         - Doesn't stay exactly inside the arena - I've seen it go too far left
         - Does the arena close to keep Firebrand in? Or do we scroll-lock the stage?
         - When dying and the floor rises & door opens, Firebrand needs to be immobilized

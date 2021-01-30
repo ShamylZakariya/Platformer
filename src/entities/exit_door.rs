@@ -7,10 +7,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, bounds, collision, rendering},
-    state::{
-        constants::sprite_layers::{BACKGROUND, FOREGROUND},
-        events::Event,
-    },
+    state::{constants::sprite_layers::BACKGROUND, events::Event},
 };
 
 const OPEN_SPEED: f32 = 1.0;
