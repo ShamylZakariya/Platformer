@@ -286,8 +286,8 @@ impl BossFish {
                         dist = 0.0
                     };
                     let x = (game_state_peek.player_position.x + dist)
-                        .max(self.arena_origin.x + 1.0)
-                        .min(self.arena_origin.x + self.arena_extent.x - 2.0);
+                        .max(self.arena_origin.x + 2.0)
+                        .min(self.arena_origin.x + self.arena_extent.x - 3.0);
                     self.position.x = x;
                     self.position.y = self.arena_origin.y - self.water_height - SPRITE_SIZE.y;
                     self.set_attack_phase(AttackPhase::Raising);
