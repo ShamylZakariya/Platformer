@@ -27,13 +27,13 @@ impl RisingFloor {
         let bounds = bounds(&stage_sprites);
         let mut collider = sprite::Sprite::default();
         collider.collision_shape = sprite::CollisionShape::Square;
-        collider.origin = point3(bounds.0.x, bounds.0.y, FOREGROUND);
+        collider.origin = point3(bounds.0.x, bounds.0.y, 0.0);
         collider.extent = bounds.1;
         collider.mask = crate::state::constants::sprite_masks::COLLIDER;
 
         Self {
             entity_id: 0,
-            offset: point3(0.0, 0.0, 0.0),
+            offset: point3(0.0, 0.0, -0.05),
             stage_sprites,
             bounds,
             rising: false,
@@ -90,11 +90,7 @@ impl Entity for RisingFloor {
     }
 
     fn position(&self) -> Point3<f32> {
-        point3(
-            self.bounds.0.x + self.offset.x,
-            self.bounds.0.y + self.offset.y,
-            FOREGROUND,
-        )
+        self.offset
     }
 
     fn stage_sprites(&self) -> Option<Vec<sprite::Sprite>> {

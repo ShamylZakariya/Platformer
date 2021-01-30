@@ -15,12 +15,19 @@ use crate::{
 
 const OPEN_SPEED: f32 = 1.0;
 
+enum Mode {
+    Closed,
+    Opening,
+    Open,
+}
+
 pub struct ExitDoor {
     entity_id: u32,
     offset: Point3<f32>,
     stage_sprites: Vec<sprite::Sprite>,
     bounds: (Point2<f32>, Vector2<f32>),
-    opening: bool,
+    mode: Mode,
+    alive: bool,
 }
 
 impl ExitDoor {
@@ -32,7 +39,8 @@ impl ExitDoor {
             offset: point3(0.0, 0.0, BACKGROUND),
             stage_sprites,
             bounds,
-            opening: false,
+            mode: Mode::Closed,
+            alive: true,
         }
     }
 }
@@ -47,15 +55,24 @@ impl Entity for ExitDoor {
         dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
-        _message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        message_dispatcher: &mut Dispatcher,
+        game_state_peek: &GameStatePeek,
     ) {
-        if self.opening {
-            self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
-            if self.offset.x < -self.bounds.1.x {
-                self.offset.x = -self.bounds.1.x;
-                println!("Done opening door...");
-                self.opening = false;
+        match self.mode {
+            Mode::Closed => {}
+            Mode::Opening => {
+                self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
+                if self.offset.x < -self.bounds.1.x {
+                    self.offset.x = -self.bounds.1.x;
+                    self.mode = Mode::Open;
+                }
+            }
+            Mode::Open => {
+                if game_state_peek.player_position.x > self.bounds.0.x + self.bounds.1.x * 0.5 {
+                    println!("Sending exit message");
+                    message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
+                    self.alive = false;
+                }
             }
         }
     }
@@ -73,7 +90,7 @@ impl Entity for ExitDoor {
     }
 
     fn is_alive(&self) -> bool {
-        true
+        self.alive
     }
 
     fn position(&self) -> Point3<f32> {
@@ -91,7 +108,7 @@ impl Entity for ExitDoor {
     fn handle_message(&mut self, message: &Message) {
         if let Event::OpenExitDoor = message.event {
             println!("Opening Exit Door!");
-            self.opening = true;
+            self.mode = Mode::Opening;
         }
     }
 }

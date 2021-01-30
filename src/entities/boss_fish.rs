@@ -163,16 +163,12 @@ impl Entity for BossFish {
         } else {
             collision_space.remove_dynamic_sprite(&self.collider);
 
-            // Send the defeat message to clear stage and kick off the ending changes to the level
-            if !self.sent_death_message {
-                message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
-                self.sent_death_message = true;
-            }
-
             // countdown our death animation, before actually terminating
             if self.death_animation_countdown > 0.0 {
                 self.death_animation_countdown -= dt;
                 if self.death_animation_countdown < 0.0 {
+                    // Send the defeat message to clear stage and kick off the ending changes to the level
+                    message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
                     self.alive = false;
                 }
             }

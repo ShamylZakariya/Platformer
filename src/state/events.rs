@@ -70,4 +70,7 @@ pub enum Event {
 
     // Sent after the floor finishes raising, to signal opening of the exit door.
     OpenExitDoor,
+
+    // Sent when the player passes through the exit door
+    PlayerPassedThroughExitDoor,
 }
