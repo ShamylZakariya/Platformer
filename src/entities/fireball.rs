@@ -5,6 +5,7 @@ use cgmath::*;
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
+    geom::Bounds,
     map,
     sprite::{collision, rendering},
     state::events::Event,
@@ -46,8 +47,8 @@ impl Entity for Fireball {
     fn init(&mut self, entity_id: u32, map: &map::Map, _collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
         let bounds = map.bounds();
-        self.map_origin = bounds.0.cast().unwrap();
-        self.map_extent = bounds.1.cast().unwrap();
+        self.map_origin = bounds.origin.cast().unwrap();
+        self.map_extent = bounds.extent.cast().unwrap();
     }
 
     fn update(
@@ -105,8 +106,8 @@ impl Entity for Fireball {
         self.position
     }
 
-    fn bounds(&self) -> (Point2<f32>, Vector2<f32>) {
-        (self.position().xy() - vec2(0.5, 0.5), vec2(1.0, 1.0))
+    fn bounds(&self) -> Bounds {
+        Bounds::new(self.position().xy() - vec2(0.5, 0.5), vec2(1.0, 1.0))
     }
 
     fn sprite_name(&self) -> &str {

@@ -1,17 +1,54 @@
-// https://www.swtestacademy.com/intersection-convex-polygons-algorithm/
+use cgmath::*;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Bounds {
+    pub origin: Point2<f32>,
+    pub extent: Vector2<f32>,
+}
+
+impl Eq for Bounds {}
+
+impl Default for Bounds {
+    fn default() -> Self {
+        Self {
+            origin: point2(0.0, 0.0),
+            extent: vec2(0.0, 0.0),
+        }
+    }
+}
+
+impl Bounds {
+    pub fn new(origin: Point2<f32>, extent: Vector2<f32>) -> Self {
+        Self { origin, extent }
+    }
+
+    pub fn right(&self) -> f32 {
+        self.origin.x + self.extent.x
+    }
+    pub fn top(&self) -> f32 {
+        self.origin.y + self.extent.y
+    }
+    pub fn left(&self) -> f32 {
+        self.origin.x
+    }
+    pub fn bottom(&self) -> f32 {
+        self.origin.y
+    }
+}
 
 pub mod intersection {
-    use cgmath::*;
+    use super::*;
+
+    // https://www.swtestacademy.com/intersection-convex-polygons-algorithm/
 
     /// Returns true if the two rectangle
-    pub fn rect_rect_intersects(
-        rect_a: (Point2<f32>, Vector2<f32>),
-        rect_b: (Point2<f32>, Vector2<f32>),
-    ) -> bool {
+    pub fn rect_rect_intersects(rect_a: Bounds, rect_b: Bounds) -> bool {
         let (x_overlap, y_overlap) = {
             (
-                rect_a.0.x <= rect_b.0.x + rect_b.1.x && rect_a.0.x + rect_a.1.x >= rect_b.0.x,
-                rect_a.0.y <= rect_b.0.y + rect_b.1.y && rect_a.0.y + rect_a.1.y >= rect_b.0.y,
+                rect_a.origin.x <= rect_b.origin.x + rect_b.extent.x
+                    && rect_a.origin.x + rect_a.extent.x >= rect_b.origin.x,
+                rect_a.origin.y <= rect_b.origin.y + rect_b.extent.y
+                    && rect_a.origin.y + rect_a.extent.y >= rect_b.origin.y,
             )
         };
 
@@ -116,24 +153,51 @@ pub mod intersection {
 
         #[test]
         fn rect_rect_intersects_works() {
-            let a = (point2(1.0, 1.0), vec2(1.0, 1.0));
-            assert!(rect_rect_intersects(a, (point2(0.5, 0.0), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(1.0, 0.0), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(1.0, 0.5), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(1.0, 1.0), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(0.5, 1.0), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(0.0, 1.0), vec2(1.0, 1.0))));
-            assert!(rect_rect_intersects(a, (point2(0.5, 1.0), vec2(1.0, 1.0))));
+            let a = Bounds::new(point2(1.0, 1.0), vec2(1.0, 1.0));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(0.5, 0.0), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(1.0, 0.0), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(1.0, 0.5), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(1.0, 1.0), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(0.5, 1.0), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(0.0, 1.0), vec2(1.0, 1.0))
+            ));
+            assert!(rect_rect_intersects(
+                a,
+                Bounds::new(point2(0.5, 1.0), vec2(1.0, 1.0))
+            ));
 
-            assert!(!rect_rect_intersects(a, (point2(3.0, 0.0), vec2(1.0, 1.0))));
-            assert!(!rect_rect_intersects(a, (point2(0.0, 3.0), vec2(1.0, 1.0))));
             assert!(!rect_rect_intersects(
                 a,
-                (point2(-2.0, 0.0), vec2(1.0, 1.0))
+                Bounds::new(point2(3.0, 0.0), vec2(1.0, 1.0))
             ));
             assert!(!rect_rect_intersects(
                 a,
-                (point2(-2.0, -2.0), vec2(1.0, 1.0))
+                Bounds::new(point2(0.0, 3.0), vec2(1.0, 1.0))
+            ));
+            assert!(!rect_rect_intersects(
+                a,
+                Bounds::new(point2(-2.0, 0.0), vec2(1.0, 1.0))
+            ));
+            assert!(!rect_rect_intersects(
+                a,
+                Bounds::new(point2(-2.0, -2.0), vec2(1.0, 1.0))
             ));
         }
 

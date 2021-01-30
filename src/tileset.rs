@@ -1,4 +1,4 @@
-use crate::sprite;
+use crate::{geom::Bounds, sprite};
 use anyhow::{Context, Result};
 use cgmath::*;
 use std::collections::HashMap;
@@ -309,14 +309,14 @@ impl TileSet {
         }
     }
 
-    pub fn get_tex_coords_for_tile(&self, tile: &Tile) -> (Point2<f32>, Vector2<f32>) {
+    pub fn get_tex_coords_for_tile(&self, tile: &Tile) -> Bounds {
         // compute pixel values, and then normalize
         let col = tile.id % self.columns;
         let row = tile.id / self.columns;
         let px_x = col * self.tile_width + col * self.spacing;
         let px_y = self.image_height - ((row + 1) * self.tile_height + row * self.spacing);
 
-        (
+        Bounds::new(
             point2(
                 px_x as f32 / self.image_width as f32,
                 px_y as f32 / self.image_height as f32,

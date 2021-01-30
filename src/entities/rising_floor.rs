@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use cgmath::*;
-use sprite::bounds;
+use sprite::find_bounds;
 
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
+    geom::Bounds,
     map,
     sprite::{self, collision, rendering},
     state::events::Event,
@@ -17,18 +18,18 @@ pub struct RisingFloor {
     entity_id: u32,
     offset: Point3<f32>,
     stage_sprites: Vec<sprite::Sprite>,
-    bounds: (Point2<f32>, Vector2<f32>),
+    bounds: Bounds,
     rising: bool,
     collider: sprite::Sprite,
 }
 
 impl RisingFloor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
-        let bounds = bounds(&stage_sprites);
+        let bounds = find_bounds(&stage_sprites);
         let mut collider = sprite::Sprite::default();
         collider.collision_shape = sprite::CollisionShape::Square;
-        collider.origin = point3(bounds.0.x, bounds.0.y, 0.0);
-        collider.extent = bounds.1;
+        collider.origin = point3(bounds.origin.x, bounds.origin.y, 0.0);
+        collider.extent = bounds.extent;
         collider.mask = crate::state::constants::sprite_masks::COLLIDER;
 
         Self {
@@ -45,7 +46,7 @@ impl RisingFloor {
 impl Entity for RisingFloor {
     fn init(&mut self, entity_id: u32, _map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
-        self.offset.y -= self.bounds.1.y;
+        self.offset.y -= self.bounds.extent.y;
         self.collider.entity_id = Some(entity_id);
 
         self.update_collider();
@@ -106,7 +107,7 @@ impl Entity for RisingFloor {
 
 impl RisingFloor {
     fn update_collider(&mut self) {
-        self.collider.origin.x = self.bounds.0.x + self.offset.x;
-        self.collider.origin.y = self.bounds.0.y + self.offset.y;
+        self.collider.origin.x = self.bounds.origin.x + self.offset.x;
+        self.collider.origin.y = self.bounds.origin.y + self.offset.y;
     }
 }

@@ -6,6 +6,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
+    geom::Bounds,
     input::*,
     map,
     sprite::{self, collision, rendering},
@@ -377,8 +378,7 @@ pub struct Firebrand {
     flight_countdown: f32,
     wallgrab_jump_lateral_motion_countdown: f32,
     wallgrab_jump_dir: f32, // -1 for left, +1 for right
-    map_origin: Point2<f32>,
-    map_extent: Vector2<f32>,
+    map_bounds: Bounds,
     cycle_animation_time_elapsed: Option<f32>,
     in_water: bool,
     injury_kickback_vel: f32,
@@ -404,8 +404,7 @@ impl Default for Firebrand {
             flight_countdown: FLIGHT_DURATION,
             wallgrab_jump_lateral_motion_countdown: 0.0,
             wallgrab_jump_dir: 0.0,
-            map_origin: point2(0.0, 0.0),
-            map_extent: vec2(0.0, 0.0),
+            map_bounds: Bounds::default(),
             cycle_animation_time_elapsed: None,
             in_water: false,
             injury_kickback_vel: 1.0,
@@ -428,8 +427,7 @@ impl Entity for Firebrand {
         self.entity_id = entity_id;
         self.sprite = Some(*sprite);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
-        self.map_origin = map.bounds().0.cast().unwrap();
-        self.map_extent = map.bounds().1.cast().unwrap();
+        self.map_bounds = map.bounds();
         self.character_state.position = sprite.origin.xy();
     }
 
@@ -1152,13 +1150,13 @@ impl Firebrand {
             point2(
                 clamp(
                     position.x + delta_x,
-                    self.map_origin.x,
-                    self.map_origin.x + self.map_extent.x - 1.0,
+                    self.map_bounds.origin.x,
+                    self.map_bounds.origin.x + self.map_bounds.extent.x - 1.0,
                 ),
                 clamp(
                     position.y,
-                    self.map_origin.y,
-                    self.map_origin.y + self.map_extent.y - 1.0,
+                    self.map_bounds.origin.y,
+                    self.map_bounds.origin.y + self.map_bounds.extent.y - 1.0,
                 ),
             ),
             contacted,

@@ -5,8 +5,9 @@ use cgmath::*;
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
+    geom::Bounds,
     map,
-    sprite::{self, bounds, collision, rendering},
+    sprite::{self, collision, find_bounds, rendering},
     state::{constants::sprite_layers::BACKGROUND, events::Event},
 };
 
@@ -22,14 +23,14 @@ pub struct ExitDoor {
     entity_id: u32,
     offset: Point3<f32>,
     stage_sprites: Vec<sprite::Sprite>,
-    bounds: (Point2<f32>, Vector2<f32>),
+    bounds: Bounds,
     mode: Mode,
     alive: bool,
 }
 
 impl ExitDoor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
-        let bounds = bounds(&stage_sprites);
+        let bounds = find_bounds(&stage_sprites);
         println!("ExitDoor bounds: {:?}", bounds);
         Self {
             entity_id: 0,
@@ -59,13 +60,15 @@ impl Entity for ExitDoor {
             Mode::Closed => {}
             Mode::Opening => {
                 self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
-                if self.offset.x < -self.bounds.1.x {
-                    self.offset.x = -self.bounds.1.x;
+                if self.offset.x < -self.bounds.extent.x {
+                    self.offset.x = -self.bounds.extent.x;
                     self.mode = Mode::Open;
                 }
             }
             Mode::Open => {
-                if game_state_peek.player_position.x > self.bounds.0.x + self.bounds.1.x * 0.5 {
+                if game_state_peek.player_position.x
+                    > self.bounds.origin.x + self.bounds.extent.x * 0.5
+                {
                     println!("Sending exit message");
                     message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
                     self.alive = false;
@@ -92,8 +95,8 @@ impl Entity for ExitDoor {
 
     fn position(&self) -> Point3<f32> {
         point3(
-            self.bounds.0.x + self.offset.x,
-            self.bounds.0.y + self.offset.y,
+            self.bounds.origin.x + self.offset.x,
+            self.bounds.origin.y + self.offset.y,
             BACKGROUND,
         )
     }

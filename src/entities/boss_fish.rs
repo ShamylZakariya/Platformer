@@ -6,6 +6,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
+    geom::Bounds,
     map,
     sprite::{self, collision, rendering},
     state::{
@@ -142,7 +143,12 @@ impl Entity for BossFish {
         game_state_peek: &GameStatePeek,
     ) {
         if !self.sent_encountered_message {
-            message_dispatcher.entity_to_global(self.entity_id, Event::BossEncountered);
+            message_dispatcher.entity_to_global(
+                self.entity_id,
+                Event::BossEncountered {
+                    arena_bounds: Bounds::new(self.arena_origin, self.arena_extent),
+                },
+            );
             self.sent_encountered_message = true;
         }
 

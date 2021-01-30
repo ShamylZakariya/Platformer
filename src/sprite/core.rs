@@ -2,7 +2,7 @@ use cgmath::*;
 use core::f32;
 use std::hash::Hash;
 
-use crate::geom;
+use crate::geom::{self, Bounds};
 
 fn hash_point2<H: std::hash::Hasher>(point: &Point2<f32>, state: &mut H) {
     ((point.x * 1000.0) as i32).hash(state);
@@ -440,7 +440,7 @@ impl Sprite {
 }
 
 /// Returns the bounding rect containing all the provided sprites
-pub fn bounds(sprites: &[Sprite]) -> (Point2<f32>, Vector2<f32>) {
+pub fn find_bounds(sprites: &[Sprite]) -> Bounds {
     let mut min: Point2<f32> = point2(f32::MAX, f32::MAX);
     let mut max: Point2<f32> = point2(f32::MIN, f32::MIN);
     for s in sprites {
@@ -449,7 +449,7 @@ pub fn bounds(sprites: &[Sprite]) -> (Point2<f32>, Vector2<f32>) {
         max.x = max.x.max(s.origin.x + s.extent.x);
         max.y = max.y.max(s.origin.y + s.extent.y);
     }
-    (min, (max - min))
+    Bounds::new(min, max - min)
 }
 
 #[cfg(test)]

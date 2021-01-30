@@ -572,14 +572,14 @@ impl EntityDrawable {
 
                 let sprite_position = tile_position - root_position;
 
-                let (tex_coords, tex_extents) = tileset.get_tex_coords_for_tile(tile);
+                let tex_coords = tileset.get_tex_coords_for_tile(tile);
                 // now create a Sprite at this position
                 let sprite = Sprite::unit(
                     tile.shape(),
                     point2(sprite_position.x, -sprite_position.y),
                     0.0,
-                    tex_coords,
-                    tex_extents,
+                    tex_coords.origin,
+                    tex_coords.extent,
                     vec4(1.0, 1.0, 1.0, 1.0),
                     mask,
                 );

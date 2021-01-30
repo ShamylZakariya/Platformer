@@ -6,11 +6,11 @@ use std::{collections::HashMap, io::BufReader};
 use std::{fs::File, time::Duration};
 use xml::reader::{EventReader, XmlEvent};
 
-use crate::entities;
 use crate::entity;
 use crate::sprite::{self, collision};
 use crate::state::constants::sprite_masks::*;
 use crate::tileset;
+use crate::{entities, geom::Bounds};
 
 #[derive(Clone, Debug)]
 pub struct Layer {
@@ -81,7 +81,7 @@ impl SpriteFlipbookAnimation {
 
         for tile in sequence {
             let tex_coords = tileset.get_tex_coords_for_tile(tile);
-            offsets.push(tex_coords.0 - first_tile_tex_coords.0);
+            offsets.push(tex_coords.origin - first_tile_tex_coords.origin);
 
             let duration = tile.get_property("animation_duration").expect("Tiles passed to SpriteAnimationSequence must have \"animation_duration\" property")
                 .parse::<f32>()
@@ -313,8 +313,11 @@ impl Map {
     }
 
     /// Returns bounds of map as tuple of (origin,extent)
-    pub fn bounds(&self) -> (Point2<u32>, Vector2<u32>) {
-        (point2(0, 0), vec2(self.width, self.height))
+    pub fn bounds(&self) -> Bounds {
+        Bounds::new(
+            point2(0.0, 0.0),
+            vec2(self.width as f32, self.height as f32),
+        )
     }
 
     /// Returns the layer by the provided name, or None if not found
@@ -460,8 +463,7 @@ impl Map {
                         .tileset
                         .get_tile(tile_id - self.tileset_first_gid)
                         .unwrap();
-                    let (tex_coord_origin, tex_coord_extent) =
-                        self.tileset.get_tex_coords_for_tile(tile);
+                    let tex_coord_bounds = self.tileset.get_tex_coords_for_tile(tile);
                     let mut mask = 0;
 
                     if tile.has_property("collision_shape") {
@@ -487,8 +489,8 @@ impl Map {
                         tile.shape(),
                         point2(x as i32, (layer.height - y) as i32),
                         0.0,
-                        tex_coord_origin,
-                        tex_coord_extent,
+                        tex_coord_bounds.origin,
+                        tex_coord_bounds.extent,
                         vec4(1.0, 1.0, 1.0, 1.0),
                         mask,
                     );

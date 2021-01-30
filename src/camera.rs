@@ -4,7 +4,10 @@ use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
-use crate::state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
+use crate::{
+    geom::Bounds,
+    state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -206,25 +209,14 @@ pub struct CameraController {
     pub camera: Camera,
     pub projection: Projection,
     pub uniforms: Uniforms,
-
-    map_origin: Point2<f32>,
-    map_extent: Vector2<f32>,
 }
 
 impl CameraController {
-    pub fn new(
-        camera: Camera,
-        projection: Projection,
-        uniforms: Uniforms,
-        map_origin: Point2<f32>,
-        map_extent: Vector2<f32>,
-    ) -> Self {
+    pub fn new(camera: Camera, projection: Projection, uniforms: Uniforms) -> Self {
         Self {
             camera,
             projection,
             uniforms,
-            map_origin,
-            map_extent,
         }
     }
 
@@ -254,13 +246,15 @@ impl CameraController {
         self.projection.set_scale(new_scale);
     }
 
-    pub fn update(&mut self, _dt: Duration, tracking: Option<Point2<f32>>) {
+    pub fn update(&mut self, _dt: Duration, tracking: Option<Point2<f32>>, bounds: Option<Bounds>) {
         if let Some(tracking) = tracking {
             self.camera.position.x = tracking.x;
             self.camera.position.y = tracking.y;
         }
 
-        self.clamp_camera_position_to_map();
+        if let Some(bounds) = bounds {
+            self.clamp_camera_position_to_bounds(bounds);
+        }
         self.uniforms
             .data
             .update_view_proj(&self.camera, &self.projection);
@@ -272,7 +266,7 @@ impl CameraController {
         camera: &Camera,
         projection: &Projection,
         inset_by: f32,
-    ) -> (Point2<f32>, Vector2<f32>) {
+    ) -> Bounds {
         let viewport_size = vec2(
             projection.scale - 2.0 * inset_by,
             (projection.scale / projection.aspect) - 2.0 * inset_by,
@@ -281,10 +275,10 @@ impl CameraController {
             camera.position.x - viewport_size.x / 2.0,
             camera.position.y - viewport_size.y / 2.0,
         );
-        (bottom_left, viewport_size)
+        Bounds::new(bottom_left, viewport_size)
     }
 
-    fn clamp_camera_position_to_map(&mut self) {
+    fn clamp_camera_position_to_bounds(&mut self, bounds: Bounds) {
         let viewport_size = vec2(
             self.projection.scale,
             self.projection.scale / self.projection.aspect,
@@ -293,14 +287,14 @@ impl CameraController {
             .camera
             .position
             .x
-            .max(self.map_origin.x + viewport_size.x * 0.5)
-            .min(self.map_origin.x + self.map_extent.x - viewport_size.x * 0.5);
+            .max(bounds.origin.x + viewport_size.x * 0.5)
+            .min(bounds.origin.x + bounds.extent.x - viewport_size.x * 0.5);
 
         self.camera.position.y = self
             .camera
             .position
             .y
-            .max(self.map_origin.y + 1.0 + viewport_size.y * 0.5)
-            .min(self.map_origin.y + 1.0 + self.map_extent.y - viewport_size.y * 0.5);
+            .max(bounds.origin.y + 1.0 + viewport_size.y * 0.5)
+            .min(bounds.origin.y + 1.0 + bounds.extent.y - viewport_size.y * 0.5);
     }
 }

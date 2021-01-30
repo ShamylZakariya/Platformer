@@ -3,10 +3,10 @@ use std::{collections::HashSet, time::Duration};
 use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
-use crate::event_dispatch::*;
 use crate::map;
 use crate::sprite::{self, collision, rendering};
 use crate::tileset;
+use crate::{event_dispatch::*, geom::Bounds};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -39,6 +39,7 @@ impl IdVendor {
 /// firebrand's position.
 pub struct GameStatePeek {
     pub player_position: Point2<f32>,
+    pub current_map_bounds: Bounds,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -110,8 +111,8 @@ pub trait Entity {
     /// The bounds of the entity, expressed as (origin, extent)
     /// Note: An entity's bounds origin are not necessarily same as the entity's position.
     /// Default implementation simply returns a unit box with lower-left at position().
-    fn bounds(&self) -> (Point2<f32>, Vector2<f32>) {
-        (self.position().xy(), vec2(1.0, 1.0))
+    fn bounds(&self) -> Bounds {
+        Bounds::new(self.position().xy(), vec2(1.0, 1.0))
     }
 
     /// The name identifying the entity's sprites in the Entity spritesheet. E.g., "firebrand" or "falling_bridge".

@@ -15,7 +15,9 @@ use crate::{
     camera,
     entities::{self, EntityClass},
     entity::{self, EntityComponents, GameStatePeek},
-    event_dispatch, map,
+    event_dispatch,
+    geom::Bounds,
+    map,
     sprite::rendering::Uniforms as SpriteUniforms,
     sprite::{collision, rendering},
     texture, tileset,
@@ -79,6 +81,9 @@ pub struct GameState {
     // Toggles
     pub draw_stage_collision_info: bool,
     pub camera_tracks_character: bool,
+
+    // General game state
+    boss_fight_arena_bounds: Option<Bounds>,
 }
 
 impl GameState {
@@ -182,19 +187,11 @@ impl GameState {
         };
 
         // Build camera, and camera uniform storage
-        let map_origin = point2(0.0, 0.0);
-        let map_extent = vec2(map.width as f32, map.height as f32);
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
         let projection =
             camera::Projection::new(gpu.sc_desc.width, gpu.sc_desc.height, 16.0, 0.1, 100.0);
         let camera_uniforms = camera::Uniforms::new(&gpu.device);
-        let camera_controller = camera::CameraController::new(
-            camera,
-            projection,
-            camera_uniforms,
-            map_origin,
-            map_extent,
-        );
+        let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 
         // Build the sprite render pipeline
 
@@ -334,6 +331,7 @@ impl GameState {
 
             draw_stage_collision_info: false,
             camera_tracks_character: true,
+            boss_fight_arena_bounds: None,
         };
 
         for se in stage_entities {
@@ -411,9 +409,12 @@ impl GameState {
         //  Update entities - if any are expired, remove them.
         //
 
+        let current_map_bounds = self.current_map_bounds();
+
         {
             let game_state_peek = GameStatePeek {
                 player_position: self.get_firebrand().entity.position().xy(),
+                current_map_bounds,
             };
 
             let mut expired_count = 0;
@@ -464,7 +465,8 @@ impl GameState {
             None
         };
 
-        self.camera_controller.update(dt, tracking);
+        self.camera_controller
+            .update(dt, tracking, Some(current_map_bounds));
         self.camera_controller.uniforms.write(&mut gpu.queue);
 
         //
@@ -708,8 +710,9 @@ impl GameState {
         }
     }
 
-    fn boss_fight_started(&mut self) {
+    fn boss_fight_started(&mut self, arena_bounds: Bounds) {
         println!("\n\nBOSS FIGHT!!\n\n");
+        self.boss_fight_arena_bounds = Some(arena_bounds);
     }
 
     fn boss_was_defeated(&mut self) {
@@ -728,6 +731,19 @@ impl GameState {
         //
 
         self.message_dispatcher.broadcast(Event::RaiseExitFloor);
+    }
+
+    fn current_map_bounds(&self) -> Bounds {
+        let map_bounds = self.map.bounds();
+        if let Some(arena_bounds) = self.boss_fight_arena_bounds {
+            let origin = point2(arena_bounds.left(), map_bounds.bottom());
+            Bounds::new(
+                origin,
+                vec2(map_bounds.right() - origin.x, map_bounds.top() - origin.y),
+            )
+        } else {
+            map_bounds
+        }
     }
 }
 
@@ -822,8 +838,8 @@ impl event_dispatch::MessageHandler for GameState {
                     )));
                 }
 
-                Event::BossEncountered => {
-                    self.boss_fight_started();
+                Event::BossEncountered { arena_bounds } => {
+                    self.boss_fight_started(*arena_bounds);
                 }
 
                 Event::BossDefeated => {

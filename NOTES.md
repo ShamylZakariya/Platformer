@@ -1,7 +1,7 @@
 CURRENTLY:
     - Boss fish
-        - Doesn't stay exactly inside the arena - I've seen it go too far left
         - Does the arena close to keep Firebrand in? Or do we scroll-lock the stage?
+            SCROLL-LOCKED!
         - When dying and the floor rises & door opens, Firebrand needs to be immobilized
         - When passing through door stage needs to fade to white -- this could be considered part of the in-game GUI?
 
