@@ -160,7 +160,7 @@ pub struct EntityComponents {
     pub entity: Box<dyn Entity>,
     pub entity_drawable: Option<crate::sprite::rendering::EntityDrawable>,
     pub sprite_drawable: Option<crate::sprite::rendering::Drawable>,
-    pub uniforms: crate::sprite::rendering::Uniforms,
+    pub uniforms: Option<crate::sprite::rendering::Uniforms>,
 }
 
 impl EntityComponents {
@@ -173,7 +173,7 @@ impl EntityComponents {
             entity,
             entity_drawable: Some(entity_drawable),
             sprite_drawable: None,
-            uniforms,
+            uniforms: Some(uniforms),
         }
     }
 
@@ -186,7 +186,16 @@ impl EntityComponents {
             entity,
             entity_drawable: None,
             sprite_drawable: Some(sprite_drawable),
-            uniforms,
+            uniforms: Some(uniforms),
+        }
+    }
+
+    pub fn just_entity(entity: Box<dyn Entity>) -> Self {
+        Self {
+            entity,
+            entity_drawable: None,
+            sprite_drawable: None,
+            uniforms: None,
         }
     }
 

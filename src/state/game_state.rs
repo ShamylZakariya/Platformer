@@ -245,29 +245,20 @@ impl GameState {
             )
         });
 
-        let mut entity_components = HashMap::new();
+        // Collect our entities into requests for construction and record firebrand's
+        // entity ID while we're at it.
         let mut firebrand_entity_id: u32 = 0;
-
+        let mut entity_add_requests = vec![];
         for e in entities.into_iter() {
             if e.sprite_name() == "firebrand" {
                 firebrand_entity_id = e.entity_id();
             }
 
-            let name = e.sprite_name().to_string();
-            entity_components.insert(
-                e.entity_id(),
-                entity::EntityComponents::with_entity_drawable(
-                    e,
-                    rendering::EntityDrawable::load(
-                        &entity_tileset,
-                        entity_material.clone(),
-                        &gpu.device,
-                        &name,
-                        0,
-                    ),
-                    SpriteUniforms::new(&gpu.device, sprite_size_px),
-                ),
-            );
+            entity_add_requests.push(EntityAdditionRequest {
+                entity_id: e.entity_id(),
+                entity: e,
+                needs_init: false,
+            });
         }
 
         let flipbook_animations = stage_animation_flipbooks
@@ -327,7 +318,7 @@ impl GameState {
             entity_id_vendor,
             entity_tileset,
             entity_material,
-            entities: entity_components,
+            entities: HashMap::new(),
             firebrand_entity_id,
             visible_entities: HashSet::new(),
             entities_to_add: Vec::new(),
@@ -344,6 +335,10 @@ impl GameState {
             boss_fight_arena_left_bounds: None,
             viewport_left_when_boss_encountered: None,
         };
+
+        for req in entity_add_requests {
+            game_state.add_entity(gpu, req);
+        }
 
         for se in stage_entities {
             game_state.request_add_entity(se);
@@ -439,8 +434,10 @@ impl GameState {
                     &mut self.message_dispatcher,
                     &game_state_peek,
                 );
-                e.entity.update_uniforms(&mut e.uniforms);
-                e.uniforms.write(&mut gpu.queue);
+                if let Some(ref mut uniforms) = e.uniforms {
+                    e.entity.update_uniforms(uniforms);
+                    uniforms.write(&mut gpu.queue);
+                }
 
                 if !e.entity.is_alive() {
                     expired_count += 1;
@@ -573,19 +570,19 @@ impl GameState {
         for e in self.entities.values() {
             if e.entity.is_alive() && e.entity.should_draw() {
                 if let Some(ref drawable) = e.entity_drawable {
-                    drawable.draw(
-                        &mut render_pass,
-                        &self.camera_controller.uniforms,
-                        &e.uniforms,
-                        e.entity.sprite_cycle(),
-                    );
+                    if let Some(ref uniforms) = e.uniforms {
+                        drawable.draw(
+                            &mut render_pass,
+                            &self.camera_controller.uniforms,
+                            uniforms,
+                            e.entity.sprite_cycle(),
+                        );
+                    }
                 }
                 if let Some(ref drawable) = e.sprite_drawable {
-                    drawable.draw(
-                        &mut render_pass,
-                        &self.camera_controller.uniforms,
-                        &e.uniforms,
-                    );
+                    if let Some(ref uniforms) = e.uniforms {
+                        drawable.draw(&mut render_pass, &self.camera_controller.uniforms, uniforms);
+                    }
                 }
             }
         }
@@ -681,16 +678,13 @@ impl GameState {
                 .init(req.entity_id, &self.map, &mut self.collision_space);
         }
 
-        let uniforms = SpriteUniforms::new(
-            &gpu.device,
-            self.map.tileset.get_sprite_size().cast().unwrap(),
-        );
+        let sprite_size_px = self.map.tileset.get_sprite_size().cast::<f32>().unwrap();
 
         let components = if !req.entity.sprite_name().is_empty() {
             let sprite_name = req.entity.sprite_name().to_string();
             // The Entity has specified a sprite name, which means it's using
             // an EntityDrawable to render.
-            Some(EntityComponents::with_entity_drawable(
+            EntityComponents::with_entity_drawable(
                 req.entity,
                 rendering::EntityDrawable::load(
                     &self.entity_tileset,
@@ -699,24 +693,24 @@ impl GameState {
                     &sprite_name,
                     0,
                 ),
-                uniforms,
-            ))
+                SpriteUniforms::new(&gpu.device, sprite_size_px),
+            )
         } else if let Some(sprites) = req.entity.stage_sprites() {
             // The Entity has specified sprites to render, which means its using a
             // sprite::Drawable using the stage material to render.
-            let mesh = rendering::Mesh::new(&sprites, 0, &gpu.device, "Entity Stage Sprite Mesh");
-            let drawable = rendering::Drawable::with(mesh, self.stage_material.clone());
-
-            Some(EntityComponents::with_sprite_drawable(
-                req.entity, drawable, uniforms,
-            ))
+            EntityComponents::with_sprite_drawable(
+                req.entity,
+                rendering::Drawable::with(
+                    rendering::Mesh::new(&sprites, 0, &gpu.device, "Entity Stage Sprite Mesh"),
+                    self.stage_material.clone(),
+                ),
+                SpriteUniforms::new(&gpu.device, sprite_size_px),
+            )
         } else {
-            None
+            EntityComponents::just_entity(req.entity)
         };
 
-        if let Some(c) = components {
-            self.entities.insert(c.id(), c);
-        }
+        self.entities.insert(components.id(), components);
     }
 
     fn boss_fight_started(&mut self, arena_left_bounds: f32) {
