@@ -370,6 +370,7 @@ pub struct Firebrand {
     injury_countdown: f32,
     invulnerability_countdown: f32,
     last_shoot_time: f32,
+    frozen: bool,
 }
 
 impl Default for Firebrand {
@@ -395,6 +396,7 @@ impl Default for Firebrand {
             injury_countdown: 0.0,
             invulnerability_countdown: 0.0,
             last_shoot_time: 0.0,
+            frozen: false,
         }
     }
 }
@@ -415,7 +417,11 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        self.input_state.process_keyboard(key, state)
+        if !self.frozen {
+            self.input_state.process_keyboard(key, state)
+        } else {
+            false
+        }
     }
 
     fn update(
@@ -426,12 +432,12 @@ impl Entity for Firebrand {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
-        self.overlapping_sprites.clear();
-        self.contacting_sprites.clear();
-
         let dt = dt.as_secs_f32();
         self.time += dt;
         self.step += 1;
+
+        self.overlapping_sprites.clear();
+        self.contacting_sprites.clear();
 
         if let ButtonState::Pressed = self.input_state.fire() {
             self.shoot_fireball(message_dispatcher);
@@ -764,8 +770,16 @@ impl Entity for Firebrand {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::DidShootFireball = message.event {
-            self.last_shoot_time = self.time;
+        match message.event {
+            Event::DidShootFireball => {
+                self.last_shoot_time = self.time;
+            }
+            Event::RaiseExitFloor => {
+                // firebrand is frozen while the floor raises, until the exit door finishes opening.
+                self.frozen = true;
+            }
+            Event::ExitDoorOpened => self.frozen = false,
+            _ => {}
         }
     }
 

@@ -62,6 +62,7 @@ impl Entity for ExitDoor {
                 if self.offset.x < -self.bounds.extent.x {
                     self.offset.x = -self.bounds.extent.x;
                     self.mode = Mode::Open;
+                    message_dispatcher.broadcast(Event::ExitDoorOpened);
                 }
             }
             Mode::Open => {

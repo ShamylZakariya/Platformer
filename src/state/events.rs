@@ -70,8 +70,11 @@ pub enum Event {
     /// Sent after boiss fight finishes to raise the floor to make exit door accessible
     RaiseExitFloor,
 
-    // Sent after the floor finishes raising, to signal opening of the exit door.
+    /// Sent after the floor finishes raising, to signal opening of the exit door.
     OpenExitDoor,
+
+    /// Sent after the exit door finishes opening
+    ExitDoorOpened,
 
     // Sent when the player passes through the exit door
     PlayerPassedThroughExitDoor,

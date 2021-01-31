@@ -1,6 +1,5 @@
 CURRENTLY:
     - Boss fish
-        - When dying and the floor rises & door opens, Firebrand needs to be immobilized
         - When passing through door stage needs to fade to white -- this could be considered part of the in-game GUI?
 
 TODO:
