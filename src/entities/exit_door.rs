@@ -13,7 +13,7 @@ use crate::{
 
 use super::util::Direction;
 
-const OPEN_SPEED: f32 = 1.0;
+const OPEN_SPEED: f32 = 1.25;
 
 enum Mode {
     Closed,
@@ -94,7 +94,11 @@ impl Entity for ExitDoor {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(self.offset);
+        // round offset to 0.5 unit increments
+        let x = (self.offset.x / 0.5).round() * 0.5;
+        let offset = point3(x, self.offset.y, self.offset.z);
+
+        uniforms.data.set_model_position(offset);
     }
 
     fn entity_id(&self) -> u32 {
