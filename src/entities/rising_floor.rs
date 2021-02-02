@@ -12,7 +12,8 @@ use crate::{
     state::events::Event,
 };
 
-const RISE_SPEED: f32 = 1.0;
+const RISE_SPEED: f32 = 1.0 / 0.467;
+const CAMERA_SHAKE: Vector2<f32> = vec2(0.25, 0.0);
 
 pub struct RisingFloor {
     entity_id: u32,
@@ -20,6 +21,7 @@ pub struct RisingFloor {
     stage_sprites: Vec<sprite::Sprite>,
     bounds: Bounds,
     rising: bool,
+    sent_started_rising_message: bool,
     collider: sprite::Sprite,
 }
 
@@ -38,6 +40,7 @@ impl RisingFloor {
             stage_sprites,
             bounds,
             rising: false,
+            sent_started_rising_message: false,
             collider,
         }
     }
@@ -62,11 +65,19 @@ impl Entity for RisingFloor {
         _game_state_peek: &GameStatePeek,
     ) {
         if self.rising {
+            if !self.sent_started_rising_message {
+                self.sent_started_rising_message = true;
+                message_dispatcher.broadcast(Event::StartCameraShake {
+                    magnitude: CAMERA_SHAKE,
+                });
+            }
+
             self.offset.y += RISE_SPEED * dt.as_secs_f32();
             if self.offset.y >= 0.0 {
                 self.offset.y = 0.0;
                 self.rising = false;
 
+                message_dispatcher.broadcast(Event::EndCameraShake);
                 message_dispatcher.broadcast(Event::OpenExitDoor);
             }
             self.update_collider();

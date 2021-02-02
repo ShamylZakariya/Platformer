@@ -1,4 +1,5 @@
 use cgmath::*;
+use entities::util::Direction;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -126,21 +127,18 @@ impl GameState {
                 ))
             };
 
-            let bg_layer = map
-                .layer_named("Background")
-                .expect("Expected layer named 'Background'");
-            let level_layer = map
-                .layer_named("Level")
-                .expect("Expected layer named 'Level'");
-            let entity_layer = map
-                .layer_named("Entities")
-                .expect("Expected layer named 'Entities'");
-            let rising_floor_layer = map
-                .layer_named("RisingFloor")
-                .expect("Expect layer named 'RidingFloor'");
-            let exit_door_layer = map
-                .layer_named("ExitDoor")
-                .expect("Expect layer named 'ExitDoor'");
+            let get_layer = |name: &str| {
+                map.layer_named(name)
+                    .unwrap_or_else(|| panic!("Expect layer named \"{}\"", name))
+            };
+
+            let bg_layer = get_layer("Background");
+            let level_layer = get_layer("Level");
+            let exit_layer = get_layer("Exit");
+            let entity_layer = get_layer("Entities");
+            let rising_floor_layer = get_layer("RisingFloor");
+            let exit_door_left_layer = get_layer("ExitDoorLeft");
+            let exit_door_right_layer = get_layer("ExitDoorRight");
 
             // generate level sprites
             let bg_sprites = map.generate_sprites(bg_layer, |_, _| sprite_layers::BACKGROUND);
@@ -151,16 +149,29 @@ impl GameState {
                     sprite_layers::LEVEL
                 }
             });
+            let exit_sprites =
+                map.generate_sprites(exit_layer, |_, _| sprite_layers::BACKGROUND + 0.1);
 
             let rising_floor_sprites =
                 map.generate_sprites(rising_floor_layer, |_, _| sprite_layers::FOREGROUND);
-            let exit_door_sprites =
-                map.generate_sprites(exit_door_layer, |_, _| sprite_layers::FOREGROUND);
+            let exit_door_left_sprites = map.generate_sprites(exit_door_left_layer, |_, _| {
+                sprite_layers::BACKGROUND + 0.01
+            });
+            let exit_door_right_sprites = map.generate_sprites(exit_door_right_layer, |_, _| {
+                sprite_layers::BACKGROUND + 0.01
+            });
 
             let rising_floor_entity = Box::new(entities::rising_floor::RisingFloor::new(
                 rising_floor_sprites,
             ));
-            let exit_door_entity = Box::new(entities::exit_door::ExitDoor::new(exit_door_sprites));
+            let exit_door_left_entity = Box::new(entities::exit_door::ExitDoor::new(
+                exit_door_left_sprites,
+                Direction::West,
+            ));
+            let exit_door_right_entity = Box::new(entities::exit_door::ExitDoor::new(
+                exit_door_right_sprites,
+                Direction::East,
+            ));
 
             // generate level entities
             let mut collision_space = collision::Space::new(&level_sprites);
@@ -175,11 +186,12 @@ impl GameState {
             let stage_animation_flipbooks =
                 map.generate_animations(bg_layer, |_, _| sprite_layers::BACKGROUND);
 
-            let mut all_sprites = vec![];
-            all_sprites.extend(bg_sprites);
-            all_sprites.extend(level_sprites);
+            let mut stage_sprites = vec![];
+            stage_sprites.extend(bg_sprites);
+            stage_sprites.extend(level_sprites);
+            stage_sprites.extend(exit_sprites);
 
-            let sm = rendering::Mesh::new(&all_sprites, 0, &gpu.device, "Stage Sprite Mesh");
+            let sm = rendering::Mesh::new(&stage_sprites, 0, &gpu.device, "Stage Sprite Mesh");
             (
                 stage_sprite_material.clone(),
                 rendering::Drawable::with(sm, stage_sprite_material),
@@ -187,7 +199,8 @@ impl GameState {
                 entities,
                 vec![
                     rising_floor_entity as Box<dyn entity::Entity>,
-                    exit_door_entity as Box<dyn entity::Entity>,
+                    exit_door_left_entity as Box<dyn entity::Entity>,
+                    exit_door_right_entity as Box<dyn entity::Entity>,
                 ],
                 stage_animation_flipbooks,
             )

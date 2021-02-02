@@ -417,11 +417,7 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if !self.frozen {
-            self.input_state.process_keyboard(key, state)
-        } else {
-            false
-        }
+        self.input_state.process_keyboard(key, state)
     }
 
     fn update(
@@ -440,14 +436,16 @@ impl Entity for Firebrand {
         self.contacting_sprites.clear();
 
         if let ButtonState::Pressed = self.input_state.fire() {
-            self.shoot_fireball(message_dispatcher);
+            if !self.frozen {
+                self.shoot_fireball(message_dispatcher);
+            }
         }
 
         //
         //  No user input processing while in injury state
         //
 
-        let can_process_jump_inputs = !self.is_in_injury();
+        let can_process_jump_inputs = !self.frozen && !self.is_in_injury();
 
         //
         //  Handle jump button
@@ -661,8 +659,10 @@ impl Entity for Firebrand {
         //  Update character cycle and animation, and facing dir
         //
 
-        self.character_state.cycle = self.update_character_cycle(dt);
-        self.character_state.facing = self.character_facing();
+        if !self.frozen {
+            self.character_state.cycle = self.update_character_cycle(dt);
+            self.character_state.facing = self.character_facing();
+        }
 
         //
         //  Test against dynamic sprites (e.g., enemies) in scene
@@ -1017,8 +1017,8 @@ impl Firebrand {
         dt: f32,
         map_bounds: &Bounds,
     ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
-        // this is a no-op while wallholding
-        if self.is_wallholding() {
+        // this is a no-op while wallholding or frozen
+        if self.is_wallholding() || self.frozen {
             return (position, None);
         }
 
@@ -1177,6 +1177,11 @@ impl Firebrand {
         position: Point2<f32>,
         dt: f32,
     ) -> Point2<f32> {
+        // if we're frozen, this is a no-op
+        if self.frozen {
+            return position;
+        }
+
         match self.character_state.stance {
             Stance::Standing | Stance::Flying | Stance::WallHold(_) => {
                 if self.vertical_velocity.abs() != 0.0 {

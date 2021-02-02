@@ -1,12 +1,24 @@
 CURRENTLY:
     - Boss fish
-        - When passing through door stage needs to fade to white -- this could be considered part of the in-game GUI?
+        - how long does fish flash when injured and what's blink period?
+        - can fish be shot again while blinking???
+        - what is the fish's hit points?
+        - how fast does door open?
+            - door opens from left and right, and leaves a smidge visible
+            - BUG: exit_sprites are drawing atop the doors
+            - BUG: doors send exit message repeatedly, should send once
+                - maybe just the west door, too
+
+
+        - DONE how fast does floor rise?
+        - DONE does door wait for floor to finish rising?
+            no
 
 TODO:
-    - I don't like how we create EntityComponent in GameState; maybe have the EntityComponent::new method "do the right thing" with Entity to create the right draw components
     - Implement game UI
 
 BUGS:
+    - weirdly, firebrand is injured jumping into the boss arena, like the spikes extent farther to right than they visually render
     - can Firebrand jump in water?
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
         - could outset sprites a half pixel (what's apixel at different scales?)

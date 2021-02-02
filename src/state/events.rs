@@ -78,4 +78,10 @@ pub enum Event {
 
     // Sent when the player passes through the exit door
     PlayerPassedThroughExitDoor,
+
+    StartCameraShake {
+        magnitude: Vector2<f32>,
+    },
+
+    EndCameraShake,
 }

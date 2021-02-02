@@ -53,6 +53,12 @@ impl Bounds {
     pub fn bottom(&self) -> f32 {
         self.origin.y
     }
+    pub fn width(&self) -> f32 {
+        self.extent.x
+    }
+    pub fn height(&self) -> f32 {
+        self.extent.y
+    }
 }
 
 pub mod intersection {

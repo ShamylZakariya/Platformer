@@ -11,6 +11,8 @@ use crate::{
     state::{constants::sprite_layers::BACKGROUND, events::Event},
 };
 
+use super::util::Direction;
+
 const OPEN_SPEED: f32 = 1.0;
 
 enum Mode {
@@ -25,19 +27,19 @@ pub struct ExitDoor {
     stage_sprites: Vec<sprite::Sprite>,
     bounds: Bounds,
     mode: Mode,
-    alive: bool,
+    open_dir: Direction,
 }
 
 impl ExitDoor {
-    pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
+    pub fn new(stage_sprites: Vec<sprite::Sprite>, open_dir: Direction) -> Self {
         let bounds = find_bounds(&stage_sprites);
         Self {
             entity_id: 0,
-            offset: point3(0.0, 0.0, BACKGROUND),
+            offset: point3(0.0, 0.0, 0.0),
             stage_sprites,
             bounds,
             mode: Mode::Closed,
-            alive: true,
+            open_dir,
         }
     }
 }
@@ -57,21 +59,30 @@ impl Entity for ExitDoor {
     ) {
         match self.mode {
             Mode::Closed => {}
-            Mode::Opening => {
-                self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
-                if self.offset.x < -self.bounds.extent.x {
-                    self.offset.x = -self.bounds.extent.x;
-                    self.mode = Mode::Open;
-                    message_dispatcher.broadcast(Event::ExitDoorOpened);
+            Mode::Opening => match self.open_dir {
+                Direction::East => {
+                    self.offset.x += OPEN_SPEED * dt.as_secs_f32();
+                    if self.offset.x > self.bounds.width() - 0.5 {
+                        self.offset.x = self.bounds.width() - 0.5;
+                        self.mode = Mode::Open;
+                        message_dispatcher.broadcast(Event::ExitDoorOpened);
+                    }
                 }
-            }
+                Direction::West => {
+                    self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
+                    if self.offset.x < -self.bounds.width() + 0.5 {
+                        self.offset.x = -self.bounds.width() + 0.5;
+                        self.mode = Mode::Open;
+                        message_dispatcher.broadcast(Event::ExitDoorOpened);
+                    }
+                }
+            },
             Mode::Open => {
                 if game_state_peek.player_position.x
-                    > self.bounds.origin.x + self.bounds.extent.x * 0.5
+                    > self.bounds.left() + self.bounds.width() * 0.5
                 {
                     println!("Sending exit message");
                     message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
-                    self.alive = false;
                 }
             }
         }
@@ -90,7 +101,7 @@ impl Entity for ExitDoor {
     }
 
     fn is_alive(&self) -> bool {
-        self.alive
+        true
     }
 
     fn position(&self) -> Point3<f32> {

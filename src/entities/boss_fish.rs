@@ -24,11 +24,12 @@ const MOVEMENT_SPEED: f32 = 3.0 / 1.9; // units per second
 const FIRESPRITE_MOVEMENT_SPEED: f32 = MOVEMENT_SPEED * 2.0;
 const SUBMERGED_DURATION: f32 = 1.0;
 const DEATH_ANIMATION_DURATION: f32 = 2.0;
-const DEATH_BLINK_PERIOD: f32 = ANIMATION_CYCLE_DURATION;
+const INJURY_BLINK_PERIOD: f32 = ANIMATION_CYCLE_DURATION;
 const HIT_POINTS: i32 = 5;
 const SPRITE_SIZE: Vector2<f32> = vec2(3.0, 3.0);
 const SHOOT_DISTANCE: f32 = 3.0;
 const SHOOT_CYCLE_PERIOD: f32 = 0.5;
+const INJURY_FLASH_DURATION: f32 = 1.0;
 
 #[derive(Debug, Clone, Copy)]
 enum AttackPhase {
@@ -61,6 +62,7 @@ pub struct BossFish {
     should_launch_firesprites: bool,
     shoot_countdown: Option<f32>,
     post_shoot_countdown: Option<f32>,
+    injury_flash_countdown: Option<f32>,
 }
 
 impl Default for BossFish {
@@ -86,6 +88,7 @@ impl Default for BossFish {
             should_launch_firesprites: false,
             shoot_countdown: None,
             post_shoot_countdown: None,
+            injury_flash_countdown: None,
         }
     }
 }
@@ -172,6 +175,15 @@ impl Entity for BossFish {
                 }
             }
         }
+
+        if let Some(injury_flash_countdown) = self.injury_flash_countdown {
+            let injury_flash_countdown = injury_flash_countdown - dt;
+            if injury_flash_countdown >= 0.0 {
+                self.injury_flash_countdown = Some(injury_flash_countdown);
+            } else {
+                self.injury_flash_countdown = None;
+            }
+        }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -181,10 +193,20 @@ impl Entity for BossFish {
         };
 
         let alpha = if self.hit_points > 0 {
-            1.0
+            if let Some(injury_flash_countdown) = self.injury_flash_countdown {
+                let blink_phase =
+                    ((INJURY_FLASH_DURATION - injury_flash_countdown) / INJURY_BLINK_PERIOD) as i32;
+                if blink_phase % 2 == 0 {
+                    1.0
+                } else {
+                    0.0
+                }
+            } else {
+                1.0
+            }
         } else {
             let blink_phase = ((DEATH_ANIMATION_DURATION - self.death_animation_countdown)
-                / DEATH_BLINK_PERIOD) as i32;
+                / INJURY_BLINK_PERIOD) as i32;
             if blink_phase % 2 == 0 {
                 1.0
             } else {
@@ -249,6 +271,7 @@ impl Entity for BossFish {
     fn handle_message(&mut self, message: &Message) {
         if let Event::HitByFireball { direction: _ } = message.event {
             self.hit_points = (self.hit_points - 1).max(0);
+            self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
         }
     }
 }

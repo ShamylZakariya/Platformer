@@ -11,10 +11,10 @@ pub mod sprite_masks {
 }
 
 pub mod sprite_layers {
-    pub const BACKGROUND: f32 = 1.0;
-    pub const LEVEL: f32 = 0.9;
-    pub const ENTITIES: f32 = 0.8;
-    pub const PLAYER: f32 = 0.7;
+    pub const BACKGROUND: f32 = 0.9;
+    pub const LEVEL: f32 = 0.8;
+    pub const ENTITIES: f32 = 0.7;
+    pub const PLAYER: f32 = 0.6;
     pub const FOREGROUND: f32 = 0.1;
 }
 
