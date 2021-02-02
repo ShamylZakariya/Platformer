@@ -80,7 +80,8 @@ pub enum Event {
     PlayerPassedThroughExitDoor,
 
     StartCameraShake {
-        magnitude: Vector2<f32>,
+        // vector of camera offsets in world units, and timing delay for that offset
+        pattern: Vec<(Vector2<f32>, f32)>,
     },
 
     EndCameraShake,

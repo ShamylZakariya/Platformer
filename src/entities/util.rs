@@ -5,7 +5,7 @@ use crate::{sprite::collision, state::events::Event};
 use cgmath::*;
 use collision::Space;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     East,
     West,

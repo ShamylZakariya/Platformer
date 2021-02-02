@@ -4,6 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::Path,
     rc::Rc,
+    time::Duration,
 };
 use wgpu::{CommandEncoder, SwapChainFrame};
 use winit::{
@@ -40,6 +41,32 @@ struct EntityAdditionRequest {
 
 fn build_stage_entities() -> Vec<Box<dyn entity::Entity>> {
     todo!();
+}
+
+struct CameraShaker {
+    pattern: Vec<(Vector2<f32>, f32)>,
+    time: f32,
+    index: usize,
+}
+
+impl CameraShaker {
+    fn new(pattern: Vec<(Vector2<f32>, f32)>) -> Self {
+        Self {
+            pattern,
+            time: 0.0,
+            index: 0,
+        }
+    }
+
+    fn update(&mut self, dt: Duration) -> Vector2<f32> {
+        self.time += dt.as_secs_f32();
+        if self.time > self.pattern[self.index].1 {
+            self.time -= self.pattern[self.index].1;
+            self.index += 1;
+            self.index %= self.pattern.len();
+        }
+        self.pattern[self.index].0
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -92,6 +119,7 @@ pub struct GameState {
     boss_fight_start_time: Option<f32>,
     boss_fight_arena_left_bounds: Option<f32>,
     viewport_left_when_boss_encountered: Option<f32>,
+    camera_shaker: Option<CameraShaker>,
 }
 
 impl GameState {
@@ -347,6 +375,7 @@ impl GameState {
             boss_fight_start_time: None,
             boss_fight_arena_left_bounds: None,
             viewport_left_when_boss_encountered: None,
+            camera_shaker: None,
         };
 
         for req in entity_add_requests {
@@ -488,8 +517,14 @@ impl GameState {
             None
         };
 
+        let offset = if let Some(ref mut shaker) = self.camera_shaker {
+            Some(shaker.update(dt))
+        } else {
+            None
+        };
+
         self.camera_controller
-            .update(dt, tracking, Some(current_map_bounds));
+            .update(dt, tracking, offset, Some(current_map_bounds));
         self.camera_controller.uniforms.write(&mut gpu.queue);
 
         //
@@ -875,6 +910,14 @@ impl event_dispatch::MessageHandler for GameState {
 
                 Event::BossDefeated => {
                     self.boss_was_defeated();
+                }
+
+                Event::StartCameraShake { pattern } => {
+                    self.camera_shaker = Some(CameraShaker::new(pattern.clone()));
+                }
+
+                Event::EndCameraShake => {
+                    self.camera_shaker = None;
                 }
 
                 _ => {}

@@ -28,6 +28,7 @@ pub struct ExitDoor {
     bounds: Bounds,
     mode: Mode,
     open_dir: Direction,
+    should_send_exit_message: bool,
 }
 
 impl ExitDoor {
@@ -40,6 +41,8 @@ impl ExitDoor {
             bounds,
             mode: Mode::Closed,
             open_dir,
+            // we have two doors, so only send the message from the west door
+            should_send_exit_message: open_dir == Direction::West,
         }
     }
 }
@@ -78,11 +81,13 @@ impl Entity for ExitDoor {
                 }
             },
             Mode::Open => {
-                if game_state_peek.player_position.x
-                    > self.bounds.left() + self.bounds.width() * 0.5
+                if self.should_send_exit_message
+                    && game_state_peek.player_position.x
+                        > self.bounds.left() + self.bounds.width() * 0.5
                 {
                     println!("Sending exit message");
                     message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
+                    self.should_send_exit_message = false;
                 }
             }
         }

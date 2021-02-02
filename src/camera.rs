@@ -52,8 +52,8 @@ impl Camera {
         }
     }
 
-    pub fn set_position(&mut self, position: &Point3<f32>) {
-        self.position = *position;
+    pub fn set_position(&mut self, position: Point3<f32>) {
+        self.position = position;
     }
 
     pub fn calc_matrix(&self) -> Matrix4<f32> {
@@ -246,7 +246,13 @@ impl CameraController {
         self.projection.set_scale(new_scale);
     }
 
-    pub fn update(&mut self, _dt: Duration, tracking: Option<Point2<f32>>, bounds: Option<Bounds>) {
+    pub fn update(
+        &mut self,
+        _dt: Duration,
+        tracking: Option<Point2<f32>>,
+        offset: Option<Vector2<f32>>,
+        bounds: Option<Bounds>,
+    ) {
         if let Some(tracking) = tracking {
             self.camera.position.x = tracking.x;
             self.camera.position.y = tracking.y;
@@ -255,6 +261,12 @@ impl CameraController {
         if let Some(bounds) = bounds {
             self.clamp_camera_position_to_bounds(bounds);
         }
+
+        if let Some(offset) = offset {
+            self.camera.position.x += offset.x;
+            self.camera.position.y += offset.y;
+        }
+
         self.uniforms
             .data
             .update_view_proj(&self.camera, &self.projection);
