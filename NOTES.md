@@ -1,15 +1,15 @@
 CURRENTLY:
     - Boss fish
-        - how long does fish flash when injured and what's blink period?
         - can fish be shot again while blinking???
         - what is the fish's hit points?
-        - how fast does door open?
-            - DONE door opens from left and right, and leaves a smidge visible
-
+        - DONE how long does fish flash when injured and what's blink period?
         - DONE camera shake while floor rises
         - DONE how fast does floor rise?
         - DONE does door wait for floor to finish rising?
             no
+        - DONE how fast does door open?
+            - DONE door opens from left and right, and leaves a smidge visible
+
 
 TODO:
     - Implement game UI
