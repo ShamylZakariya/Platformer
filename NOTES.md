@@ -1,17 +1,7 @@
 CURRENTLY:
-    - Boss fish
-        - can fish be shot again while blinking???
-        - what is the fish's hit points?
-        - DONE how long does fish flash when injured and what's blink period?
-        - DONE camera shake while floor rises
-        - DONE how fast does floor rise?
-        - DONE does door wait for floor to finish rising?
-            no
-        - DONE how fast does door open?
-            - DONE door opens from left and right, and leaves a smidge visible
-
 
 TODO:
+    - Looks like Firebrand can jump off the water surface, in fact anywhere inside water can jump
     - Implement game UI
 
 BUGS:

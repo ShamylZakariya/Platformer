@@ -25,8 +25,8 @@ const FIRESPRITE_MOVEMENT_SPEED: f32 = MOVEMENT_SPEED * 2.0;
 const SUBMERGED_DURATION: f32 = 1.0;
 const DEATH_ANIMATION_DURATION: f32 = 2.0;
 const INJURY_BLINK_PERIOD: f32 = 0.1;
-const HIT_POINTS: i32 = 5;
-const SPRITE_SIZE: Vector2<f32> = vec2(3.0, 3.0);
+const HIT_POINTS: i32 = 12;
+const SPRITE_SIZE: Vector2<f32> = vec2(2.0, 2.5);
 const SHOOT_DISTANCE: f32 = 3.0;
 const SHOOT_CYCLE_PERIOD: f32 = 0.5;
 const INJURY_FLASH_DURATION: f32 = 4.0 * INJURY_BLINK_PERIOD;
@@ -272,6 +272,10 @@ impl Entity for BossFish {
         if let Event::HitByFireball { direction: _ } = message.event {
             self.hit_points = (self.hit_points - 1).max(0);
             self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
+            println!(
+                "BossFish::handle_message[HitByFireball] hit_points: {}",
+                self.hit_points
+            );
         }
     }
 }
@@ -407,7 +411,7 @@ impl BossFish {
 
     fn update_sprite(&mut self, collision_space: &mut collision::Space) {
         // sprite is 3x3 with root centered at bottom
-        self.collider.origin.x = self.position.x - 1.0;
+        self.collider.origin.x = self.position.x - 0.5;
         self.collider.origin.y = self.position.y;
         self.collider.extent = SPRITE_SIZE;
         collision_space.update_dynamic_sprite(&self.collider);
