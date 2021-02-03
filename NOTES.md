@@ -1,7 +1,7 @@
 CURRENTLY:
+    - Looks like Firebrand can jump off the water surface, in fact anywhere inside water can jump
 
 TODO:
-    - Looks like Firebrand can jump off the water surface, in fact anywhere inside water can jump
     - Implement game UI
 
 BUGS:

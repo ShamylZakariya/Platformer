@@ -459,7 +459,12 @@ impl Entity for Firebrand {
                         self.set_stance(Stance::InAir);
                     }
                     Stance::InAir => {
-                        if self.flight_countdown > 0.0 {
+                        if self.in_water {
+                            // firebrand can jump while in water, it actslike a ground-contacting reset.
+                            self.jump_time_remaining = JUMP_DURATION;
+                            self.flight_countdown = FLIGHT_DURATION;
+                            self.set_stance(Stance::InAir);
+                        } else if self.flight_countdown > 0.0 {
                             self.jump_time_remaining = 0.0;
                             self.set_stance(Stance::Flying);
                         }
