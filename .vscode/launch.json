@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'platformer'",
+            "name": "Debug 'Gargoyle's Quest",
             "cargo": {
                 "args": [
                     "build",
@@ -20,6 +20,26 @@
                 }
             },
             "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug 'Gargoyle's Quest (w/ Overlay)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=platformer",
+                    "--package=platformer"
+                ],
+                "filter": {
+                    "name": "platformer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--debug-overlay"
+            ],
             "cwd": "${workspaceFolder}"
         },
         {

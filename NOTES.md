@@ -1,12 +1,15 @@
 CURRENTLY:
-    - Looks like Firebrand can jump off the water surface, in fact anywhere inside water can jump
+    - when approaching the ledge piece at left edge of boss arena firebrand is injured. WTF.
+        - looks like a positioning probe "overlap" is mistaken for a contact?
+        - I may have fixed it with an explicit contact test in Firebrand::process_contacts, but now the BossFish's fireballs don't hit me? Did they EVER?
 
 TODO:
+    - Firebrand has to be able to be injured and die (2 hitpoints)
+        - injury response to enemies
+        - instadeath if sinking below bottom of level in water
     - Implement game UI
 
 BUGS:
-    - weirdly, firebrand is injured jumping into the boss arena, like the spikes extent farther to right than they visually render
-    - can Firebrand jump in water?
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
         - could outset sprites a half pixel (what's apixel at different scales?)
         - could make each "layer" an indexed mesh

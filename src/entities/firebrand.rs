@@ -346,7 +346,7 @@ impl sprite::collision::Space {
 pub struct Firebrand {
     entity_id: u32,
     sprite: Option<sprite::Sprite>,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
 
     time: f32,
     step: usize,
@@ -378,7 +378,7 @@ impl Default for Firebrand {
         Self {
             entity_id: 0,
             sprite: None,
-            sprite_size_px: vec2(0.0, 0.0),
+            pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
             input_state: FirebrandInputState::default(),
@@ -412,7 +412,7 @@ impl Entity for Firebrand {
     ) {
         self.entity_id = entity_id;
         self.sprite = Some(*sprite);
-        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
+        self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
         self.character_state.position = sprite.origin.xy();
     }
 
@@ -563,14 +563,17 @@ impl Entity for Firebrand {
         let position = self.apply_vertical_movement(collision_space, position, dt);
 
         //
-        //  Apply character movement
+        //  Apply character movement. Note, we inset the bounds by 1 px so firebrand doesn't
+        //  contact offscreen elements.
         //
 
         let (position, wall_contact) = self.apply_lateral_movement(
             collision_space,
             position,
             dt,
-            &game_state_peek.current_map_bounds,
+            &game_state_peek
+                .current_map_bounds
+                .inset(vec2(2.0 / self.pixels_per_unit.x, 0.0)),
         );
 
         if self.character_state.stance != Stance::Injury {
@@ -626,7 +629,7 @@ impl Entity for Firebrand {
                             + 0.5; // remap to [0,1]
                     let bob_offset = bob_cycle * FLIGHT_BOB_CYCLE_PIXELS_OFFSET as f32;
                     self.character_state.position_offset =
-                        vec2(0.0, bob_offset / self.sprite_size_px.y);
+                        vec2(0.0, bob_offset / self.pixels_per_unit.y);
                 }
 
                 // Decrement remaining flight time
@@ -836,7 +839,7 @@ impl Firebrand {
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
         let mut contact_damage = false;
         for s in &self.contacting_sprites {
-            if s.mask & CONTACT_DAMAGE != 0 {
+            if s.mask & CONTACT_DAMAGE != 0 && s.unit_rect_intersection(&self.position().xy(), 0.0, true){
                 contact_damage = true;
             }
             if let Some(entity_id) = s.entity_id {
@@ -866,43 +869,43 @@ impl Firebrand {
             // );
 
             // NOTE This is a useless match block, but is useful to set breakpoints for specific transitions
-            match self.character_state.stance {
-                Stance::Standing => match new_stance {
-                    Stance::Standing => {}
-                    Stance::InAir => {}
-                    Stance::Flying => {}
-                    Stance::WallHold(_) => {}
-                    Stance::Injury => {}
-                },
-                Stance::InAir => match new_stance {
-                    Stance::Standing => {}
-                    Stance::InAir => {}
-                    Stance::Flying => {}
-                    Stance::WallHold(_) => {}
-                    Stance::Injury => {}
-                },
-                Stance::Flying => match new_stance {
-                    Stance::Standing => {}
-                    Stance::InAir => {}
-                    Stance::Flying => {}
-                    Stance::WallHold(_) => {}
-                    Stance::Injury => {}
-                },
-                Stance::WallHold(_) => match new_stance {
-                    Stance::Standing => {}
-                    Stance::InAir => {}
-                    Stance::Flying => {}
-                    Stance::WallHold(_) => {}
-                    Stance::Injury => {}
-                },
-                Stance::Injury => match new_stance {
-                    Stance::Standing => {}
-                    Stance::InAir => {}
-                    Stance::Flying => {}
-                    Stance::WallHold(_) => {}
-                    Stance::Injury => {}
-                },
-            }
+            // match self.character_state.stance {
+            //     Stance::Standing => match new_stance {
+            //         Stance::Standing => {}
+            //         Stance::InAir => {}
+            //         Stance::Flying => {}
+            //         Stance::WallHold(_) => {}
+            //         Stance::Injury => {}
+            //     },
+            //     Stance::InAir => match new_stance {
+            //         Stance::Standing => {}
+            //         Stance::InAir => {}
+            //         Stance::Flying => {}
+            //         Stance::WallHold(_) => {}
+            //         Stance::Injury => {}
+            //     },
+            //     Stance::Flying => match new_stance {
+            //         Stance::Standing => {}
+            //         Stance::InAir => {}
+            //         Stance::Flying => {}
+            //         Stance::WallHold(_) => {}
+            //         Stance::Injury => {}
+            //     },
+            //     Stance::WallHold(_) => match new_stance {
+            //         Stance::Standing => {}
+            //         Stance::InAir => {}
+            //         Stance::Flying => {}
+            //         Stance::WallHold(_) => {}
+            //         Stance::Injury => {}
+            //     },
+            //     Stance::Injury => match new_stance {
+            //         Stance::Standing => {}
+            //         Stance::InAir => {}
+            //         Stance::Flying => {}
+            //         Stance::WallHold(_) => {}
+            //         Stance::Injury => {}
+            //     },
+            // }
 
             self.injury_countdown = 0.0;
 
@@ -961,7 +964,7 @@ impl Firebrand {
             !(s.mask & RATCHET != 0 && p.y < (s.top() - 0.25))
         };
 
-        let sprite_size_px = self.sprite_size_px.x;
+        let sprite_size_px = self.pixels_per_unit.x;
         let inset_for_sprite = |s: &sprite::Sprite| -> f32 {
             if s.mask & CONTACT_DAMAGE != 0 {
                 2.0 / sprite_size_px

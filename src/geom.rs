@@ -59,6 +59,9 @@ impl Bounds {
     pub fn height(&self) -> f32 {
         self.extent.y
     }
+    pub fn inset(&self, by: Vector2<f32>) -> Bounds {
+        Bounds::new(self.origin + by * 0.5, self.extent - by)
+    }
 }
 
 pub mod intersection {
