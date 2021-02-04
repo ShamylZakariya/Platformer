@@ -837,13 +837,18 @@ impl event_dispatch::MessageHandler for GameState {
                     origin,
                     direction,
                     velocity,
+                    damage,
                 } => {
                     if self.player_can_shoot_fireball() {
-                        self.request_add_entity(Box::new(entities::fireball::Fireball::new(
-                            point3(origin.x, origin.y, 0.0),
-                            *direction,
-                            *velocity,
-                        )));
+                        self.request_add_entity(Box::new(
+                            entities::fireball::Fireball::new_fireball(
+                                self.firebrand_entity_id,
+                                point3(origin.x, origin.y, 0.0),
+                                *direction,
+                                *velocity,
+                                *damage,
+                            ),
+                        ));
 
                         // Reply to firebrand that a shot was fired
                         self.message_dispatcher
@@ -896,12 +901,20 @@ impl event_dispatch::MessageHandler for GameState {
                     position,
                     dir,
                     velocity,
+                    damage,
                 } => {
-                    self.request_add_entity(Box::new(entities::fire_sprite::FireSprite::launch(
-                        point3(position.x, position.y, 0.0),
-                        *dir,
-                        *velocity,
-                    )));
+                    let sender_id = message
+                        .sender_entity_id
+                        .expect("Expect ShootFiresprite message to have a sender_entity_id");
+                    self.request_add_entity(Box::new(
+                        entities::fireball::Fireball::new_firesprite(
+                            sender_id,
+                            point3(position.x, position.y, 0.0),
+                            *dir,
+                            *velocity,
+                            *damage,
+                        ),
+                    ));
                 }
 
                 Event::BossEncountered { arena_left } => {

@@ -27,9 +27,11 @@ const DEATH_ANIMATION_DURATION: f32 = 2.0;
 const INJURY_BLINK_PERIOD: f32 = 0.1;
 const HIT_POINTS: i32 = 12;
 const SPRITE_SIZE: Vector2<f32> = vec2(2.0, 2.5);
-const SHOOT_DISTANCE: f32 = 3.0;
+const SHOOT_DISTANCE: f32 = 5.0;
 const SHOOT_CYCLE_PERIOD: f32 = 0.5;
 const INJURY_FLASH_DURATION: f32 = 4.0 * INJURY_BLINK_PERIOD;
+
+const FIRESPRITE_PROJECTILE_DAMAGE: u32 = 1;
 
 #[derive(Debug, Clone, Copy)]
 enum AttackPhase {
@@ -269,8 +271,12 @@ impl Entity for BossFish {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::HitByFireball { direction: _ } = message.event {
-            self.hit_points = (self.hit_points - 1).max(0);
+        if let Event::HitByFireball {
+            direction: _,
+            damage,
+        } = message.event
+        {
+            self.hit_points = (self.hit_points - (damage as i32)).max(0);
             self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
             println!(
                 "BossFish::handle_message[HitByFireball] hit_points: {}",
@@ -297,13 +303,10 @@ impl BossFish {
                     // move from Submerged to Raising. Pick an emergence point that is half the original
                     // viewport width away, with a lowish probability of being right under player.
                     let max_dist = ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0;
-                    let mut dist = if self.rng.gen_bool(0.5) {
-                        max_dist
-                    } else {
-                        -max_dist
-                    };
-                    if self.rng.gen_bool(0.2) {
-                        dist = 0.0
+                    let dist = match self.rng.gen_range(0..10) {
+                        0..=3 => max_dist,
+                        4..=7 => -max_dist,
+                        _ => 0.0,
                     };
                     let x = (game_state_peek.player_position.x + dist)
                         .max(self.arena_origin.x + 2.0)
@@ -324,7 +327,7 @@ impl BossFish {
                 self.position.y += MOVEMENT_SPEED * dt;
                 if self.position.y >= game_state_peek.player_position.y {
                     self.position.y = game_state_peek.player_position.y;
-                    self.should_launch_firesprites = self.rng.gen_bool(0.5);
+                    self.should_launch_firesprites = true; //self.rng.gen_bool(0.5);
                     self.set_attack_phase(AttackPhase::Attacking {
                         target_x: game_state_peek.player_position.x,
                     });
@@ -383,6 +386,7 @@ impl BossFish {
                                         position: self.position.xy() + offset,
                                         dir: dir.to_dir(),
                                         velocity: FIRESPRITE_MOVEMENT_SPEED,
+                                        damage: FIRESPRITE_PROJECTILE_DAMAGE,
                                     },
                                 );
                             }

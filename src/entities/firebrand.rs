@@ -1,6 +1,7 @@
 use std::{collections::HashSet, f32::consts::PI, fmt::Display, time::Duration};
 
 use cgmath::*;
+use sprite::CollisionShape;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
@@ -72,6 +73,9 @@ const JUMP_CYCLE_DURATION: f32 = 0.1;
 const INJURY_CYCLE_DURATION: f32 = 0.1;
 const INVULNERABILITY_BLINK_PERIOD: f32 = 0.1;
 const FIREBALL_CYCLE_DURATION: f32 = 0.3;
+
+const CONTACT_DAMAGE_HIT_POINTS: u32 = 1;
+const FIREBALL_PROJECTILE_DAMAGE: u32 = 1;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -345,7 +349,7 @@ impl sprite::collision::Space {
 
 pub struct Firebrand {
     entity_id: u32,
-    sprite: Option<sprite::Sprite>,
+    collider: Option<sprite::Sprite>,
     pixels_per_unit: Vector2<f32>,
 
     time: f32,
@@ -377,7 +381,7 @@ impl Default for Firebrand {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            sprite: None,
+            collider: None,
             pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
@@ -408,12 +412,18 @@ impl Entity for Firebrand {
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
         map: &map::Map,
-        _collision_space: &mut collision::Space,
+        collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.sprite = Some(*sprite);
+        self.collider = Some(*sprite);
         self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
         self.character_state.position = sprite.origin.xy();
+
+        if let Some(ref mut collider) = self.collider {
+            collider.mask |= SHOOTABLE;
+            collider.collision_shape = CollisionShape::Square;
+            collision_space.add_dynamic_sprite(collider);
+        }
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -687,6 +697,16 @@ impl Entity for Firebrand {
         );
 
         //
+        //  Update our own collider in case other entities are probing for contacts
+        //
+
+        if let Some(ref mut collider) = self.collider {
+            collider.origin.x = self.character_state.position.x;
+            collider.origin.y = self.character_state.position.y;
+            collision_space.update_dynamic_sprite(collider);
+        }
+
+        //
         //  Remove any sprites in the contacting set from the overlapping set.
         //
 
@@ -765,7 +785,7 @@ impl Entity for Firebrand {
         point3(
             self.character_state.position.x,
             self.character_state.position.y,
-            self.sprite.unwrap().origin.z,
+            self.collider.unwrap().origin.z,
         )
     }
 
@@ -787,6 +807,10 @@ impl Entity for Firebrand {
                 self.frozen = true;
             }
             Event::ExitDoorOpened => self.frozen = false,
+            Event::HitByFireball { direction, damage } => {
+                println!("Hit by fireball! dir: {:?} damage: {}", direction, damage);
+                self.receive_injury(damage);
+            }
             _ => {}
         }
     }
@@ -832,6 +856,7 @@ impl Firebrand {
                 origin,
                 direction: self.character_facing(),
                 velocity: FIREBALL_VELOCITY,
+                damage: FIREBALL_PROJECTILE_DAMAGE,
             },
         );
     }
@@ -852,7 +877,7 @@ impl Firebrand {
         }
 
         if contact_damage {
-            self.set_stance(Stance::Injury);
+            self.receive_injury(CONTACT_DAMAGE_HIT_POINTS);
         }
     }
 
@@ -974,8 +999,6 @@ impl Firebrand {
         };
 
         for test_point in [below_center, center].iter() {
-            use crate::sprite::core::CollisionShape;
-
             if let Some(s) = collision_space.get_sprite_at(*test_point, COLLIDER) {
                 if can_collide_width(&position, s) {
                     match s.collision_shape {
@@ -1406,5 +1429,9 @@ impl Firebrand {
         );
 
         in_water
+    }
+
+    fn receive_injury(&mut self, _damage: u32) {
+        self.set_stance(Stance::Injury);
     }
 }

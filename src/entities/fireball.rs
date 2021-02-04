@@ -15,30 +15,72 @@ use super::util::Direction;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const CYCLE_DEFAULT: &str = "default";
+
+enum Mode {
+    Fireball,
+    Firesprite,
+}
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub struct Fireball {
+    sender_id: u32,
     entity_id: u32,
     position: Point3<f32>,
-    direction: Direction,
-    velocity: f32,
+    velocity: Vector2<f32>,
     alive: bool,
     map_origin: Point2<f32>,
     map_extent: Vector2<f32>,
+    mode: Mode,
+    animation_cycle_tick_countdown: f32,
+    animation_cycle_tick: u32,
+    damage: u32,
 }
 
 impl Fireball {
-    pub fn new(position: Point3<f32>, direction: Direction, velocity: f32) -> Self {
+    pub fn new_fireball(
+        sender_id: u32,
+        position: Point3<f32>,
+        direction: Direction,
+        velocity: f32,
+        damage: u32,
+    ) -> Self {
+        let dv: Vector2<f32> = direction.into();
         Self {
+            sender_id,
             entity_id: 0,
             position,
-            direction,
-            velocity,
+            velocity: dv * velocity,
             alive: true,
             map_origin: point2(0.0, 0.0),
             map_extent: vec2(0.0, 0.0),
+            mode: Mode::Fireball,
+            animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
+            animation_cycle_tick: 0,
+            damage,
+        }
+    }
+    pub fn new_firesprite(
+        sender_id: u32,
+        position: Point3<f32>,
+        direction: Vector2<f32>,
+        velocity: f32,
+        damage: u32,
+    ) -> Self {
+        Self {
+            sender_id,
+            entity_id: 0,
+            position,
+            velocity: direction * velocity,
+            alive: true,
+            map_origin: point2(0.0, 0.0),
+            map_extent: vec2(0.0, 0.0),
+            mode: Mode::Firesprite,
+            animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
+            animation_cycle_tick: 0,
+            damage,
         }
     }
 }
@@ -62,25 +104,44 @@ impl Entity for Fireball {
         let dt = dt.as_secs_f32();
         let mask = crate::state::constants::sprite_masks::SHOOTABLE;
 
-        let next_position = match self.direction {
-            Direction::East => point2(self.position.x + self.velocity * dt, self.position.y),
-            Direction::West => point2(self.position.x - self.velocity * dt, self.position.y),
-        };
-
+        let next_position = self.position.xy() + self.velocity * dt;
         if let Some(sprite) = collision_space.test_point(next_position, mask) {
             if let Some(target_entity_id) = sprite.entity_id {
-                message_dispatcher.entity_to_entity(
-                    self.entity_id(),
-                    target_entity_id,
-                    Event::HitByFireball {
-                        direction: self.direction,
-                    },
-                );
+                if target_entity_id != self.sender_id {
+                    //
+                    // hit an entity that's not the sender
+                    //
+
+                    message_dispatcher.entity_to_entity(
+                        self.entity_id(),
+                        target_entity_id,
+                        Event::HitByFireball {
+                            direction: self.velocity.into(),
+                            damage: self.damage,
+                        },
+                    );
+                    self.alive = false;
+                }
+            } else {
+                //
+                // hit static level geometry
+                //
+                self.alive = false;
             }
-            self.alive = false;
-        } else {
-            self.position.x = next_position.x;
-            self.position.y = next_position.y;
+        }
+
+        self.position.x = next_position.x;
+        self.position.y = next_position.y;
+
+        if let Mode::Firesprite = self.mode {
+            //
+            //  Update sprite animation cycle for Firesprite
+            //
+            self.animation_cycle_tick_countdown -= dt;
+            if self.animation_cycle_tick_countdown <= 0.0 {
+                self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
+                self.animation_cycle_tick += 1;
+            }
         }
     }
 
@@ -111,11 +172,23 @@ impl Entity for Fireball {
     }
 
     fn sprite_name(&self) -> &str {
-        "fireball"
+        match self.mode {
+            Mode::Fireball => "fireball",
+            Mode::Firesprite => "fire_sprite",
+        }
     }
 
     fn sprite_cycle(&self) -> &str {
-        CYCLE_DEFAULT
+        match self.mode {
+            Mode::Fireball => "default",
+            Mode::Firesprite => {
+                if self.animation_cycle_tick % 2 == 0 {
+                    "default"
+                } else {
+                    "alt"
+                }
+            }
+        }
     }
 
     fn did_exit_viewport(&mut self) {

@@ -20,6 +20,25 @@ impl Direction {
     }
 }
 
+impl From<Vector2<f32>> for Direction {
+    fn from(v: Vector2<f32>) -> Self {
+        if v.x > 0.0 {
+            Direction::East
+        } else {
+            Direction::West
+        }
+    }
+}
+
+impl Into<Vector2<f32>> for Direction {
+    fn into(self) -> Vector2<f32> {
+        match self {
+            Direction::East => vec2(1.0, 0.0),
+            Direction::West => vec2(-1.0, 0.0),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 const SIN_PI_4: f32 = 0.707_106_77;
@@ -202,8 +221,8 @@ impl HitPointState {
     }
 
     pub fn handle_message(&mut self, message: &Message) -> bool {
-        if let Event::HitByFireball { direction } = message.event {
-            self.hit_points = (self.hit_points - 1).max(0);
+        if let Event::HitByFireball { direction, damage } = message.event {
+            self.hit_points = (self.hit_points - (damage as i32)).max(0);
             self.death_animation_dir = direction;
             true
         } else {

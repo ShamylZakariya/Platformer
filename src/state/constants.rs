@@ -2,12 +2,12 @@
 // Units are seconds & tiles-per-second unless otherwise specified.
 
 pub mod sprite_masks {
-    pub const COLLIDER: u32 = 1 << 31;
-    pub const WATER: u32 = 1 << 30;
-    pub const RATCHET: u32 = 1 << 29;
-    pub const ENTITY: u32 = 1 << 28;
-    pub const CONTACT_DAMAGE: u32 = 1 << 27;
-    pub const SHOOTABLE: u32 = 1 << 26;
+    pub const COLLIDER: u32 = 1 << 0;
+    pub const WATER: u32 = 1 << 1;
+    pub const RATCHET: u32 = 1 << 2;
+    pub const ENTITY: u32 = 1 << 3;
+    pub const CONTACT_DAMAGE: u32 = 1 << 4;
+    pub const SHOOTABLE: u32 = 1 << 5;
 }
 
 pub mod sprite_layers {

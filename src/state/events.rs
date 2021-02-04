@@ -15,6 +15,7 @@ pub enum Event {
         origin: Point2<f32>,
         direction: Direction,
         velocity: f32,
+        damage: u32,
     },
 
     /// Sent to Firebrand when a fireball was successfully shot
@@ -24,6 +25,7 @@ pub enum Event {
     HitByFireball {
         // direction of fireball travel, -1 for left, +1 for right
         direction: Direction,
+        damage: u32,
     },
 
     /// Sent by an entity to GameState to signal request to spawn an entity.
@@ -57,6 +59,7 @@ pub enum Event {
         position: Point2<f32>,
         dir: Vector2<f32>,
         velocity: f32,
+        damage: u32,
     },
 
     /// Sent by boss to GameState when the boss fight starts

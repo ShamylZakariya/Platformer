@@ -345,19 +345,9 @@ impl Sprite {
         if x_overlap && y_overlap {
             match self.collision_shape {
                 CollisionShape::None => false,
-                CollisionShape::Square => true,
-                CollisionShape::NorthEast => {
-                    todo!();
-                }
-                CollisionShape::SouthEast => {
-                    todo!();
-                }
-                CollisionShape::SouthWest => {
-                    todo!();
-                }
-                CollisionShape::NorthWest => {
-                    todo!();
-                }
+                // TODO: Implement colliders for corner blocks? GGQ doesn't need them,
+                // but it seems like I'd want to flesh that out for a real 2d engine.
+                _ => true,
             }
         } else {
             false

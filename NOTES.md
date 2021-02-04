@@ -1,6 +1,4 @@
 CURRENTLY:
-        BossFish's fireballs don't hit me? Did they EVER?
-
 TODO:
     - Firebrand has to be able to be injured and die (2 hitpoints)
         - injury response to enemies
