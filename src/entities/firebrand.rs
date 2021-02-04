@@ -681,7 +681,7 @@ impl Entity for Firebrand {
             &vec2(1.0, 1.0),
             CONTACT_DAMAGE,
             |sprite| {
-                self.handle_collision_with(sprite);
+                self.process_potential_collision_with(sprite);
                 false
             },
         );
@@ -839,7 +839,7 @@ impl Firebrand {
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
         let mut contact_damage = false;
         for s in &self.contacting_sprites {
-            if s.mask & CONTACT_DAMAGE != 0 && s.unit_rect_intersection(&self.position().xy(), 0.0, true){
+            if s.mask & CONTACT_DAMAGE != 0 {
                 contact_damage = true;
             }
             if let Some(entity_id) = s.entity_id {
@@ -985,7 +985,7 @@ impl Firebrand {
                                 inset_for_sprite(s),
                                 contacts_are_collision,
                             ) {
-                                self.handle_collision_with(s);
+                                self.process_potential_collision_with(s);
                                 tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = s.origin.y + s.extent.y;
@@ -997,7 +997,7 @@ impl Firebrand {
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
                             ) {
-                                self.handle_collision_with(s);
+                                self.process_potential_collision_with(s);
                                 tracking = Some(s);
                                 if may_apply_correction {
                                     position.y = intersection.y;
@@ -1078,7 +1078,7 @@ impl Firebrand {
                     if dist < delta_x {
                         delta_x = dist;
                         contacted = Some(sprite);
-                        self.handle_collision_with(&sprite);
+                        self.process_potential_collision_with(&sprite);
                     }
                 }
                 ProbeResult::TwoHits {
@@ -1095,8 +1095,8 @@ impl Firebrand {
                         } else {
                             Some(sprite_1)
                         };
-                        self.handle_collision_with(&sprite_0);
-                        self.handle_collision_with(&sprite_1);
+                        self.process_potential_collision_with(&sprite_0);
+                        self.process_potential_collision_with(&sprite_1);
                     }
                 }
             }
@@ -1113,7 +1113,7 @@ impl Firebrand {
                     if dist < -delta_x {
                         delta_x = -dist;
                         contacted = Some(sprite);
-                        self.handle_collision_with(&sprite);
+                        self.process_potential_collision_with(&sprite);
                     }
                 }
                 ProbeResult::TwoHits {
@@ -1130,8 +1130,8 @@ impl Firebrand {
                         } else {
                             Some(sprite_1)
                         };
-                        self.handle_collision_with(&sprite_0);
-                        self.handle_collision_with(&sprite_1);
+                        self.process_potential_collision_with(&sprite_0);
+                        self.process_potential_collision_with(&sprite_1);
                     }
                 }
             }
@@ -1242,7 +1242,7 @@ impl Firebrand {
                     if dist < delta.y {
                         delta.y = dist;
                         self.jump_time_remaining = 0.0;
-                        self.handle_collision_with(&sprite);
+                        self.process_potential_collision_with(&sprite);
                     }
                 }
                 ProbeResult::TwoHits {
@@ -1253,8 +1253,8 @@ impl Firebrand {
                     if dist < delta.y {
                         delta.y = dist;
                         self.jump_time_remaining = 0.0;
-                        self.handle_collision_with(&sprite_0);
-                        self.handle_collision_with(&sprite_1);
+                        self.process_potential_collision_with(&sprite_0);
+                        self.process_potential_collision_with(&sprite_1);
                     }
                 }
             }
@@ -1263,9 +1263,14 @@ impl Firebrand {
         position + delta
     }
 
-    /// Callback for handling collision with scene geometry.
-    fn handle_collision_with(&mut self, sprite: &sprite::Sprite) {
-        self.contacting_sprites.insert(*sprite);
+    /// If the sprite contacts our player's bounds, inserts into contacting_sprites, otherwise
+    /// inserts into overlapping_sprites (which are useful for debugging potential contacts)
+    fn process_potential_collision_with(&mut self, sprite: &sprite::Sprite) {
+        if sprite.unit_rect_intersection(&self.position().xy(), 0.0, true) {
+            self.contacting_sprites.insert(*sprite);
+        } else {
+            self.overlapping_sprites.insert(*sprite);
+        }
     }
 
     fn update_character_cycle(&mut self, dt: f32) -> &'static str {

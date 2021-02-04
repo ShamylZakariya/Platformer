@@ -1,7 +1,5 @@
 CURRENTLY:
-    - when approaching the ledge piece at left edge of boss arena firebrand is injured. WTF.
-        - looks like a positioning probe "overlap" is mistaken for a contact?
-        - I may have fixed it with an explicit contact test in Firebrand::process_contacts, but now the BossFish's fireballs don't hit me? Did they EVER?
+        BossFish's fireballs don't hit me? Did they EVER?
 
 TODO:
     - Firebrand has to be able to be injured and die (2 hitpoints)
