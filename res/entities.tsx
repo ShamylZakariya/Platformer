@@ -816,6 +816,14 @@
    <property name="name" value="hoodie"/>
   </properties>
  </tile>
+ <tile id="127">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="player_death_0"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
  <tile id="128">
   <properties>
    <property name="collision_shape" value="square"/>
@@ -882,6 +890,14 @@
    <property name="name" value="bat"/>
   </properties>
  </tile>
+ <tile id="143">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="player_death_1"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
  <tile id="147">
   <properties>
    <property name="collision_shape" value="square"/>
@@ -928,6 +944,14 @@
   <properties>
    <property name="cycle" value="fly_1"/>
    <property name="name" value="bat"/>
+  </properties>
+ </tile>
+ <tile id="159">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="player_death_2"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="160">
@@ -985,6 +1009,14 @@
   <properties>
    <property name="cycle" value="a_0"/>
    <property name="name" value="boss_fish"/>
+  </properties>
+ </tile>
+ <tile id="175">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="player_death_3"/>
+   <property name="name" value="death"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="176">
