@@ -74,6 +74,8 @@ const INJURY_CYCLE_DURATION: f32 = 0.1;
 const INVULNERABILITY_BLINK_PERIOD: f32 = 0.1;
 const FIREBALL_CYCLE_DURATION: f32 = 0.3;
 
+// Damage
+const HIT_POINTS: u32 = 2;
 const CONTACT_DAMAGE_HIT_POINTS: u32 = 1;
 const FIREBALL_PROJECTILE_DAMAGE: u32 = 1;
 
@@ -107,39 +109,6 @@ impl Display for Stance {
             Stance::Flying => write!(f, "Flying"),
             Stance::WallHold(_) => write!(f, "WallHold"),
             Stance::Injury => write!(f, "Injury"),
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-#[derive(Debug)]
-pub struct CharacterState {
-    // The current position of the character
-    pub position: Point2<f32>,
-
-    // The current position-offset of the character - this is purely visual, used for bobbing effects,
-    // and is not part of collision detection.
-    pub position_offset: Vector2<f32>,
-
-    // The current display cycle of the character, will be one of the CYCLE_* constants.
-    pub cycle: &'static str,
-
-    // the character's current stance state
-    pub stance: Stance,
-
-    // the direction the character is currently facing
-    pub facing: Direction,
-}
-
-impl CharacterState {
-    fn new(position: Point2<f32>) -> Self {
-        CharacterState {
-            position,
-            position_offset: Zero::zero(),
-            cycle: CYCLE_DEFAULT,
-            stance: Stance::Standing,
-            facing: Direction::East,
         }
     }
 }
@@ -347,6 +316,45 @@ impl sprite::collision::Space {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(Debug)]
+pub struct CharacterState {
+    // The current position of the character
+    pub position: Point2<f32>,
+
+    // The current position-offset of the character - this is purely visual, used for bobbing effects,
+    // and is not part of collision detection.
+    pub position_offset: Vector2<f32>,
+
+    // The current display cycle of the character, will be one of the CYCLE_* constants.
+    pub cycle: &'static str,
+
+    // the character's current stance state
+    pub stance: Stance,
+
+    // the direction the character is currently facing
+    pub facing: Direction,
+
+    pub hit_points: u32,
+
+    pub alive: bool,
+}
+
+impl CharacterState {
+    fn new(position: Point2<f32>) -> Self {
+        CharacterState {
+            position,
+            position_offset: Zero::zero(),
+            cycle: CYCLE_DEFAULT,
+            stance: Stance::Standing,
+            facing: Direction::East,
+            hit_points: HIT_POINTS,
+            alive: true,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 pub struct Firebrand {
     entity_id: u32,
     collider: Option<sprite::Sprite>,
@@ -375,6 +383,7 @@ pub struct Firebrand {
     invulnerability_countdown: f32,
     last_shoot_time: f32,
     frozen: bool,
+    did_send_death_message: bool,
 }
 
 impl Default for Firebrand {
@@ -401,6 +410,7 @@ impl Default for Firebrand {
             invulnerability_countdown: 0.0,
             last_shoot_time: 0.0,
             frozen: false,
+            did_send_death_message: false,
         }
     }
 }
@@ -427,7 +437,18 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        self.input_state.process_keyboard(key, state)
+        if self.input_state.process_keyboard(key, state) {
+            true
+        } else {
+            match (key, state) {
+                (VirtualKeyCode::Delete, ElementState::Pressed) => {
+                    println!("\n\nPLAYER SUICIDE\n\n");
+                    self.receive_injury(self.character_state.hit_points);
+                    true
+                }
+                _ => false,
+            }
+        }
     }
 
     fn update(
@@ -438,6 +459,19 @@ impl Entity for Firebrand {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
+        //
+        // If we died, remove collision sprite and broadcast
+        //
+
+        if !self.character_state.alive {
+            if !self.did_send_death_message {
+                collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id);
+                message_dispatcher.broadcast(Event::PlayerDied);
+                self.did_send_death_message = true;
+            }
+            return;
+        }
+
         let dt = dt.as_secs_f32();
         self.time += dt;
         self.step += 1;
@@ -761,11 +795,15 @@ impl Entity for Firebrand {
     }
 
     fn is_alive(&self) -> bool {
+        // firebrand is always "alive" as far as the engine is concerned, but
+        // once character_state.alive == false, we stop drawing and updating.
         true
     }
 
     fn should_draw(&self) -> bool {
-        if self.invulnerability_countdown > 0.0 {
+        if !self.character_state.alive {
+            false
+        } else if self.invulnerability_countdown > 0.0 {
             if self.injury_countdown > 0.0 {
                 // if playing injury stance cycle, we're visible
                 true
@@ -807,8 +845,10 @@ impl Entity for Firebrand {
                 self.frozen = true;
             }
             Event::ExitDoorOpened => self.frozen = false,
-            Event::HitByFireball { direction, damage } => {
-                println!("Hit by fireball! dir: {:?} damage: {}", direction, damage);
+            Event::HitByFireball {
+                direction: _,
+                damage,
+            } => {
                 self.receive_injury(damage);
             }
             _ => {}
@@ -1431,7 +1471,15 @@ impl Firebrand {
         in_water
     }
 
-    fn receive_injury(&mut self, _damage: u32) {
-        self.set_stance(Stance::Injury);
+    fn receive_injury(&mut self, damage: u32) {
+        if self.character_state.alive && !self.is_invulnerable() {
+            self.character_state.hit_points -= self.character_state.hit_points.min(damage);
+
+            if self.character_state.hit_points == 0 {
+                self.character_state.alive = false;
+            } else {
+                self.set_stance(Stance::Injury);
+            }
+        }
     }
 }

@@ -1,7 +1,6 @@
 use cgmath::*;
 use rand::{prelude::*, Rng};
 use std::time::Duration;
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     entity::{Entity, GameStatePeek},
@@ -123,17 +122,6 @@ impl Entity for BossFish {
         self.collider.entity_id = Some(entity_id);
         self.collider.mask = sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
         self.collider.collision_shape = sprite::CollisionShape::Square;
-    }
-
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        match (key, state) {
-            (VirtualKeyCode::Delete, ElementState::Pressed) => {
-                println!("BosFish[{}]::process_keyboard - SUICIDED", self.entity_id);
-                self.hit_points = 0;
-                true
-            }
-            _ => false,
-        }
     }
 
     fn update(
@@ -278,10 +266,6 @@ impl Entity for BossFish {
         {
             self.hit_points = (self.hit_points - (damage as i32)).max(0);
             self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
-            println!(
-                "BossFish::handle_message[HitByFireball] hit_points: {}",
-                self.hit_points
-            );
         }
     }
 }
@@ -327,7 +311,7 @@ impl BossFish {
                 self.position.y += MOVEMENT_SPEED * dt;
                 if self.position.y >= game_state_peek.player_position.y {
                     self.position.y = game_state_peek.player_position.y;
-                    self.should_launch_firesprites = true; //self.rng.gen_bool(0.5);
+                    self.should_launch_firesprites = self.rng.gen_bool(0.75);
                     self.set_attack_phase(AttackPhase::Attacking {
                         target_x: game_state_peek.player_position.x,
                     });
@@ -406,10 +390,10 @@ impl BossFish {
     }
 
     fn set_attack_phase(&mut self, new_phase: AttackPhase) {
-        println!(
-            "BossFish::set_attack_phase time: {} old_phase: {:?} -> new_phase {:?}",
-            self.time, self.attack_phase, new_phase
-        );
+        // println!(
+        //     "BossFish::set_attack_phase time: {} old_phase: {:?} -> new_phase {:?}",
+        //     self.time, self.attack_phase, new_phase
+        // );
         self.attack_phase = new_phase;
     }
 

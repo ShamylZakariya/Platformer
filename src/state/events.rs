@@ -8,6 +8,9 @@ pub enum Event {
     /// Received by an Entity when contacted by the character
     CharacterContact,
 
+    /// broadcast by Firebrand when he dies
+    PlayerDied,
+
     /// Sent by Firebrand to State to signal request to shoot fireball.
     /// If State determines a fireball may be shot (there is some rate limiting)
     /// State will reply with DidShootFireball

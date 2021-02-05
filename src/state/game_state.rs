@@ -659,6 +659,7 @@ impl GameState {
         closest_fireball_distance > (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0)
     }
 
+    /// For each entity, dispatches did_enter_viewport or did_leave_viewport as needed.
     pub fn update_entity_visibility(&mut self) {
         // get the viewport - outset it by 1 unit in each edge to "pad" it.
         // since enemy re-spawning isn't exactly a matter of going offscreen,
@@ -687,6 +688,33 @@ impl GameState {
                     entity.entity.did_exit_viewport();
                 }
             }
+        }
+    }
+
+    /// returns the bounds of the map, which may be contracted owing to having entered the boss-fight-arena
+    fn current_map_bounds(&self) -> Bounds {
+        let map_bounds = self.map.bounds();
+
+        if let Some(arena_left_bounds) = self.boss_fight_arena_left_bounds {
+            let elapsed = self.time
+                - self
+                    .boss_fight_start_time
+                    .expect("Expect boss_fight_start_time to be set");
+
+            let t = (elapsed / BOSS_FIGHT_START_TIME_ARENA_CONTRACTION_DURATION).min(1.0);
+
+            let vpl = self
+                .viewport_left_when_boss_encountered
+                .expect("Expect viewport_left_when_boss_encountered to be set");
+            let x = lerp(hermite(t), vpl, arena_left_bounds);
+            let origin = point2(x, map_bounds.bottom());
+
+            Bounds::new(
+                origin,
+                vec2(map_bounds.right() - origin.x, map_bounds.top() - origin.y),
+            )
+        } else {
+            map_bounds
         }
     }
 
@@ -761,7 +789,7 @@ impl GameState {
         self.entities.insert(components.id(), components);
     }
 
-    fn boss_fight_started(&mut self, arena_left_bounds: f32) {
+    fn on_boss_fight_started(&mut self, arena_left_bounds: f32) {
         println!("\n\nBOSS FIGHT!!\n\n");
         self.boss_fight_start_time = Some(self.time);
         self.boss_fight_arena_left_bounds = Some(arena_left_bounds);
@@ -769,7 +797,7 @@ impl GameState {
             Some(self.camera_controller.viewport_bounds(0.0).left());
     }
 
-    fn boss_was_defeated(&mut self) {
+    fn on_boss_was_defeated(&mut self) {
         println!("\n\nBOSS DEFEATED!!\n\n");
         //
         // Clear all entities from the stage
@@ -785,31 +813,8 @@ impl GameState {
         self.message_dispatcher.broadcast(Event::RaiseExitFloor);
     }
 
-    fn current_map_bounds(&self) -> Bounds {
-        let map_bounds = self.map.bounds();
-        // println!("vpb.left: {} player.x {}", self.camera_controller.viewport_bounds(0.0).left(), self.get_firebrand().entity.position().x);
-
-        if let Some(arena_left_bounds) = self.boss_fight_arena_left_bounds {
-            let elapsed = self.time
-                - self
-                    .boss_fight_start_time
-                    .expect("Expect boss_fight_start_time to be set");
-
-            let t = (elapsed / BOSS_FIGHT_START_TIME_ARENA_CONTRACTION_DURATION).min(1.0);
-
-            let vpl = self
-                .viewport_left_when_boss_encountered
-                .expect("Expect viewport_left_when_boss_encountered to be set");
-            let x = lerp(hermite(t), vpl, arena_left_bounds);
-            let origin = point2(x, map_bounds.bottom());
-
-            Bounds::new(
-                origin,
-                vec2(map_bounds.right() - origin.x, map_bounds.top() - origin.y),
-            )
-        } else {
-            map_bounds
-        }
+    fn on_player_dead(&mut self) {
+        println!("\n\nPLAYER DIED!!\n\n");
     }
 }
 
@@ -918,11 +923,11 @@ impl event_dispatch::MessageHandler for GameState {
                 }
 
                 Event::BossEncountered { arena_left } => {
-                    self.boss_fight_started(*arena_left);
+                    self.on_boss_fight_started(*arena_left);
                 }
 
                 Event::BossDefeated => {
-                    self.boss_was_defeated();
+                    self.on_boss_was_defeated();
                 }
 
                 Event::StartCameraShake { pattern } => {
@@ -931,6 +936,10 @@ impl event_dispatch::MessageHandler for GameState {
 
                 Event::EndCameraShake => {
                     self.camera_shaker = None;
+                }
+
+                Event::PlayerDied => {
+                    self.on_player_dead();
                 }
 
                 _ => {}
