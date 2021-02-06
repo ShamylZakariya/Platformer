@@ -4,6 +4,7 @@ CURRENTLY:
         - instadeath if sinking below bottom of level in water
 TODO:
     - Implement game UI
+    - cmdline arg to use original gameboy aspect ratio (160x144) and viewport width
 
 BUGS:
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping

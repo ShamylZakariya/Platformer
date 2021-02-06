@@ -11,7 +11,7 @@ use crate::{
     state::{constants::sprite_layers::BACKGROUND, events::Event},
 };
 
-use super::util::Direction;
+use super::util::HorizontalDir;
 
 const OPEN_SPEED: f32 = 1.25;
 
@@ -27,12 +27,12 @@ pub struct ExitDoor {
     stage_sprites: Vec<sprite::Sprite>,
     bounds: Bounds,
     mode: Mode,
-    open_dir: Direction,
+    open_dir: HorizontalDir,
     should_send_exit_message: bool,
 }
 
 impl ExitDoor {
-    pub fn new(stage_sprites: Vec<sprite::Sprite>, open_dir: Direction) -> Self {
+    pub fn new(stage_sprites: Vec<sprite::Sprite>, open_dir: HorizontalDir) -> Self {
         let bounds = find_bounds(&stage_sprites);
         Self {
             entity_id: 0,
@@ -42,7 +42,7 @@ impl ExitDoor {
             mode: Mode::Closed,
             open_dir,
             // we have two doors, so only send the message from the west door
-            should_send_exit_message: open_dir == Direction::West,
+            should_send_exit_message: open_dir == HorizontalDir::West,
         }
     }
 }
@@ -63,7 +63,7 @@ impl Entity for ExitDoor {
         match self.mode {
             Mode::Closed => {}
             Mode::Opening => match self.open_dir {
-                Direction::East => {
+                HorizontalDir::East => {
                     self.offset.x += OPEN_SPEED * dt.as_secs_f32();
                     if self.offset.x > self.bounds.width() - 0.5 {
                         self.offset.x = self.bounds.width() - 0.5;
@@ -71,7 +71,7 @@ impl Entity for ExitDoor {
                         message_dispatcher.broadcast(Event::ExitDoorOpened);
                     }
                 }
-                Direction::West => {
+                HorizontalDir::West => {
                     self.offset.x -= OPEN_SPEED * dt.as_secs_f32();
                     if self.offset.x < -self.bounds.width() + 0.5 {
                         self.offset.x = -self.bounds.width() + 0.5;

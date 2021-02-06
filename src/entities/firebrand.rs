@@ -18,7 +18,7 @@ use crate::{
     tileset,
 };
 
-use super::util::Direction;
+use super::util::HorizontalDir;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -332,7 +332,7 @@ pub struct CharacterState {
     pub stance: Stance,
 
     // the direction the character is currently facing
-    pub facing: Direction,
+    pub facing: HorizontalDir,
 
     pub hit_points: u32,
 
@@ -346,7 +346,7 @@ impl CharacterState {
             position_offset: Zero::zero(),
             cycle: CYCLE_DEFAULT,
             stance: Stance::Standing,
-            facing: Direction::East,
+            facing: HorizontalDir::East,
             hit_points: HIT_POINTS,
             alive: true,
         }
@@ -768,8 +768,8 @@ impl Entity for Firebrand {
 
         {
             let (xscale, xoffset) = match self.character_state.facing {
-                Direction::West => (-1.0, 1.0),
-                Direction::East => (1.0, 0.0),
+                HorizontalDir::West => (-1.0, 1.0),
+                HorizontalDir::East => (1.0, 0.0),
             };
 
             uniforms
@@ -986,8 +986,8 @@ impl Firebrand {
                     let sign = if self.is_wallholding() { -1.0 } else { 1.0 };
                     self.injury_kickback_vel = sign
                         * match self.character_facing() {
-                            Direction::West => INJURY_KICKBACK_VEL,
-                            Direction::East => -INJURY_KICKBACK_VEL,
+                            HorizontalDir::West => INJURY_KICKBACK_VEL,
+                            HorizontalDir::East => -INJURY_KICKBACK_VEL,
                         };
                 }
                 _ => {}
@@ -1435,22 +1435,22 @@ impl Firebrand {
         }
     }
 
-    fn character_facing(&self) -> Direction {
+    fn character_facing(&self) -> HorizontalDir {
         match self.character_state.stance {
             Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
                 if self.input_state.move_left().is_active() {
-                    Direction::West
+                    HorizontalDir::West
                 } else if self.input_state.move_right().is_active() {
-                    Direction::East
+                    HorizontalDir::East
                 } else {
                     self.character_state.facing
                 }
             }
             Stance::WallHold(attached_to) => {
                 if attached_to.left() > self.character_state.position.x {
-                    Direction::West
+                    HorizontalDir::West
                 } else {
-                    Direction::East
+                    HorizontalDir::East
                 }
             }
         }

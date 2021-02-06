@@ -819,8 +819,8 @@
  <tile id="127">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="player_death_0"/>
-   <property name="name" value="death"/>
+   <property name="cycle" value="death_0"/>
+   <property name="name" value="firebrand_death"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
@@ -893,8 +893,8 @@
  <tile id="143">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="player_death_1"/>
-   <property name="name" value="death"/>
+   <property name="cycle" value="death_1"/>
+   <property name="name" value="firebrand_death"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
@@ -949,8 +949,8 @@
  <tile id="159">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="player_death_2"/>
-   <property name="name" value="death"/>
+   <property name="cycle" value="death_2"/>
+   <property name="name" value="firebrand_death"/>
    <property name="role" value="root"/>
   </properties>
  </tile>
@@ -1014,8 +1014,8 @@
  <tile id="175">
   <properties>
    <property name="collision_shape" value="square"/>
-   <property name="cycle" value="player_death_3"/>
-   <property name="name" value="death"/>
+   <property name="cycle" value="death_3"/>
+   <property name="name" value="firebrand_death"/>
    <property name="role" value="root"/>
   </properties>
  </tile>

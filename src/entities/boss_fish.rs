@@ -14,7 +14,7 @@ use crate::{
     tileset,
 };
 
-use super::util::{Axis, CompassDir, Direction};
+use super::util::{Axis, CompassDir, HorizontalDir};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -56,7 +56,7 @@ pub struct BossFish {
     sent_death_message: bool,
     death_animation_countdown: f32,
     alive: bool,
-    facing: Direction,
+    facing: HorizontalDir,
     arena_origin: Point2<f32>,
     arena_extent: Vector2<f32>,
     water_height: f32,
@@ -82,7 +82,7 @@ impl Default for BossFish {
             sent_death_message: false,
             alive: true,
             death_animation_countdown: DEATH_ANIMATION_DURATION,
-            facing: Direction::West,
+            facing: HorizontalDir::West,
             arena_origin: point2(0.0, 0.0),
             arena_extent: vec2(0.0, 0.0),
             water_height: 0.0,
@@ -178,8 +178,8 @@ impl Entity for BossFish {
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.facing {
-            Direction::East => (1.0, 0.0),
-            Direction::West => (-1.0, 1.0),
+            HorizontalDir::East => (1.0, 0.0),
+            HorizontalDir::West => (-1.0, 1.0),
         };
 
         let alpha = if self.hit_points > 0 {
@@ -302,9 +302,9 @@ impl BossFish {
             }
             AttackPhase::Raising => {
                 self.facing = if game_state_peek.player_position.x - self.position.x > 0.0 {
-                    Direction::East
+                    HorizontalDir::East
                 } else {
-                    Direction::West
+                    HorizontalDir::West
                 };
 
                 // Raise self; when reaching attack height, transition to attack

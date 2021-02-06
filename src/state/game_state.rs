@@ -1,5 +1,4 @@
 use cgmath::*;
-use entities::util::Direction;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
@@ -15,7 +14,11 @@ use winit::{
 
 use crate::{
     camera,
-    entities::{self, EntityClass},
+    entities::{
+        self,
+        util::{CompassDir, HorizontalDir},
+        EntityClass,
+    },
     entity::{self, EntityComponents, GameStatePeek},
     event_dispatch,
     geom::{hermite, lerp, Bounds},
@@ -194,11 +197,11 @@ impl GameState {
             ));
             let exit_door_left_entity = Box::new(entities::exit_door::ExitDoor::new(
                 exit_door_left_sprites,
-                Direction::West,
+                HorizontalDir::West,
             ));
             let exit_door_right_entity = Box::new(entities::exit_door::ExitDoor::new(
                 exit_door_right_sprites,
-                Direction::East,
+                HorizontalDir::East,
             ));
 
             // generate level entities
@@ -814,7 +817,12 @@ impl GameState {
     }
 
     fn on_player_dead(&mut self) {
-        println!("\n\nPLAYER DIED!!\n\n");
+        // spawn eight DeathAnimations, one in each compass dir
+        let position = self.get_firebrand().entity.position();
+        for dir in CompassDir::iter() {
+            let e = entities::death_animation::DeathAnimation::new_firebrand_death(position, dir);
+            self.request_add_entity(Box::new(e));
+        }
     }
 }
 
@@ -866,7 +874,7 @@ impl event_dispatch::MessageHandler for GameState {
                     direction,
                 } => {
                     self.request_add_entity(Box::new(
-                        entities::death_animation::DeathAnimation::new(
+                        entities::death_animation::DeathAnimation::new_enemy_death(
                             point3(position.x, position.y, sprite_layers::FOREGROUND),
                             *direction,
                         ),

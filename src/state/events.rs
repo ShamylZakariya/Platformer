@@ -1,6 +1,6 @@
 use cgmath::*;
 
-use crate::{entities::util::Direction, sprite, tileset};
+use crate::{entities::util::HorizontalDir, sprite, tileset};
 
 /// An Event payload for Message
 #[derive(Debug, Clone)]
@@ -16,7 +16,7 @@ pub enum Event {
     /// State will reply with DidShootFireball
     TryShootFireball {
         origin: Point2<f32>,
-        direction: Direction,
+        direction: HorizontalDir,
         velocity: f32,
         damage: u32,
     },
@@ -27,7 +27,7 @@ pub enum Event {
     /// Received by an entity when hit by Firebrand's fireball
     HitByFireball {
         // direction of fireball travel, -1 for left, +1 for right
-        direction: Direction,
+        direction: HorizontalDir,
         damage: u32,
     },
 
@@ -54,7 +54,7 @@ pub enum Event {
         // position of death animation
         position: Point2<f32>,
         // direction it should travel, -1 being left, +1 for right
-        direction: Direction,
+        direction: HorizontalDir,
     },
 
     /// Sent by BossFish to launch a FireSprite

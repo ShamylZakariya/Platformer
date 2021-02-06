@@ -6,35 +6,35 @@ use cgmath::*;
 use collision::Space;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direction {
+pub enum HorizontalDir {
     East,
     West,
 }
 
-impl Direction {
-    pub fn invert(&self) -> Direction {
+impl HorizontalDir {
+    pub fn invert(&self) -> HorizontalDir {
         match self {
-            Direction::East => Direction::West,
-            Direction::West => Direction::East,
+            HorizontalDir::East => HorizontalDir::West,
+            HorizontalDir::West => HorizontalDir::East,
         }
     }
 }
 
-impl From<Vector2<f32>> for Direction {
+impl From<Vector2<f32>> for HorizontalDir {
     fn from(v: Vector2<f32>) -> Self {
         if v.x > 0.0 {
-            Direction::East
+            HorizontalDir::East
         } else {
-            Direction::West
+            HorizontalDir::West
         }
     }
 }
 
-impl Into<Vector2<f32>> for Direction {
+impl Into<Vector2<f32>> for HorizontalDir {
     fn into(self) -> Vector2<f32> {
         match self {
-            Direction::East => vec2(1.0, 0.0),
-            Direction::West => vec2(-1.0, 0.0),
+            HorizontalDir::East => vec2(1.0, 0.0),
+            HorizontalDir::West => vec2(-1.0, 0.0),
         }
     }
 }
@@ -125,6 +125,44 @@ impl CompassDir {
             },
         }
     }
+
+    pub fn is_diagonal(&self) -> bool {
+        use CompassDir::*;
+        match self {
+            North | East | South | West => false,
+            _ => true,
+        }
+    }
+
+    pub fn iter() -> impl Iterator<Item = CompassDir> {
+        use CompassDir::*;
+        [
+            North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest,
+        ]
+        .iter()
+        .copied()
+    }
+}
+
+impl From<Vector2<f32>> for CompassDir {
+    fn from(v: Vector2<f32>) -> Self {
+        CompassDir::new(v)
+    }
+}
+
+impl From<HorizontalDir> for CompassDir {
+    fn from(d: HorizontalDir) -> Self {
+        match d {
+            HorizontalDir::East => CompassDir::East,
+            HorizontalDir::West => CompassDir::West,
+        }
+    }
+}
+
+impl Into<Vector2<f32>> for CompassDir {
+    fn into(self) -> Vector2<f32> {
+        self.to_dir()
+    }
 }
 
 #[cfg(test)]
@@ -152,7 +190,7 @@ mod chase_dir_tests {
 pub struct HitPointState {
     hit_points: i32,
     alive: bool,
-    death_animation_dir: Direction,
+    death_animation_dir: HorizontalDir,
     terminated: bool,
 }
 
@@ -161,7 +199,7 @@ impl HitPointState {
         Self {
             hit_points,
             alive: true,
-            death_animation_dir: Direction::East,
+            death_animation_dir: HorizontalDir::East,
             terminated: false,
         }
     }
@@ -170,7 +208,7 @@ impl HitPointState {
         self.hit_points
     }
 
-    pub fn injure(&mut self, reduction: i32, direction: Direction) {
+    pub fn injure(&mut self, reduction: i32, direction: HorizontalDir) {
         self.hit_points -= reduction;
         self.death_animation_dir = direction;
     }
@@ -236,19 +274,19 @@ impl HitPointState {
 /// Implements a very basic marching behavior for entities which need to march left/right reversing at cliffs
 /// or obstacles.
 pub struct MarchState {
-    current_movement_dir: Direction,
+    current_movement_dir: HorizontalDir,
     velocity: f32,
 }
 
 impl MarchState {
-    pub fn new(initial_movement_dir: Direction, velocity: f32) -> Self {
+    pub fn new(initial_movement_dir: HorizontalDir, velocity: f32) -> Self {
         Self {
             current_movement_dir: initial_movement_dir,
             velocity,
         }
     }
 
-    pub fn current_movement_dir(&self) -> Direction {
+    pub fn current_movement_dir(&self) -> HorizontalDir {
         self.current_movement_dir
     }
 
@@ -264,8 +302,8 @@ impl MarchState {
 
         let next_position = position
             + match self.current_movement_dir {
-                Direction::East => vec2(1.0, 0.0),
-                Direction::West => vec2(-1.0, 0.0),
+                HorizontalDir::East => vec2(1.0, 0.0),
+                HorizontalDir::West => vec2(-1.0, 0.0),
             } * self.velocity
                 * dt;
 
@@ -282,7 +320,7 @@ impl MarchState {
         let mut should_reverse_direction = false;
 
         match self.current_movement_dir {
-            Direction::East => {
+            HorizontalDir::East => {
                 // check for obstacle to right
                 if let Some(sprite_to_right) = collision_space
                     .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
@@ -300,7 +338,7 @@ impl MarchState {
                     should_reverse_direction = true
                 }
             }
-            Direction::West => {
+            HorizontalDir::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
                     collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)

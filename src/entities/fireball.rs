@@ -11,7 +11,7 @@ use crate::{
     state::events::Event,
 };
 
-use super::util::Direction;
+use super::util::HorizontalDir;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ impl Fireball {
     pub fn new_fireball(
         sender_id: u32,
         position: Point3<f32>,
-        direction: Direction,
+        direction: HorizontalDir,
         velocity: f32,
         damage: u32,
     ) -> Self {

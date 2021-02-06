@@ -10,7 +10,7 @@ use crate::{
     tileset,
 };
 
-use super::util::{Direction, HitPointState, MarchState};
+use super::util::{HitPointState, HorizontalDir, MarchState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ impl Default for FireSprite {
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             life: HitPointState::new(HIT_POINTS),
-            march: MarchState::new(Direction::East, MOVEMENT_SPEED),
+            march: MarchState::new(HorizontalDir::East, MOVEMENT_SPEED),
         }
     }
 }

@@ -10,7 +10,7 @@ use crate::{
     tileset,
 };
 
-use super::util::{Direction, HitPointState, MarchState};
+use super::util::{HitPointState, HorizontalDir, MarchState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ impl Default for Hoodie {
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             life: HitPointState::new(HIT_POINTS),
-            march: MarchState::new(Direction::East, MOVEMENT_SPEED),
+            march: MarchState::new(HorizontalDir::East, MOVEMENT_SPEED),
         }
     }
 }
@@ -127,8 +127,8 @@ impl Entity for Hoodie {
         let one_px = 1.0 / self.sprite_size_px.x;
 
         let (xscale, xoffset) = match self.march.current_movement_dir() {
-            Direction::East => (1.0, 4.0 * one_px),
-            Direction::West => (-1.0, 1.0 - 4.0 * one_px),
+            HorizontalDir::East => (1.0, 4.0 * one_px),
+            HorizontalDir::West => (-1.0, 1.0 - 4.0 * one_px),
         };
 
         uniforms

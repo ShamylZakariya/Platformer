@@ -28,6 +28,7 @@ pub enum EntityClass {
     DeathAnimation,
     ExitDoor,
     Firebrand,
+    FirebrandDeath,
     Fireball,
     FallingBridge,
     FlyingFish,
