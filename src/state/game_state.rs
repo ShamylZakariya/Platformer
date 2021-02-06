@@ -25,11 +25,13 @@ use crate::{
     map,
     sprite::rendering::Uniforms as SpriteUniforms,
     sprite::{collision, rendering},
-    texture, tileset,
+    texture, tileset, Options,
 };
 
 use super::{
-    constants::{sprite_layers, ORIGINAL_VIEWPORT_TILES_WIDE},
+    constants::{
+        sprite_layers, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE,
+    },
     events::Event,
     gpu_state,
 };
@@ -126,7 +128,7 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(gpu: &mut gpu_state::GpuState) -> Self {
+    pub fn new(gpu: &mut gpu_state::GpuState, options: &Options) -> Self {
         // Load the stage map
         let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -239,8 +241,18 @@ impl GameState {
 
         // Build camera, and camera uniform storage
         let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
-        let projection =
-            camera::Projection::new(gpu.sc_desc.width, gpu.sc_desc.height, 16.0, 0.1, 100.0);
+        let viewport_scale = if options.gameboy {
+            MIN_CAMERA_SCALE
+        } else {
+            DEFAULT_CAMERA_SCALE
+        };
+        let projection = camera::Projection::new(
+            gpu.sc_desc.width,
+            gpu.sc_desc.height,
+            viewport_scale,
+            0.0,
+            100.0,
+        );
         let camera_uniforms = camera::Uniforms::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 

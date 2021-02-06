@@ -1,5 +1,7 @@
 use winit::{event::WindowEvent, window::Window};
 
+use crate::Options;
+
 use super::debug_overlay::DebugOverlay;
 
 use super::{game_state::GameState, gpu_state::GpuState};
@@ -13,9 +15,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(window: &Window, mut gpu: GpuState, debug_overlay: bool) -> Self {
-        let game_state = GameState::new(&mut gpu);
-        let overlay_ui = if debug_overlay {
+    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
+        let game_state = GameState::new(&mut gpu, &options);
+        let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None

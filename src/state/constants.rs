@@ -18,9 +18,12 @@ pub mod sprite_layers {
     pub const FOREGROUND: f32 = 0.1;
 }
 
-// In original game, stage was 160 px wide, made from 16px tiles, making the viewport 10 units wide.
+// In original game, stage was 160px wide, 144px tall, made from 16px tiles, making the viewport 10 units wide.
+pub const ORIGINAL_WINDOW_WIDTH: i32 = 160;
+pub const ORIGINAL_WINDOW_HEIGHT: i32 = 144;
 pub const ORIGINAL_VIEWPORT_TILES_WIDE: i32 = 10;
 pub const MIN_CAMERA_SCALE: f32 = ORIGINAL_VIEWPORT_TILES_WIDE as f32;
+pub const DEFAULT_CAMERA_SCALE: f32 = 16.0;
 pub const MAX_CAMERA_SCALE: f32 = 32.0;
 
 pub const GRAVITY_VEL: f32 = -1.0 / 0.129_032_25;

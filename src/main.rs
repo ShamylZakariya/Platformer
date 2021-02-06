@@ -1,8 +1,10 @@
 #![allow(dead_code)]
 
 use futures::executor::block_on;
+use state::constants::{ORIGINAL_WINDOW_HEIGHT, ORIGINAL_WINDOW_WIDTH};
 use structopt::StructOpt;
 use winit::{
+    dpi::LogicalSize,
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -23,10 +25,14 @@ mod tileset;
 // ---------------------------------------------------------------------------------------------------------------------
 
 #[derive(StructOpt, Debug)]
-struct Options {
-    ///Display a debug overlay
+pub struct Options {
+    /// Display a debug overlay
     #[structopt(short, long)]
-    debug_overlay: bool,
+    pub debug_overlay: bool,
+
+    /// Play gargoyle's quest with original gameboy viewport
+    #[structopt(short, long)]
+    pub gameboy: bool,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -34,12 +40,17 @@ struct Options {
 fn main() {
     let opt = Options::from_args();
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new()
-        .with_title("Gargoyle's Quest")
-        .build(&event_loop)
-        .unwrap();
+
+    let mut builder = WindowBuilder::new().with_title("Gargoyle's Quest");
+    if opt.gameboy {
+        let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
+        builder = builder.with_inner_size(size);
+    }
+
+    let window = builder.build(&event_loop).unwrap();
+
     let gpu = block_on(state::gpu_state::GpuState::new(&window));
-    let mut state = state::app_state::AppState::new(&window, gpu, opt.debug_overlay);
+    let mut state = state::app_state::AppState::new(&window, gpu, opt);
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
