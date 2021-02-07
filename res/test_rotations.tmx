@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<map version="1.4" tiledversion="1.4.2" orientation="orthogonal" renderorder="left-up" width="32" height="1" tilewidth="16" tileheight="16" infinite="0" nextlayerid="2" nextobjectid="1">
- <tileset firstgid="1" source="level_1_tileset.tsx"/>
- <layer id="1" name="Contents" width="32" height="1">
-  <data encoding="csv">
-8,2147483656,1073741832,0,8,2684354568,3221225480,1610612744,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-</data>
- </layer>
-</map>
