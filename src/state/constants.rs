@@ -10,12 +10,14 @@ pub mod sprite_masks {
     pub const SHOOTABLE: u32 = 1 << 5;
 }
 
-pub mod sprite_layers {
-    pub const BACKGROUND: f32 = 90.0;
-    pub const LEVEL: f32 = 80.0;
-    pub const ENTITIES: f32 = 70.0;
-    pub const PLAYER: f32 = 60.0;
-    pub const FOREGROUND: f32 = 50.0;
+pub mod layers {
+    pub mod stage {
+        pub const BACKGROUND: f32 = 90.0;
+        pub const LEVEL: f32 = 80.0;
+        pub const ENTITIES: f32 = 70.0;
+        pub const PLAYER: f32 = 60.0;
+        pub const FOREGROUND: f32 = 50.0;
+    }
 
     pub mod ui {
         pub const BACKGROUND: f32 = 40.0;

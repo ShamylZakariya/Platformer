@@ -27,7 +27,14 @@ use crate::{
     texture, tileset, Options,
 };
 
-use super::{constants::{CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE, sprite_layers}, events::Event, gpu_state};
+use super::{
+    constants::{
+        layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE,
+        ORIGINAL_VIEWPORT_TILES_WIDE,
+    },
+    events::Event,
+    gpu_state,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -167,24 +174,25 @@ impl GameState {
             let exit_door_right_layer = get_layer("ExitDoorRight");
 
             // generate level sprites
-            let bg_sprites = map.generate_sprites(bg_layer, |_, _| sprite_layers::BACKGROUND);
+            let bg_sprites =
+                map.generate_sprites(bg_layer, |_, _| layers::stage::BACKGROUND);
             let level_sprites = map.generate_sprites(level_layer, |_sprite, tile| {
                 if tile.get_property("foreground") == Some("true") {
-                    sprite_layers::FOREGROUND
+                    layers::stage::FOREGROUND
                 } else {
-                    sprite_layers::LEVEL
+                    layers::stage::LEVEL
                 }
             });
             let exit_sprites =
-                map.generate_sprites(exit_layer, |_, _| sprite_layers::BACKGROUND + 0.1);
+                map.generate_sprites(exit_layer, |_, _| layers::stage::BACKGROUND + 2.0);
 
             let rising_floor_sprites =
-                map.generate_sprites(rising_floor_layer, |_, _| sprite_layers::FOREGROUND);
+                map.generate_sprites(rising_floor_layer, |_, _| layers::stage::FOREGROUND);
             let exit_door_left_sprites = map.generate_sprites(exit_door_left_layer, |_, _| {
-                sprite_layers::BACKGROUND + 0.01
+                layers::stage::BACKGROUND + 1.0
             });
             let exit_door_right_sprites = map.generate_sprites(exit_door_right_layer, |_, _| {
-                sprite_layers::BACKGROUND + 0.01
+                layers::stage::BACKGROUND + 1.0
             });
 
             let rising_floor_entity = Box::new(entities::rising_floor::RisingFloor::new(
@@ -205,12 +213,12 @@ impl GameState {
                 entity_layer,
                 &mut collision_space,
                 &mut entity_id_vendor,
-                |_, _| sprite_layers::ENTITIES,
+                |_, _| layers::stage::ENTITIES,
             );
 
             // generate animations
             let stage_animation_flipbooks =
-                map.generate_animations(bg_layer, |_, _| sprite_layers::BACKGROUND);
+                map.generate_animations(bg_layer, |_, _| layers::stage::BACKGROUND);
 
             let mut stage_sprites = vec![];
             stage_sprites.extend(bg_sprites);
@@ -817,11 +825,10 @@ impl GameState {
         // Clear all entities from the stage
         //
 
-        self.entities
-            .retain(|_, e| {
-                let c = e.entity.entity_class();
-                !c.is_enemy() && !c.is_projectile()
-            });
+        self.entities.retain(|_, e| {
+            let c = e.entity.entity_class();
+            !c.is_enemy() && !c.is_projectile()
+        });
     }
 
     fn on_boss_died(&mut self) {
@@ -891,7 +898,7 @@ impl event_dispatch::MessageHandler for GameState {
                 } => {
                     self.request_add_entity(Box::new(
                         entities::death_animation::DeathAnimation::new_enemy_death(
-                            point3(position.x, position.y, sprite_layers::FOREGROUND),
+                            point3(position.x, position.y, layers::stage::FOREGROUND),
                             *direction,
                         ),
                     ));

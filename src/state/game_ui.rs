@@ -8,7 +8,7 @@ use crate::texture;
 use crate::Options;
 use crate::{camera, sprite::rendering, state::gpu_state};
 
-use super::constants::{CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, MIN_CAMERA_SCALE, sprite_layers};
+use super::constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, MIN_CAMERA_SCALE};
 
 pub struct GameUi {
     camera_view: camera::Camera,
@@ -26,7 +26,6 @@ pub struct GameUi {
 
 impl GameUi {
     pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options) -> Self {
-
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
         let camera_uniforms = camera::Uniforms::new(&gpu.device);
@@ -37,7 +36,6 @@ impl GameUi {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-
 
         // load game ui map and construct material/drawable etcs
         let ui_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
@@ -70,7 +68,7 @@ impl GameUi {
 
         let ui_bg_layer = get_layer("Background");
         let ui_bg_sprites =
-            ui_map.generate_sprites(ui_bg_layer, |_, _| sprite_layers::ui::BACKGROUND);
+            ui_map.generate_sprites(ui_bg_layer, |_, _| layers::ui::BACKGROUND);
         let ui_bg_mesh =
             rendering::Mesh::new(&ui_bg_sprites, 0, &gpu.device, "UI background Sprite Mesh");
         let ui_bg_drawable = rendering::Drawable::with(ui_bg_mesh, ui_material.clone());
@@ -87,7 +85,8 @@ impl GameUi {
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.camera_projection.resize(new_size.width, new_size.height);
+        self.camera_projection
+            .resize(new_size.width, new_size.height);
     }
 
     pub fn input(&mut self, _window: &Window, _event: &WindowEvent) -> bool {

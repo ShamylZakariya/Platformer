@@ -12,7 +12,7 @@ use crate::{
     map,
     sprite::{self, collision, rendering},
     state::{
-        constants::{self, sprite_layers, sprite_masks::*, GRAVITY_VEL},
+        constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },
     tileset,
@@ -770,7 +770,7 @@ impl Entity for Firebrand {
                         + self.character_state.position_offset.x
                         + xoffset,
                     self.character_state.position.y + self.character_state.position_offset.y,
-                    sprite_layers::PLAYER,
+                    layers::stage::PLAYER,
                 ));
         }
     }

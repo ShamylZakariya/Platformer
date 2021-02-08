@@ -1,7 +1,7 @@
 use cgmath::*;
 use rand::{prelude::*, Rng};
-use winit::event::{ElementState, VirtualKeyCode};
 use std::time::Duration;
+use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     entity::{Entity, GameStatePeek},

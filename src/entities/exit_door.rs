@@ -8,7 +8,7 @@ use crate::{
     geom::Bounds,
     map,
     sprite::{self, collision, find_bounds, rendering},
-    state::{constants::sprite_layers::BACKGROUND, events::Event},
+    state::{constants::layers::stage::BACKGROUND, events::Event},
 };
 
 use super::util::HorizontalDir;
