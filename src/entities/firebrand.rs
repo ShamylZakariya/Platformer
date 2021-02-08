@@ -437,18 +437,7 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.input_state.process_keyboard(key, state) {
-            true
-        } else {
-            match (key, state) {
-                (VirtualKeyCode::Delete, ElementState::Pressed) => {
-                    println!("\n\nPLAYER SUICIDE\n\n");
-                    self.receive_injury(self.character_state.hit_points);
-                    true
-                }
-                _ => false,
-            }
-        }
+        self.input_state.process_keyboard(key, state)
     }
 
     fn update(

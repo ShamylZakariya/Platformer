@@ -1,5 +1,6 @@
 use cgmath::*;
 use rand::{prelude::*, Rng};
+use winit::event::{ElementState, VirtualKeyCode};
 use std::time::Duration;
 
 use crate::{
@@ -53,7 +54,7 @@ pub struct BossFish {
     rng: ThreadRng,
     attack_phase: AttackPhase,
     hit_points: i32,
-    sent_death_message: bool,
+    sent_defeated_message: bool,
     death_animation_countdown: f32,
     alive: bool,
     facing: HorizontalDir,
@@ -79,7 +80,7 @@ impl Default for BossFish {
             rng: thread_rng(),
             attack_phase: AttackPhase::Submerged { time_started: 0.0 },
             hit_points: HIT_POINTS,
-            sent_death_message: false,
+            sent_defeated_message: false,
             alive: true,
             death_animation_countdown: DEATH_ANIMATION_DURATION,
             facing: HorizontalDir::West,
@@ -124,6 +125,17 @@ impl Entity for BossFish {
         self.collider.collision_shape = sprite::CollisionShape::Square;
     }
 
+    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+        match (key, state) {
+            (VirtualKeyCode::Delete, ElementState::Pressed) => {
+                println!("\n\nBOSSFISH SUICIDE\n\n");
+                self.hit_points = 0;
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn update(
         &mut self,
         dt: Duration,
@@ -155,12 +167,17 @@ impl Entity for BossFish {
         } else {
             collision_space.remove_dynamic_sprite(&self.collider);
 
+            if !self.sent_defeated_message {
+                message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
+                self.sent_defeated_message = true;
+            }
+
             // countdown our death animation, before actually terminating
             if self.death_animation_countdown > 0.0 {
                 self.death_animation_countdown -= dt;
                 if self.death_animation_countdown < 0.0 {
-                    // Send the defeat message to clear stage and kick off the ending changes to the level
-                    message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
+                    // Send the death message to clear stage and kick off the ending changes to the level
+                    message_dispatcher.entity_to_global(self.entity_id, Event::BossDied);
                     self.alive = false;
                 }
             }

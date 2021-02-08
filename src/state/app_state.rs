@@ -2,21 +2,23 @@ use winit::{event::WindowEvent, window::Window};
 
 use crate::Options;
 
-use super::debug_overlay::DebugOverlay;
-
-use super::{game_state::GameState, gpu_state::GpuState};
+use super::{
+    debug_overlay::DebugOverlay, game_state::GameState, game_ui::GameUi, gpu_state::GpuState,
+};
 
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct AppState {
     gpu: GpuState,
     game_state: GameState,
+    game_ui: GameUi,
     overlay: Option<DebugOverlay>,
 }
 
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let game_state = GameState::new(&mut gpu, &options);
+        let game_ui = GameUi::new(&mut gpu, &options);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
@@ -26,6 +28,7 @@ impl AppState {
         Self {
             gpu,
             game_state,
+            game_ui,
             overlay: overlay_ui,
         }
     }
@@ -36,13 +39,18 @@ impl AppState {
         }
     }
 
-    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.gpu.resize(new_size);
-        self.game_state.resize(new_size);
+    pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.gpu.resize(window, new_size);
+        self.game_state.resize(window, new_size);
+        self.game_ui.resize(window, new_size)
     }
 
     pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {
-        self.game_state.input(window, event)
+        if self.game_state.input(window, event) {
+            true
+        } else {
+            self.game_ui.input(window, event)
+        }
     }
 
     pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
@@ -53,7 +61,8 @@ impl AppState {
         if let Some(ref mut overlay) = self.overlay {
             overlay.update(window, dt);
         }
-        self.game_state.update(dt, &mut self.gpu);
+        self.game_state.update(window, dt, &mut self.gpu);
+        self.game_ui.update(window, dt, &mut self.gpu);
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -74,7 +83,10 @@ impl AppState {
         //  Render game and UI overlay
         //
 
-        self.game_state.render(&mut self.gpu, &frame, &mut encoder);
+        self.game_state
+            .render(window, &mut self.gpu, &frame, &mut encoder);
+        self.game_ui
+            .render(window, &mut self.gpu, &frame, &mut encoder);
 
         if let Some(ref mut overlay) = self.overlay {
             overlay.render(

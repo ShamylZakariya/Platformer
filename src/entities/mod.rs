@@ -48,6 +48,12 @@ impl EntityClass {
             _ => false,
         }
     }
+    pub fn is_projectile(&self) -> bool {
+        match self {
+            EntityClass::Fireball => true,
+            _ => false,
+        }
+    }
     pub fn is_boss(&self) -> bool {
         match self {
             EntityClass::BossFish => true,

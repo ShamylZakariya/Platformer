@@ -1,12 +1,10 @@
 CURRENTLY:
-    - Firebrand has to be able to be injured and die (2 hitpoints)
-        - injury response to enemies
-        - instadeath if sinking below bottom of level in water
 TODO:
     - Implement game UI
     - cmdline arg to use original gameboy aspect ratio (160x144) and viewport width
 
 BUGS:
+    - When BossFish dies, sometimes his projectile sprites keep alive...probably because they're not explicitly Enemys
     - white single-pixel lines between sprites at some offsets, likely do to pixel snapping
         - could outset sprites a half pixel (what's apixel at different scales?)
         - could make each "layer" an indexed mesh

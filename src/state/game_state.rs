@@ -5,7 +5,6 @@ use std::{
     rc::Rc,
     time::Duration,
 };
-use wgpu::{CommandEncoder, SwapChainFrame};
 use winit::{
     dpi::PhysicalPosition,
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -28,13 +27,7 @@ use crate::{
     texture, tileset, Options,
 };
 
-use super::{
-    constants::{
-        sprite_layers, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE,
-    },
-    events::Event,
-    gpu_state,
-};
+use super::{constants::{CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE, ORIGINAL_VIEWPORT_TILES_WIDE, sprite_layers}, events::Event, gpu_state};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -250,8 +243,8 @@ impl GameState {
             gpu.sc_desc.width,
             gpu.sc_desc.height,
             viewport_scale,
-            0.0,
-            100.0,
+            CAMERA_NEAR_PLANE,
+            CAMERA_FAR_PLANE,
         );
         let camera_uniforms = camera::Uniforms::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
@@ -404,7 +397,7 @@ impl GameState {
         game_state
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
         self.camera_controller
             .projection
             .resize(new_size.width, new_size.height);
@@ -456,7 +449,12 @@ impl GameState {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration, gpu: &mut gpu_state::GpuState) {
+    pub fn update(
+        &mut self,
+        _window: &Window,
+        dt: std::time::Duration,
+        gpu: &mut gpu_state::GpuState,
+    ) {
         self.time += dt.as_secs_f32();
 
         //
@@ -557,9 +555,10 @@ impl GameState {
 
     pub fn render(
         &mut self,
+        _window: &Window,
         gpu: &mut gpu_state::GpuState,
-        frame: &SwapChainFrame,
-        encoder: &mut CommandEncoder,
+        frame: &wgpu::SwapChainFrame,
+        encoder: &mut wgpu::CommandEncoder,
     ) {
         //
         // Render Sprites and entities; this is first pass so we clear color/depth
@@ -819,8 +818,13 @@ impl GameState {
         //
 
         self.entities
-            .retain(|_, e| !e.entity.entity_class().is_enemy());
+            .retain(|_, e| {
+                let c = e.entity.entity_class();
+                !c.is_enemy() && !c.is_projectile()
+            });
+    }
 
+    fn on_boss_died(&mut self) {
         //
         //  Kick off the floor raise.
         //
@@ -948,6 +952,10 @@ impl event_dispatch::MessageHandler for GameState {
 
                 Event::BossDefeated => {
                     self.on_boss_was_defeated();
+                }
+
+                Event::BossDied => {
+                    self.on_boss_died();
                 }
 
                 Event::StartCameraShake { pattern } => {

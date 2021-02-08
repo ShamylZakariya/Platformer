@@ -73,6 +73,9 @@ pub enum Event {
     /// Sent by boss to GameState when defeated
     BossDefeated,
 
+    /// Sent by boss to GameState when death aniamtion completes
+    BossDied,
+
     /// Sent after boiss fight finishes to raise the floor to make exit door accessible
     RaiseExitFloor,
 
