@@ -109,6 +109,10 @@ impl Projection {
             )
     }
 
+    pub fn size(&self) -> Vector2<f32> {
+        vec2(self.width, self.height)
+    }
+
     pub fn scale(&self) -> f32 {
         self.scale
     }

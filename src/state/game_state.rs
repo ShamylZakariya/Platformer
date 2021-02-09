@@ -174,8 +174,7 @@ impl GameState {
             let exit_door_right_layer = get_layer("ExitDoorRight");
 
             // generate level sprites
-            let bg_sprites =
-                map.generate_sprites(bg_layer, |_, _| layers::stage::BACKGROUND);
+            let bg_sprites = map.generate_sprites(bg_layer, |_, _| layers::stage::BACKGROUND);
             let level_sprites = map.generate_sprites(level_layer, |_sprite, tile| {
                 if tile.get_property("foreground") == Some("true") {
                     layers::stage::FOREGROUND
@@ -188,9 +187,8 @@ impl GameState {
 
             let rising_floor_sprites =
                 map.generate_sprites(rising_floor_layer, |_, _| layers::stage::FOREGROUND);
-            let exit_door_left_sprites = map.generate_sprites(exit_door_left_layer, |_, _| {
-                layers::stage::BACKGROUND + 1.0
-            });
+            let exit_door_left_sprites =
+                map.generate_sprites(exit_door_left_layer, |_, _| layers::stage::BACKGROUND + 1.0);
             let exit_door_right_sprites = map.generate_sprites(exit_door_right_layer, |_, _| {
                 layers::stage::BACKGROUND + 1.0
             });

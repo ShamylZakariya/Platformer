@@ -85,6 +85,7 @@ impl AppState {
 
         self.game_state
             .render(window, &mut self.gpu, &frame, &mut encoder);
+
         self.game_ui
             .render(window, &mut self.gpu, &frame, &mut encoder);
 
