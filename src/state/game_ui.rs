@@ -210,8 +210,11 @@ impl GameUi {
         self.ui_drawable
             .draw(&mut render_pass, &self.camera_uniforms, &self.ui_uniforms);
     }
+    // MARK: Public
 
-    // MARK: Private Impl
+    pub fn is_paused(&self) -> bool { self.drawer_open }
+
+    // MARK: Private
 
     fn update_drawer_position(&mut self, dt: Duration) -> f32 {
         let bounds = self.ui_map.bounds();

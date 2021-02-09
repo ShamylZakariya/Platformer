@@ -61,7 +61,9 @@ impl AppState {
         if let Some(ref mut overlay) = self.overlay {
             overlay.update(window, dt);
         }
-        self.game_state.update(window, dt, &mut self.gpu);
+        if !self.game_ui.is_paused() {
+            self.game_state.update(window, dt, &mut self.gpu);
+        }
         self.game_ui.update(window, dt, &mut self.gpu);
     }
 
