@@ -1,7 +1,10 @@
 use cgmath::*;
-use std::{path::Path, rc::Rc};
+use std::{path::Path, rc::Rc, time::Duration};
 
-use winit::{event::WindowEvent, window::Window};
+use winit::{
+    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
+    window::Window,
+};
 
 use crate::map;
 use crate::texture;
@@ -9,6 +12,12 @@ use crate::Options;
 use crate::{camera, sprite::rendering, state::gpu_state};
 
 use super::constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, MIN_CAMERA_SCALE};
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+const DRAWER_OPEN_VEL: f32 = 8.0;
+
+// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct GameUi {
     pipeline: wgpu::RenderPipeline,
@@ -25,6 +34,8 @@ pub struct GameUi {
 
     // state
     time: f32,
+    drawer_open: bool,
+    drawer_y: f32,
 }
 
 impl GameUi {
@@ -94,7 +105,7 @@ impl GameUi {
             Some(texture::Texture::DEPTH_FORMAT),
         );
 
-        Self {
+        let mut game_ui = Self {
             pipeline,
 
             camera_view,
@@ -107,7 +118,13 @@ impl GameUi {
             ui_drawable: ui_bg_drawable,
 
             time: 0.0,
-        }
+            drawer_open: false,
+            drawer_y: 0.0,
+        };
+
+        game_ui.update_drawer_position(Duration::from_secs(0));
+
+        game_ui
     }
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -115,8 +132,25 @@ impl GameUi {
             .resize(new_size.width, new_size.height);
     }
 
-    pub fn input(&mut self, _window: &Window, _event: &WindowEvent) -> bool {
-        false
+    pub fn input(&mut self, _window: &Window, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        virtual_keycode: Some(key),
+                        state,
+                        ..
+                    },
+                ..
+            } => match (key, state) {
+                (VirtualKeyCode::F1, ElementState::Pressed) => {
+                    self.drawer_open = !self.drawer_open;
+                    true
+                }
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
     pub fn update(
@@ -127,19 +161,21 @@ impl GameUi {
     ) {
         self.time += dt.as_secs_f32();
 
-        // Update camera view
-        // let center = self.camera_projection.size() * 0.5;
+        // Canter camera on window
         self.camera_view.set_position(point3(0.0, 0.0, 0.0));
+        self.camera_projection.set_scale(MIN_CAMERA_SCALE * 2.0);
         self.camera_uniforms
             .data
             .update_view_proj(&self.camera_view, &self.camera_projection);
         self.camera_uniforms.write(&mut gpu.queue);
 
         // update ui uniforms
+        let bounds = self.ui_map.bounds();
+        let drawer_y = self.update_drawer_position(dt);
         self.ui_uniforms
             .data
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
-            .set_model_position(point3(0.0, 0.0, 0.0));
+            .set_model_position(point3(-bounds.width() / 2.0, drawer_y, 0.0));
         self.ui_uniforms.write(&mut gpu.queue);
     }
 
@@ -173,5 +209,31 @@ impl GameUi {
 
         self.ui_drawable
             .draw(&mut render_pass, &self.camera_uniforms, &self.ui_uniforms);
+    }
+
+    // MARK: Private Impl
+
+    fn update_drawer_position(&mut self, dt: Duration) -> f32 {
+        let bounds = self.ui_map.bounds();
+        let target_y = if self.drawer_open {
+            -bounds.height() - 1.0
+        } else {
+            -bounds.height() - 6.0
+        };
+
+        if dt > Duration::from_secs(0) {
+            let dir = if target_y > self.drawer_y {
+                1.0
+            } else if target_y < self.drawer_y {
+                -1.0
+            } else {
+                0.0
+            };
+            self.drawer_y += dir * DRAWER_OPEN_VEL * dt.as_secs_f32();
+        } else {
+            self.drawer_y = target_y;
+        }
+
+        self.drawer_y
     }
 }
