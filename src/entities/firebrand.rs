@@ -854,6 +854,16 @@ impl Entity for Firebrand {
 }
 
 impl Firebrand {
+    /// Returns tuple of (current_health, max_health)
+    pub fn health_status(&self) -> (u32, u32) {
+        (self.character_state.hit_points, HIT_POINTS)
+    }
+
+    /// Returns seconds of flight time are available
+    pub fn flight_time_remaining(&self) -> f32 {
+        self.flight_countdown
+    }
+
     pub fn is_jumping(&self) -> bool {
         self.character_state.stance == Stance::InAir && self.jump_time_remaining > 0.0
     }

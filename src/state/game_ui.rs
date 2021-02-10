@@ -212,7 +212,9 @@ impl GameUi {
     }
     // MARK: Public
 
-    pub fn is_paused(&self) -> bool { self.drawer_open }
+    pub fn is_paused(&self) -> bool {
+        self.drawer_open
+    }
 
     // MARK: Private
 
