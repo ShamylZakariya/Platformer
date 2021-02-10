@@ -113,6 +113,10 @@ impl Projection {
         vec2(self.width, self.height)
     }
 
+    pub fn viewport_size(&self) -> Vector2<f32> {
+        vec2(self.scale - 2.0, self.scale / self.aspect)
+    }
+
     pub fn scale(&self) -> f32 {
         self.scale
     }

@@ -6,16 +6,19 @@ use winit::{
     window::Window,
 };
 
-use crate::map;
 use crate::texture;
 use crate::Options;
 use crate::{camera, sprite::rendering, state::gpu_state};
+use crate::{geom::lerp, map};
 
-use super::constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, MIN_CAMERA_SCALE};
+use super::{
+    constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},
+    game_state,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const DRAWER_OPEN_VEL: f32 = 8.0;
+const DRAWER_OPEN_VEL: f32 = 2.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -27,16 +30,15 @@ pub struct GameUi {
     camera_uniforms: camera::Uniforms,
 
     // ui tile graphics
-    map: map::Map,
+    drawer_map: map::Map,
     material: Rc<rendering::Material>,
     uniforms: rendering::Uniforms,
     background_drawable: rendering::Drawable,
 
-
     // state
     time: f32,
     drawer_open: bool,
-    drawer_y: f32,
+    drawer_open_progress: f32,
 }
 
 impl GameUi {
@@ -47,7 +49,7 @@ impl GameUi {
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
             gpu.sc_desc.height,
-            MIN_CAMERA_SCALE,
+            DEFAULT_CAMERA_SCALE * 2.0, // ui units are half size of game units
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
@@ -70,14 +72,11 @@ impl GameUi {
             ))
         };
 
-        let uniforms = rendering::Uniforms::new(
-            &gpu.device,
-            map.tileset.get_sprite_size().cast().unwrap(),
-        );
+        let uniforms =
+            rendering::Uniforms::new(&gpu.device, map.tileset.get_sprite_size().cast().unwrap());
 
         let get_layer = |name: &str| {
-            map
-                .layer_named(name)
+            map.layer_named(name)
                 .unwrap_or_else(|| panic!("Expect layer named \"{}\"", name))
         };
 
@@ -90,9 +89,6 @@ impl GameUi {
         let ui_health_layer = get_layer("Health");
         let ui_health_sprites =
             map.generate_sprites(ui_health_layer, |_, _| layers::ui::FOREGROUND);
-
-        
-
 
         let pipeline_layout = gpu
             .device
@@ -120,14 +116,14 @@ impl GameUi {
             camera_projection,
             camera_uniforms,
 
-            map,
+            drawer_map: map,
             material,
             uniforms,
             background_drawable,
 
             time: 0.0,
             drawer_open: false,
-            drawer_y: 0.0,
+            drawer_open_progress: 0.0,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -166,20 +162,27 @@ impl GameUi {
         _window: &Window,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
+        game: &game_state::GameState,
     ) {
         self.time += dt.as_secs_f32();
 
-        // Canter camera on window
+        // Canter camera on window, and set projection scale
         self.camera_view.set_position(point3(0.0, 0.0, 0.0));
-        self.camera_projection.set_scale(MIN_CAMERA_SCALE * 2.0);
+        self.camera_projection
+            .set_scale(game.camera_controller.projection.scale() * 2.0);
+
         self.camera_uniforms
             .data
             .update_view_proj(&self.camera_view, &self.camera_projection);
         self.camera_uniforms.write(&mut gpu.queue);
 
         // update ui uniforms
-        let bounds = self.map.bounds();
+        let bounds = self.drawer_map.bounds();
         let drawer_y = self.update_drawer_position(dt);
+
+        // let vp_units_high = self.camera_projection.viewport_size().y;
+        // let drawer_y = (-vp_units_high/2.0) - 1.0;
+
         self.uniforms
             .data
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
@@ -227,26 +230,23 @@ impl GameUi {
     // MARK: Private
 
     fn update_drawer_position(&mut self, dt: Duration) -> f32 {
-        let bounds = self.map.bounds();
-        let target_y = if self.drawer_open {
-            -bounds.height() - 1.0
-        } else {
-            -bounds.height() - 6.0
-        };
+        let bounds = self.drawer_map.bounds();
+        let vp_units_high = self.camera_projection.viewport_size().y;
+        let drawer_closed_y = (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0;
+        let drawer_open_y = (-vp_units_high / 2.0) - 1.0;
 
         if dt > Duration::from_secs(0) {
-            let dir = if target_y > self.drawer_y {
-                1.0
-            } else if target_y < self.drawer_y {
-                -1.0
+            if self.drawer_open {
+                self.drawer_open_progress =
+                    (self.drawer_open_progress + DRAWER_OPEN_VEL * dt.as_secs_f32()).min(1.0);
             } else {
-                0.0
-            };
-            self.drawer_y += dir * DRAWER_OPEN_VEL * dt.as_secs_f32();
+                self.drawer_open_progress =
+                    (self.drawer_open_progress - DRAWER_OPEN_VEL * dt.as_secs_f32()).max(0.0);
+            }
         } else {
-            self.drawer_y = target_y;
+            self.drawer_open_progress = if self.drawer_open { 1.0 } else { 0.0 };
         }
 
-        self.drawer_y
+        lerp(self.drawer_open_progress, drawer_closed_y, drawer_open_y)
     }
 }

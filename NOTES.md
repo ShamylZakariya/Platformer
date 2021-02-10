@@ -1,6 +1,7 @@
 CURRENTLY:
 TODO:
     - Implement game UI
+        - Scaling works, but doesn't correctly handle zoom/resize changes - It animates to new position, where it should be immediate. Solution is to animate a value from 0 to 1 for drawer open/shut, and then compute the drawer y from that animation state.
         - Fireballs are drawn atop the drawer, lolol
 
     - Postprocessing shader to make Gameboy looking graphics

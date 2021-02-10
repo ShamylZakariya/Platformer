@@ -64,7 +64,8 @@ impl AppState {
         if !self.game_ui.is_paused() {
             self.game_state.update(window, dt, &mut self.gpu);
         }
-        self.game_ui.update(window, dt, &mut self.gpu);
+        self.game_ui
+            .update(window, dt, &mut self.gpu, &self.game_state);
     }
 
     pub fn render(&mut self, window: &Window) {
