@@ -3,12 +3,16 @@
  <image source="game_ui_tileset.png" width="135" height="135"/>
  <tile id="4">
   <properties>
-   <property name="name" value="health_dot_full"/>
+   <property name="cycle" value="full"/>
+   <property name="name" value="health_dot"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="5">
   <properties>
-   <property name="name" value="health_dot_empty"/>
+   <property name="cycle" value="empty"/>
+   <property name="name" value="health_dot"/>
+   <property name="role" value="root"/>
   </properties>
  </tile>
  <tile id="6">
