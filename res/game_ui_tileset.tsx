@@ -4,6 +4,7 @@
  <tile id="4">
   <properties>
    <property name="cycle" value="full"/>
+   <property name="entity_class" value="UiHealthDot"/>
    <property name="name" value="health_dot"/>
    <property name="role" value="root"/>
   </properties>

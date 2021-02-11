@@ -1,14 +1,18 @@
 use cgmath::*;
-use std::{path::Path, rc::Rc, time::Duration};
+use std::{collections::HashMap, path::Path, rc::Rc, time::Duration};
 
 use winit::{
     event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
 
-use crate::texture;
 use crate::Options;
 use crate::{camera, sprite::rendering, state::gpu_state};
+use crate::{
+    entity::{self, EntityComponents},
+    sprite::collision,
+    texture,
+};
 use crate::{geom::lerp, map};
 
 use super::{
@@ -29,11 +33,12 @@ pub struct GameUi {
     camera_projection: camera::Projection,
     camera_uniforms: camera::Uniforms,
 
-    // ui tile graphics
+    // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_map: map::Map,
-    material: Rc<rendering::Material>,
-    uniforms: rendering::Uniforms,
-    background_drawable: rendering::Drawable,
+    drawer_drawable: rendering::Drawable,
+    entities: HashMap<u32, entity::EntityComponents>,
+    sprite_material: Rc<rendering::Material>,
+    sprite_uniforms: rendering::Uniforms,
 
     // state
     time: f32,
@@ -56,12 +61,15 @@ impl GameUi {
 
         // load game ui map and construct material/drawable etcs
         let ui_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
-        let map = ui_map.expect("Expected 'res/game_ui.tmx' to load");
+        let drawer_map = ui_map.expect("Expected 'res/game_ui.tmx' to load");
+
+        //
+        //  Create sprite material and pipeline layout
+        //
 
         let bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
-
-        let material = {
-            let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
+        let sprite_material = {
+            let spritesheet_path = Path::new("res").join(&drawer_map.tileset.image_path);
             let spritesheet =
                 texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
             Rc::new(rendering::Material::new(
@@ -72,23 +80,8 @@ impl GameUi {
             ))
         };
 
-        let uniforms =
-            rendering::Uniforms::new(&gpu.device, map.tileset.get_sprite_size().cast().unwrap());
-
-        let get_layer = |name: &str| {
-            map.layer_named(name)
-                .unwrap_or_else(|| panic!("Expect layer named \"{}\"", name))
-        };
-
-        let ui_bg_layer = get_layer("Background");
-        let ui_bg_sprites = map.generate_sprites(ui_bg_layer, |_, _| layers::ui::BACKGROUND);
-        let ui_bg_mesh =
-            rendering::Mesh::new(&ui_bg_sprites, 0, &gpu.device, "UI background Sprite Mesh");
-        let background_drawable = rendering::Drawable::with(ui_bg_mesh, material.clone());
-
-        let ui_health_layer = get_layer("Health");
-        let ui_health_sprites =
-            map.generate_sprites(ui_health_layer, |_, _| layers::ui::FOREGROUND);
+        let sprite_size_px = drawer_map.tileset.get_sprite_size().cast().unwrap();
+        let sprite_uniforms = rendering::Uniforms::new(&gpu.device, sprite_size_px);
 
         let pipeline_layout = gpu
             .device
@@ -96,7 +89,7 @@ impl GameUi {
                 bind_group_layouts: &[
                     &bind_group_layout,
                     &camera_uniforms.bind_group_layout,
-                    &uniforms.bind_group_layout,
+                    &sprite_uniforms.bind_group_layout,
                 ],
                 label: Some("GameUi Pipeline Layout"),
                 push_constant_ranges: &[],
@@ -109,6 +102,53 @@ impl GameUi {
             Some(texture::Texture::DEPTH_FORMAT),
         );
 
+        //
+        //  Load the drawer's mesh drawable
+        //
+
+        let get_layer = |name: &str| {
+            drawer_map
+                .layer_named(name)
+                .unwrap_or_else(|| panic!("Expect layer named \"{}\"", name))
+        };
+
+        let ui_bg_layer = get_layer("Background");
+        let ui_bg_sprites = drawer_map.generate_sprites(ui_bg_layer, |_, _| layers::ui::BACKGROUND);
+        let ui_bg_mesh =
+            rendering::Mesh::new(&ui_bg_sprites, 0, &gpu.device, "UI background Sprite Mesh");
+        let drawer_drawable = rendering::Drawable::with(ui_bg_mesh, sprite_material.clone());
+
+        //
+        //  Load entities
+        //
+
+        let mut entity_id_vendor = entity::IdVendor::default();
+        let mut collision_space = collision::Space::new(&[]);
+        let health_dots_layer = get_layer("HealthDots");
+        let health_dots_vec = drawer_map.generate_entities(
+            health_dots_layer,
+            &mut collision_space,
+            &mut entity_id_vendor,
+            |_, _| layers::ui::FOREGROUND,
+        );
+
+        let mut entities = HashMap::new();
+        for e in health_dots_vec {
+            let sprite_name = e.sprite_name().to_string();
+            let ec = EntityComponents::with_entity_drawable(
+                e,
+                rendering::EntityDrawable::load(
+                    &drawer_map.tileset,
+                    sprite_material.clone(),
+                    &gpu.device,
+                    &sprite_name,
+                    0,
+                ),
+                rendering::Uniforms::new(&gpu.device, sprite_size_px),
+            );
+            entities.insert(ec.entity.entity_id(), ec);
+        }
+
         let mut game_ui = Self {
             pipeline,
 
@@ -116,10 +156,11 @@ impl GameUi {
             camera_projection,
             camera_uniforms,
 
-            drawer_map: map,
-            material,
-            uniforms,
-            background_drawable,
+            drawer_map,
+            entities,
+            sprite_material,
+            sprite_uniforms,
+            drawer_drawable,
 
             time: 0.0,
             drawer_open: false,
@@ -180,14 +221,11 @@ impl GameUi {
         let bounds = self.drawer_map.bounds();
         let drawer_y = self.update_drawer_position(dt);
 
-        // let vp_units_high = self.camera_projection.viewport_size().y;
-        // let drawer_y = (-vp_units_high/2.0) - 1.0;
-
-        self.uniforms
+        self.sprite_uniforms
             .data
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_model_position(point3(-bounds.width() / 2.0, drawer_y, 0.0));
-        self.uniforms.write(&mut gpu.queue);
+        self.sprite_uniforms.write(&mut gpu.queue);
     }
 
     pub fn render(
@@ -218,8 +256,31 @@ impl GameUi {
 
         render_pass.set_pipeline(&self.pipeline);
 
-        self.background_drawable
-            .draw(&mut render_pass, &self.camera_uniforms, &self.uniforms);
+        self.drawer_drawable.draw(
+            &mut render_pass,
+            &self.camera_uniforms,
+            &self.sprite_uniforms,
+        );
+
+        for e in self.entities.values() {
+            if e.entity.is_alive() && e.entity.should_draw() {
+                if let Some(ref drawable) = e.entity_drawable {
+                    if let Some(ref uniforms) = e.uniforms {
+                        drawable.draw(
+                            &mut render_pass,
+                            &self.camera_uniforms,
+                            uniforms,
+                            e.entity.sprite_cycle(),
+                        );
+                    }
+                }
+                if let Some(ref drawable) = e.sprite_drawable {
+                    if let Some(ref uniforms) = e.uniforms {
+                        drawable.draw(&mut render_pass, &self.camera_uniforms, uniforms);
+                    }
+                }
+            }
+        }
     }
     // MARK: Public
 

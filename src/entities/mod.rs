@@ -11,6 +11,7 @@ pub mod flying_fish;
 pub mod hoodie;
 pub mod rising_floor;
 pub mod spawn_point;
+pub mod ui_health_dot;
 pub mod util;
 
 use anyhow::Result;
@@ -36,6 +37,7 @@ pub enum EntityClass {
     RisingFloor,
     SpawnPoint,
     FireSprite,
+    UiHealthDot,
 }
 
 impl EntityClass {
@@ -89,6 +91,9 @@ pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entit
         "Hoodie" => Some(Box::new(hoodie::Hoodie::default()) as Box<dyn entity::Entity>),
         "SpawnPoint" => {
             Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
+        }
+        "UiHealthDot" => {
+            Some(Box::new(ui_health_dot::UiHealthDot::default()) as Box<dyn entity::Entity>)
         }
         _ => None,
     }
