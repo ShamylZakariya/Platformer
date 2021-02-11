@@ -6,13 +6,13 @@ use winit::{
     window::Window,
 };
 
-use crate::Options;
 use crate::{camera, sprite::rendering, state::gpu_state};
 use crate::{
     entity::{self, EntityComponents},
     sprite::collision,
     texture,
 };
+use crate::{event_dispatch, Options};
 use crate::{geom::lerp, map};
 
 use super::{
@@ -34,6 +34,7 @@ pub struct GameUi {
     camera_uniforms: camera::Uniforms,
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
+    drawer_collision_space: collision::Space,
     drawer_map: map::Map,
     drawer_drawable: rendering::Drawable,
     entities: HashMap<u32, entity::EntityComponents>,
@@ -44,6 +45,7 @@ pub struct GameUi {
     time: f32,
     drawer_open: bool,
     drawer_open_progress: f32,
+    message_dispatcher: event_dispatch::Dispatcher,
 }
 
 impl GameUi {
@@ -157,6 +159,7 @@ impl GameUi {
             camera_uniforms,
 
             drawer_map,
+            drawer_collision_space: collision_space,
             entities,
             sprite_material,
             sprite_uniforms,
@@ -165,6 +168,7 @@ impl GameUi {
             time: 0.0,
             drawer_open: false,
             drawer_open_progress: 0.0,
+            message_dispatcher: event_dispatch::Dispatcher::default(),
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -217,15 +221,32 @@ impl GameUi {
             .update_view_proj(&self.camera_view, &self.camera_projection);
         self.camera_uniforms.write(&mut gpu.queue);
 
-        // update ui uniforms
+        // update drawer uniforms
         let bounds = self.drawer_map.bounds();
-        let drawer_y = self.update_drawer_position(dt);
+        let drawer_offset = vec3(-bounds.width() / 2.0, self.update_drawer_position(dt), 0.0);
 
         self.sprite_uniforms
             .data
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
-            .set_model_position(point3(-bounds.width() / 2.0, drawer_y, 0.0));
+            .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
         self.sprite_uniforms.write(&mut gpu.queue);
+
+        // update entity uniforms - note we have to apply drawer position offset
+        let game_state_peek = game.game_state_peek();
+        for e in self.entities.values_mut() {
+            e.entity.update(
+                dt,
+                &self.drawer_map,
+                &mut self.drawer_collision_space,
+                &mut self.message_dispatcher,
+                &game_state_peek,
+            );
+            if let Some(ref mut uniforms) = e.uniforms {
+                e.entity.update_uniforms(uniforms);
+                uniforms.data.offset_model_position(drawer_offset);
+                uniforms.write(&mut gpu.queue);
+            }
+        }
     }
 
     pub fn render(

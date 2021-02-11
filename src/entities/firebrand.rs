@@ -859,9 +859,9 @@ impl Firebrand {
         (self.character_state.hit_points, HIT_POINTS)
     }
 
-    /// Returns seconds of flight time are available
-    pub fn flight_time_remaining(&self) -> f32 {
-        self.flight_countdown
+    /// Returns tuple of (flight time remaining, max flight time) in seconds,
+    pub fn flight_time_remaining(&self) -> (f32, f32) {
+        (self.flight_countdown, FLIGHT_DURATION)
     }
 
     pub fn is_jumping(&self) -> bool {

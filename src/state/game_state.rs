@@ -481,10 +481,7 @@ impl GameState {
         let current_map_bounds = self.current_map_bounds();
 
         {
-            let game_state_peek = GameStatePeek {
-                player_position: self.get_firebrand().entity.position().xy(),
-                current_map_bounds,
-            };
+            let game_state_peek = self.game_state_peek();
 
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
@@ -653,6 +650,18 @@ impl GameState {
                     }
                 }
             }
+        }
+    }
+
+    pub fn game_state_peek(&self) -> GameStatePeek {
+        // TODO: How to get firebrand impl out of this trait so we can get health and position?
+        // Should Firebrand broadcast status updates?
+        let firebrand = &self.get_firebrand().entity;
+        GameStatePeek {
+            player_position: firebrand.position().xy(),
+            player_health: (2, 2),
+            player_flight: (3.0, 3.0),
+            current_map_bounds: self.current_map_bounds(),
         }
     }
 

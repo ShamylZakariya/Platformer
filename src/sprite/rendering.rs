@@ -163,6 +163,11 @@ impl UniformData {
         self
     }
 
+    pub fn offset_model_position(&mut self, delta: Vector3<f32>) -> &mut Self {
+        self.model_position += vec4(delta.x, delta.y, delta.z, 0.0);
+        self
+    }
+
     pub fn set_sprite_scale(&mut self, sprite_scale: Vector2<f32>) -> &mut Self {
         self.sprite_scale = sprite_scale;
         self

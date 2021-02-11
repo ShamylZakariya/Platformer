@@ -39,6 +39,8 @@ impl IdVendor {
 /// firebrand's position.
 pub struct GameStatePeek {
     pub player_position: Point2<f32>,
+    pub player_health: (u32, u32), // current health points, max health points
+    pub player_flight: (f32, f32), // current flight time remaining, max flight time
     pub current_map_bounds: Bounds,
 }
 
