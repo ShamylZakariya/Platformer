@@ -118,7 +118,7 @@ impl Entity for FallingBridge {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::CharacterContact = message.event {
+        if let Event::FirebrandContact = message.event {
             if self.time_remaining.is_none() {
                 self.position.y -= 2.0 / self.sprite_size_px.y;
                 self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);

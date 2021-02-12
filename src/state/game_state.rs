@@ -125,6 +125,7 @@ pub struct GameState {
     boss_fight_arena_left_bounds: Option<f32>,
     viewport_left_when_boss_encountered: Option<f32>,
     camera_shaker: Option<CameraShaker>,
+    game_state_peek: GameStatePeek,
 }
 
 impl GameState {
@@ -390,6 +391,7 @@ impl GameState {
             boss_fight_arena_left_bounds: None,
             viewport_left_when_boss_encountered: None,
             camera_shaker: None,
+            game_state_peek: GameStatePeek::default(),
         };
 
         for req in entity_add_requests {
@@ -463,6 +465,16 @@ impl GameState {
     ) {
         self.time += dt.as_secs_f32();
 
+        let current_map_bounds = self.current_map_bounds();
+        let firebrand = &self.get_firebrand().entity;
+
+        //
+        //  Update game state peek
+        //
+
+        self.game_state_peek.player_position = firebrand.position().xy();
+        self.game_state_peek.current_map_bounds = current_map_bounds;
+
         //
         //  Process entity additions
         //
@@ -477,8 +489,6 @@ impl GameState {
         //
         //  Update entities - if any are expired, remove them.
         //
-
-        let current_map_bounds = self.current_map_bounds();
 
         {
             let game_state_peek = self.game_state_peek();
@@ -654,15 +664,7 @@ impl GameState {
     }
 
     pub fn game_state_peek(&self) -> GameStatePeek {
-        // TODO: How to get firebrand impl out of this trait so we can get health and position?
-        // Should Firebrand broadcast status updates?
-        let firebrand = &self.get_firebrand().entity;
-        GameStatePeek {
-            player_position: firebrand.position().xy(),
-            player_health: (2, 2),
-            player_flight: (3.0, 3.0),
-            current_map_bounds: self.current_map_bounds(),
-        }
+        self.game_state_peek
     }
 
     /// Returns true iff the player can shoot.
@@ -980,8 +982,13 @@ impl event_dispatch::MessageHandler for GameState {
                     self.camera_shaker = None;
                 }
 
-                Event::PlayerDied => {
+                Event::FirebrandDied => {
                     self.on_player_dead();
+                }
+
+                Event::FirebrandStatusChanged { health, flight } => {
+                    self.game_state_peek.player_health = *health;
+                    self.game_state_peek.player_flight = *flight;
                 }
 
                 _ => {}

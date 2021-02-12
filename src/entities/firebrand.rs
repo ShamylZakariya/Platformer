@@ -455,7 +455,7 @@ impl Entity for Firebrand {
         if !self.character_state.alive {
             if !self.did_send_death_message {
                 collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id);
-                message_dispatcher.broadcast(Event::PlayerDied);
+                message_dispatcher.broadcast(Event::FirebrandDied);
                 self.did_send_death_message = true;
             }
             return;
@@ -748,6 +748,18 @@ impl Entity for Firebrand {
         //
 
         self.input_state.update();
+
+        //
+        //  Send status update to game state
+        //
+
+        message_dispatcher.entity_to_global(
+            self.entity_id,
+            Event::FirebrandStatusChanged {
+                health: self.health_status(),
+                flight: self.flight_status(),
+            },
+        );
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -860,7 +872,7 @@ impl Firebrand {
     }
 
     /// Returns tuple of (flight time remaining, max flight time) in seconds,
-    pub fn flight_time_remaining(&self) -> (f32, f32) {
+    pub fn flight_status(&self) -> (f32, f32) {
         (self.flight_countdown, FLIGHT_DURATION)
     }
 
@@ -910,7 +922,7 @@ impl Firebrand {
                 message_dispatcher.entity_to_entity(
                     self.entity_id(),
                     entity_id,
-                    Event::CharacterContact,
+                    Event::FirebrandContact,
                 );
             }
         }

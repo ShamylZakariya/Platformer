@@ -5,11 +5,17 @@ use crate::{entities::util::HorizontalDir, sprite, tileset};
 /// An Event payload for Message
 #[derive(Debug, Clone)]
 pub enum Event {
-    /// Received by an Entity when contacted by the character
-    CharacterContact,
+    /// Received by an Entity when contacted by Firebrand
+    FirebrandContact,
 
-    /// broadcast by Firebrand when he dies
-    PlayerDied,
+    /// broadcast by Firebrand when they die
+    FirebrandDied,
+
+    /// Sent by Firebrand to GameState to notify change of health, flight time, etc
+    FirebrandStatusChanged {
+        health: (u32, u32), // tuple of (current health, max health)
+        flight: (f32, f32), // tuple of (flight time remaining, max flight time) in seconds
+    },
 
     /// Sent by Firebrand to State to signal request to shoot fireball.
     /// If State determines a fireball may be shot (there is some rate limiting)

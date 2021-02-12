@@ -37,11 +37,23 @@ impl IdVendor {
 /// entities may "chase" the player, etc. GameStatePeek is a holder for this information. An proper engine
 /// might store a snapshot of state for each entity in the level, but all we need right now is to know
 /// firebrand's position.
+#[derive(Clone, Copy, Debug)]
 pub struct GameStatePeek {
     pub player_position: Point2<f32>,
     pub player_health: (u32, u32), // current health points, max health points
     pub player_flight: (f32, f32), // current flight time remaining, max flight time
     pub current_map_bounds: Bounds,
+}
+
+impl Default for GameStatePeek {
+    fn default() -> Self {
+        Self {
+            player_position: point2(0.0, 0.0),
+            player_health: (0, 0),
+            player_flight: (0.0, 0.0),
+            current_map_bounds: Bounds::default(),
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
