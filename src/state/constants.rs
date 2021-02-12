@@ -8,6 +8,10 @@ pub mod sprite_masks {
     pub const ENTITY: u32 = 1 << 3;
     pub const CONTACT_DAMAGE: u32 = 1 << 4;
     pub const SHOOTABLE: u32 = 1 << 5;
+
+    pub mod ui {
+        pub const HEALTH_DOT: u32 = 1 << 0;
+    }
 }
 
 pub mod layers {
