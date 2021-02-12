@@ -11,6 +11,7 @@ pub mod flying_fish;
 pub mod hoodie;
 pub mod rising_floor;
 pub mod spawn_point;
+pub mod ui_flight_bar;
 pub mod ui_health_dot;
 pub mod util;
 
@@ -37,6 +38,9 @@ pub enum EntityClass {
     RisingFloor,
     SpawnPoint,
     FireSprite,
+
+    // Ui classes
+    UiFlightBar,
     UiHealthDot,
 }
 
@@ -68,6 +72,12 @@ impl EntityClass {
             _ => false,
         }
     }
+    pub fn is_ui(&self) -> bool {
+        match self {
+            EntityClass::UiFlightBar | EntityClass::UiHealthDot => true,
+            _ => false,
+        }
+    }
 }
 
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {
@@ -92,6 +102,12 @@ pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entit
         "SpawnPoint" => {
             Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
         }
+
+        // Ui entities
+        "UiFlightBar" => {
+            Some(Box::new(ui_flight_bar::UiFlightBar::default()) as Box<dyn entity::Entity>)
+        }
+
         "UiHealthDot" => {
             Some(Box::new(ui_health_dot::UiHealthDot::default()) as Box<dyn entity::Entity>)
         }

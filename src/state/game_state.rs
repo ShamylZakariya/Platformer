@@ -888,7 +888,7 @@ impl event_dispatch::MessageHandler for GameState {
                         self.request_add_entity(Box::new(
                             entities::fireball::Fireball::new_fireball(
                                 self.firebrand_entity_id,
-                                point3(origin.x, origin.y, 0.0),
+                                point3(origin.x, origin.y, layers::stage::FOREGROUND),
                                 *direction,
                                 *velocity,
                                 *damage,
@@ -954,7 +954,7 @@ impl event_dispatch::MessageHandler for GameState {
                     self.request_add_entity(Box::new(
                         entities::fireball::Fireball::new_firesprite(
                             sender_id,
-                            point3(position.x, position.y, 0.0),
+                            point3(position.x, position.y, layers::stage::FOREGROUND),
                             *dir,
                             *velocity,
                             *damage,

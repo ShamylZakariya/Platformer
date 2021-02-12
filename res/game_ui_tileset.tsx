@@ -161,4 +161,12 @@
    <property name="name" value="character_exclamation_point"/>
   </properties>
  </tile>
+ <tile id="45">
+  <properties>
+   <property name="cycle" value="default"/>
+   <property name="entity_class" value="UiFlightBar"/>
+   <property name="name" value="flight_bar"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
 </tileset>
