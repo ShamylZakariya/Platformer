@@ -183,6 +183,55 @@
    <property name="role" value="root"/>
   </properties>
  </tile>
+ <tile id="41">
+  <properties>
+   <property name="cycle" value="3"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="42">
+  <properties>
+   <property name="cycle" value="4"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="43">
+  <properties>
+   <property name="cycle" value="5"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="44">
+  <properties>
+   <property name="cycle" value="6"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="45">
+  <properties>
+   <property name="cycle" value="7"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="46">
+  <properties>
+   <property name="cycle" value="8"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="47">
+  <properties>
+   <property name="cycle" value="9"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
  <tile id="63">
   <properties>
    <property name="cycle" value="default"/>

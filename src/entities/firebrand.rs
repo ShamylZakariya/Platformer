@@ -356,8 +356,8 @@ impl CharacterState {
             stance: Stance::Standing,
             facing: HorizontalDir::East,
             hit_points: HIT_POINTS,
-            num_vials: 12,
-            num_lives: 2,
+            num_vials: 51,
+            num_lives: 8,
             alive: true,
         }
     }
