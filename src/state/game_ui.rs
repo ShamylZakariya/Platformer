@@ -1,3 +1,4 @@
+use camera::Uniforms;
 use cgmath::*;
 use std::{collections::HashMap, path::Path, rc::Rc, time::Duration};
 
@@ -35,11 +36,15 @@ pub struct GameUi {
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_collision_space: collision::Space,
-    drawer_map: map::Map,
-    drawer_drawable: rendering::Drawable,
-    entities: HashMap<u32, entity::EntityComponents>,
+    game_ui_map: map::Map,
     sprite_material: Rc<rendering::Material>,
-    sprite_uniforms: rendering::Uniforms,
+    drawer_drawable: rendering::Drawable,
+    drawer_uniforms: rendering::Uniforms,
+    game_start_drawable: rendering::Drawable,
+    game_start_uniforms: rendering::Uniforms,
+    game_over_drawable: rendering::Drawable,
+    game_over_uniforms: rendering::Uniforms,
+    entities: HashMap<u32, entity::EntityComponents>,
 
     // state
     time: f32,
@@ -62,8 +67,8 @@ impl GameUi {
         );
 
         // load game ui map and construct material/drawable etcs
-        let drawer_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
-        let drawer_map = drawer_map.expect("Expected 'res/game_ui.tmx' to load");
+        let game_ui_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
+        let game_ui_map = game_ui_map.expect("Expected 'res/game_ui.tmx' to load");
 
         //
         //  Create sprite material and pipeline layout
@@ -71,7 +76,7 @@ impl GameUi {
 
         let bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let sprite_material = {
-            let spritesheet_path = Path::new("res").join(&drawer_map.tileset.image_path);
+            let spritesheet_path = Path::new("res").join(&game_ui_map.tileset.image_path);
             let spritesheet =
                 texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
             Rc::new(rendering::Material::new(
@@ -82,8 +87,8 @@ impl GameUi {
             ))
         };
 
-        let sprite_size_px = drawer_map.tileset.get_sprite_size().cast().unwrap();
-        let sprite_uniforms = rendering::Uniforms::new(&gpu.device, sprite_size_px);
+        let sprite_size_px = game_ui_map.tileset.get_sprite_size().cast().unwrap();
+        let drawer_uniforms = rendering::Uniforms::new(&gpu.device, sprite_size_px);
 
         let pipeline_layout = gpu
             .device
@@ -91,7 +96,7 @@ impl GameUi {
                 bind_group_layouts: &[
                     &bind_group_layout,
                     &camera_uniforms.bind_group_layout,
-                    &sprite_uniforms.bind_group_layout,
+                    &drawer_uniforms.bind_group_layout,
                 ],
                 label: Some("GameUi Pipeline Layout"),
                 push_constant_ranges: &[],
@@ -105,20 +110,25 @@ impl GameUi {
         );
 
         //
-        //  Load the drawer's mesh drawable
+        //  Load drawables
         //
 
         let get_layer = |name: &str| {
-            drawer_map
+            game_ui_map
                 .layer_named(name)
                 .unwrap_or_else(|| panic!("Expect layer named \"{}\"", name))
         };
 
-        let ui_bg_layer = get_layer("Background");
-        let ui_bg_sprites = drawer_map.generate_sprites(ui_bg_layer, |_, _| layers::ui::BACKGROUND);
-        let ui_bg_mesh =
-            rendering::Mesh::new(&ui_bg_sprites, 0, &gpu.device, "UI background Sprite Mesh");
-        let drawer_drawable = rendering::Drawable::with(ui_bg_mesh, sprite_material.clone());
+        let create_drawable = |name: &str, z: f32| {
+            let layer = get_layer(name);
+            let sprites = game_ui_map.generate_sprites(layer, |_, _| z);
+            let mesh = rendering::Mesh::new(&sprites, 0, &gpu.device, name);
+            rendering::Drawable::with(mesh, sprite_material.clone())
+        };
+
+        let drawer_drawable = create_drawable("Drawer", layers::ui::BACKGROUND);
+        let game_over_drawable = create_drawable("GameOver", layers::ui::FOREGROUND);
+        let game_start_drawable = create_drawable("GameStart", layers::ui::FOREGROUND);
 
         //
         //  Load entities
@@ -128,7 +138,7 @@ impl GameUi {
         let mut collision_space = collision::Space::new(&[]);
         let entities_layer = get_layer("Entities");
 
-        let entities = drawer_map.generate_entities(
+        let entities = game_ui_map.generate_entities(
             entities_layer,
             &mut collision_space,
             &mut entity_id_vendor,
@@ -143,7 +153,7 @@ impl GameUi {
                 let ec = EntityComponents::with_entity_drawable(
                     e,
                     rendering::EntityDrawable::load(
-                        &drawer_map.tileset,
+                        &game_ui_map.tileset,
                         sprite_material.clone(),
                         &gpu.device,
                         &sprite_name,
@@ -162,12 +172,16 @@ impl GameUi {
             camera_projection,
             camera_uniforms,
 
-            drawer_map,
             drawer_collision_space: collision_space,
-            entities,
+            game_ui_map,
             sprite_material,
-            sprite_uniforms,
             drawer_drawable,
+            drawer_uniforms,
+            game_over_drawable,
+            game_over_uniforms: rendering::Uniforms::new(&gpu.device, sprite_size_px),
+            game_start_drawable,
+            game_start_uniforms: rendering::Uniforms::new(&gpu.device, sprite_size_px),
+            entities,
 
             time: 0.0,
             drawer_open: false,
@@ -226,21 +240,21 @@ impl GameUi {
         self.camera_uniforms.write(&mut gpu.queue);
 
         // update drawer uniforms
-        let bounds = self.drawer_map.bounds();
+        let bounds = self.game_ui_map.bounds();
         let drawer_offset = vec3(-bounds.width() / 2.0, self.update_drawer_position(dt), 0.0);
 
-        self.sprite_uniforms
+        self.drawer_uniforms
             .data
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
-        self.sprite_uniforms.write(&mut gpu.queue);
+        self.drawer_uniforms.write(&mut gpu.queue);
 
         // update entity uniforms - note we have to apply drawer position offset
         let game_state_peek = game.game_state_peek();
         for e in self.entities.values_mut() {
             e.entity.update(
                 dt,
-                &self.drawer_map,
+                &self.game_ui_map,
                 &mut self.drawer_collision_space,
                 &mut self.message_dispatcher,
                 &game_state_peek,
@@ -251,6 +265,24 @@ impl GameUi {
                 uniforms.write(&mut gpu.queue);
             }
         }
+
+        // update game over and game start uniforms to center their test strings
+        let mut center_drawable =
+            |drawable: &rendering::Drawable, uniforms: &mut rendering::Uniforms| {
+                let bounds = drawable
+                    .meshes
+                    .first()
+                    .expect("Expect drawable to have mesh at index 0")
+                    .bounds;
+                uniforms
+                    .data
+                    .set_color(vec4(1.0, 1.0, 1.0, 1.0))
+                    .set_model_position(point3(-bounds.width() / 2.0, -bounds.height() / 2.0, 0.0));
+                uniforms.write(&mut gpu.queue);
+            };
+
+        center_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);
+        center_drawable(&self.game_start_drawable, &mut self.game_start_uniforms);
     }
 
     pub fn render(
@@ -284,7 +316,7 @@ impl GameUi {
         self.drawer_drawable.draw(
             &mut render_pass,
             &self.camera_uniforms,
-            &self.sprite_uniforms,
+            &self.drawer_uniforms,
         );
 
         for e in self.entities.values() {
@@ -306,6 +338,12 @@ impl GameUi {
                 }
             }
         }
+
+        // self.game_over_drawable.draw(
+        //     &mut render_pass,
+        //     &self.camera_uniforms,
+        //     &self.game_over_uniforms,
+        // );
     }
     // MARK: Public
 
@@ -316,7 +354,7 @@ impl GameUi {
     // MARK: Private
 
     fn update_drawer_position(&mut self, dt: Duration) -> f32 {
-        let bounds = self.drawer_map.bounds();
+        let bounds = self.game_ui_map.bounds();
         let vp_units_high = self.camera_projection.viewport_size().y;
         let drawer_closed_y = (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0;
         let drawer_open_y = (-vp_units_high / 2.0) - 1.0;

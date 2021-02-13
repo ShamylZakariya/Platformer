@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="20" height="8" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="7">
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="20" height="8" tilewidth="8" tileheight="8" infinite="0" nextlayerid="7" nextobjectid="7">
  <tileset firstgid="1" source="game_ui_tileset.tsx"/>
- <layer id="1" name="Background" width="20" height="8">
+ <layer id="1" name="Drawer" width="20" height="8">
   <data encoding="csv">
 1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2147483649,
 3,18,4,4,4,4,4,4,4,4,29,4,4,4,4,4,4,4,4,2147483651,
@@ -11,6 +11,30 @@
 3,4,4,4,4,4,4,4,4,4,4,4,4,4,62,2147483710,4,4,4,2147483651,
 3,16,37,40,4,28,15,7,18,25,37,4,4,4,61,2147483709,38,4,4,2147483651,
 3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2147483651
+</data>
+ </layer>
+ <layer id="5" name="GameOver" width="20" height="8" visible="0">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+13,7,19,11,0,21,28,11,24,0,0,0,0,0,0,0,0,0,0,0
+</data>
+ </layer>
+ <layer id="6" name="GameStart" width="20" height="8" visible="0">
+  <data encoding="csv">
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+24,11,7,10,31,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
  <layer id="2" name="Entities" width="20" height="8">

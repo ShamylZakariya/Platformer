@@ -3,10 +3,10 @@ use core::panic;
 use std::rc::Rc;
 use std::{collections::HashMap, time::Duration};
 
-use crate::camera;
 use crate::sprite::core::*;
 use crate::texture;
 use crate::tileset;
+use crate::{camera, geom::Bounds};
 use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -311,14 +311,27 @@ pub struct Mesh {
     pub num_elements: u32,
     pub material: usize,
     pub sprite_element_indices: HashMap<Sprite, u32>,
+    pub bounds: Bounds, // 2d bounds of the vertices in this mesh
 }
 
 impl Mesh {
     pub fn new(sprites: &[Sprite], material: usize, device: &wgpu::Device, name: &str) -> Self {
+        let mut left = std::f32::MAX;
+        let mut bottom = std::f32::MAX;
+        let mut right = std::f32::MIN;
+        let mut top = std::f32::MIN;
+
         let mut vertices = vec![];
         let mut indices = vec![];
         let mut sprite_element_indices: HashMap<Sprite, u32> = HashMap::new();
         for sprite in sprites {
+            // update bounds
+            left = left.min(sprite.left());
+            bottom = bottom.min(sprite.bottom());
+            right = right.max(sprite.right());
+            top = top.max(sprite.top());
+
+            // compute quad vertices
             let p_a = vec3(sprite.origin.x, sprite.origin.y, sprite.origin.z);
             let p_b = vec3(
                 sprite.origin.x + sprite.extent.x,
@@ -399,12 +412,15 @@ impl Mesh {
 
         let num_elements = indices.len() as u32;
 
+        let bounds = Bounds::new(point2(left, bottom), vec2(right - left, top - bottom));
+
         Self {
             vertex_buffer,
             index_buffer,
             num_elements,
             material,
             sprite_element_indices,
+            bounds,
         }
     }
 
