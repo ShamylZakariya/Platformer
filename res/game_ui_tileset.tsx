@@ -164,6 +164,7 @@
  <tile id="38">
   <properties>
    <property name="cycle" value="0"/>
+   <property name="entity_class" value="UiDigit"/>
    <property name="name" value="numeral"/>
    <property name="role" value="root"/>
   </properties>

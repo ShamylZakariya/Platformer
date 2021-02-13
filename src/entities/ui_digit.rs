@@ -1,6 +1,8 @@
 use cgmath::*;
 use std::time::Duration;
 
+
+
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
@@ -11,29 +13,21 @@ use crate::{
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-const FLIGHT_BAR_SCALE: f32 = 2.0;
-
-// ---------------------------------------------------------------------------------------------------------------------
-
-pub struct UiFlightBar {
+pub struct UiDigit {
     entity_id: u32,
     position: Point3<f32>,
-    width_scale_max: f32,
-    width_scale_current: f32,
 }
 
-impl Default for UiFlightBar {
+impl Default for UiDigit {
     fn default() -> Self {
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
-            width_scale_max: 1.0,
-            width_scale_current: 1.0,
         }
     }
 }
 
-impl Entity for UiFlightBar {
+impl Entity for UiDigit {
     fn init_from_map_sprite(
         &mut self,
         entity_id: u32,
@@ -44,6 +38,9 @@ impl Entity for UiFlightBar {
     ) {
         self.entity_id = entity_id;
         self.position = sprite.origin;
+
+        // TODO: Look up the object corresponding to the sprite position from the map; that
+        // object will have info needed to decide which numeral to render...
     }
 
     fn update(
@@ -52,18 +49,14 @@ impl Entity for UiFlightBar {
         _map: &map::Map,
         _collision_space: &mut collision::Space,
         _message_dispatcher: &mut Dispatcher,
-        game_state_peek: &GameStatePeek,
+        _game_state_peek: &GameStatePeek,
     ) {
-        self.width_scale_max = game_state_peek.player_flight.1 * FLIGHT_BAR_SCALE;
-        self.width_scale_current =
-            FLIGHT_BAR_SCALE * (game_state_peek.player_flight.0 / game_state_peek.player_flight.1);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         uniforms
             .data
-            .set_model_position(self.position)
-            .set_sprite_scale(vec2(self.width_scale_current, 1.0));
+            .set_model_position(self.position);
     }
 
     fn entity_id(&self) -> u32 {
@@ -71,7 +64,7 @@ impl Entity for UiFlightBar {
     }
 
     fn entity_class(&self) -> crate::entities::EntityClass {
-        crate::entities::EntityClass::UiFlightBar
+        crate::entities::EntityClass::UiDigit
     }
 
     fn is_alive(&self) -> bool {
@@ -83,10 +76,10 @@ impl Entity for UiFlightBar {
     }
 
     fn sprite_name(&self) -> &str {
-        "flight_bar"
+        "numeral"
     }
 
     fn sprite_cycle(&self) -> &str {
-        "default"
+        "0"
     }
 }

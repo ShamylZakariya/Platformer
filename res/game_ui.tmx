@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="20" height="8" tilewidth="8" tileheight="8" infinite="0" nextlayerid="4" nextobjectid="1">
+<map version="1.4" tiledversion="1.4.3" orientation="orthogonal" renderorder="right-down" width="20" height="8" tilewidth="8" tileheight="8" infinite="0" nextlayerid="5" nextobjectid="7">
  <tileset firstgid="1" source="game_ui_tileset.tsx"/>
  <layer id="1" name="Background" width="20" height="8">
   <data encoding="csv">
@@ -9,7 +9,7 @@
 3,1073741887,3221225535,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2147483651,
 3,63,2147483711,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2147483651,
 3,4,4,4,4,4,4,4,4,4,4,4,4,4,62,2147483710,4,4,4,2147483651,
-3,16,37,40,4,28,15,7,18,25,37,39,39,4,61,2147483709,38,39,4,2147483651,
+3,16,37,40,4,28,15,7,18,25,37,4,4,4,61,2147483709,38,4,4,2147483651,
 3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,2147483651
 </data>
  </layer>
@@ -21,8 +21,28 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,39,39,0,0,0,0,39,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
+ <objectgroup id="4" name="Metadata">
+  <object id="3" x="88" y="48" width="8" height="8">
+   <properties>
+    <property name="digit" value="10"/>
+    <property name="name" value="vials"/>
+   </properties>
+  </object>
+  <object id="4" x="96" y="48" width="8" height="8">
+   <properties>
+    <property name="digit" value="1"/>
+    <property name="name" value="vials"/>
+   </properties>
+  </object>
+  <object id="6" x="136" y="48" width="8" height="8">
+   <properties>
+    <property name="digit" value="1"/>
+    <property name="name" value="lives"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>
