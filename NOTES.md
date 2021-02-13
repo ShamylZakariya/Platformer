@@ -3,6 +3,7 @@ TODO:
     - Implement game UI
         - Numerics - There might be a hacky way with a bunch of separate SpawnPoints, but look into a data layer which can add some kind of metadata to a tile??? Will require some more parsing
     - Need "vials", "hearts" and any other power up gubbins
+    - Event::FirebrandStatusChanged should probably just carry a firebrand::CharacterState
     - Postprocessing shader to make Gameboy looking graphics
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
 

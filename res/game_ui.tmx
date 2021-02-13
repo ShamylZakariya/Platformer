@@ -28,20 +28,20 @@
  <objectgroup id="4" name="Metadata">
   <object id="3" x="88" y="48" width="8" height="8">
    <properties>
-    <property name="digit" value="10"/>
-    <property name="name" value="vials"/>
+    <property name="digit" value="1"/>
+    <property name="tracking" value="vials"/>
    </properties>
   </object>
   <object id="4" x="96" y="48" width="8" height="8">
    <properties>
-    <property name="digit" value="1"/>
-    <property name="name" value="vials"/>
+    <property name="digit" value="0"/>
+    <property name="tracking" value="vials"/>
    </properties>
   </object>
   <object id="6" x="136" y="48" width="8" height="8">
    <properties>
-    <property name="digit" value="1"/>
-    <property name="name" value="lives"/>
+    <property name="digit" value="0"/>
+    <property name="tracking" value="lives"/>
    </properties>
   </object>
  </objectgroup>

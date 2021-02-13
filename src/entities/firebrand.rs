@@ -334,8 +334,16 @@ pub struct CharacterState {
     // the direction the character is currently facing
     pub facing: HorizontalDir,
 
+    // player's current remaining hitpoints
     pub hit_points: u32,
 
+    // number of vials player has caught
+    pub num_vials: u32,
+
+    // number of lives remaining to player
+    pub num_lives: u32,
+
+    // is player currently alive
     pub alive: bool,
 }
 
@@ -348,6 +356,8 @@ impl CharacterState {
             stance: Stance::Standing,
             facing: HorizontalDir::East,
             hit_points: HIT_POINTS,
+            num_vials: 12,
+            num_lives: 2,
             alive: true,
         }
     }
@@ -758,6 +768,8 @@ impl Entity for Firebrand {
             Event::FirebrandStatusChanged {
                 health: self.health_status(),
                 flight: self.flight_status(),
+                vials: self.num_vials(),
+                lives: self.num_lives_remaining(),
             },
         );
     }
@@ -874,6 +886,14 @@ impl Firebrand {
     /// Returns tuple of (flight time remaining, max flight time) in seconds,
     pub fn flight_status(&self) -> (f32, f32) {
         (self.flight_countdown, FLIGHT_DURATION)
+    }
+
+    pub fn num_vials(&self) -> u32 {
+        self.character_state.num_vials
+    }
+
+    pub fn num_lives_remaining(&self) -> u32 {
+        self.character_state.num_lives
     }
 
     pub fn is_jumping(&self) -> bool {

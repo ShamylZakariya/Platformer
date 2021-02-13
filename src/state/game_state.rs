@@ -986,9 +986,16 @@ impl event_dispatch::MessageHandler for GameState {
                     self.on_player_dead();
                 }
 
-                Event::FirebrandStatusChanged { health, flight } => {
+                Event::FirebrandStatusChanged {
+                    health,
+                    flight,
+                    vials,
+                    lives,
+                } => {
                     self.game_state_peek.player_health = *health;
                     self.game_state_peek.player_flight = *flight;
+                    self.game_state_peek.player_vials = *vials;
+                    self.game_state_peek.player_lives = *lives;
                 }
 
                 _ => {}

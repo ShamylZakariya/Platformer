@@ -15,6 +15,8 @@ pub enum Event {
     FirebrandStatusChanged {
         health: (u32, u32), // tuple of (current health, max health)
         flight: (f32, f32), // tuple of (flight time remaining, max flight time) in seconds
+        vials: u32,
+        lives: u32,
     },
 
     /// Sent by Firebrand to State to signal request to shoot fireball.

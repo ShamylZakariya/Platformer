@@ -519,6 +519,32 @@ impl Map {
         None
     }
 
+    /// Finds the ObjectGroup object in the provided layer occupying the same position and extent on
+    /// the map as the provided sprite.
+    pub fn object_group_properties_for_sprite(
+        &self,
+        sprite: &Sprite,
+        object_group_layer: &str,
+    ) -> Option<&ObjectGroupObject> {
+        if let Some(object_group) = self.object_group_named(object_group_layer) {
+            let x = sprite.origin.x.floor() as i32 * self.tile_width as i32;
+            let y = (self.height * self.tile_height) as i32
+                - (sprite.origin.y.floor() as i32 * self.tile_height as i32);
+            let width = sprite.extent.x.floor() as u32 * self.tile_width;
+            let height = sprite.extent.y.floor() as u32 * self.tile_height;
+
+            for obj in object_group.objects.iter() {
+                if obj.x == x && obj.y == y && obj.width == width && obj.height == height {
+                    return Some(obj);
+                }
+            }
+
+            None
+        } else {
+            None
+        }
+    }
+
     /// Returns a vector of all animated sprite names
     pub fn generate_animations<Z>(&self, layer: &Layer, z_depth: Z) -> Vec<SpriteFlipbookAnimation>
     where

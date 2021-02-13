@@ -42,6 +42,8 @@ pub struct GameStatePeek {
     pub player_position: Point2<f32>,
     pub player_health: (u32, u32), // current health points, max health points
     pub player_flight: (f32, f32), // current flight time remaining, max flight time
+    pub player_vials: u32,         // number of vials the player has
+    pub player_lives: u32,         // number of lives remaining
     pub current_map_bounds: Bounds,
 }
 
@@ -51,6 +53,8 @@ impl Default for GameStatePeek {
             player_position: point2(0.0, 0.0),
             player_health: (0, 0),
             player_flight: (0.0, 0.0),
+            player_vials: 0,
+            player_lives: 0,
             current_map_bounds: Bounds::default(),
         }
     }

@@ -64,10 +64,6 @@ impl GameUi {
         // load game ui map and construct material/drawable etcs
         let drawer_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
         let drawer_map = drawer_map.expect("Expected 'res/game_ui.tmx' to load");
-        let metadata = drawer_map
-            .object_group_named("Metadata")
-            .expect("Expected 'Metadata' objectgroup in map");
-        println!("{:?}", metadata);
 
         //
         //  Create sprite material and pipeline layout
