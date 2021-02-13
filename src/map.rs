@@ -12,6 +12,8 @@ use crate::state::constants::sprite_masks::*;
 use crate::tileset;
 use crate::{entities, geom::Bounds};
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 #[derive(Clone, Debug)]
 pub struct Layer {
     pub id: i32,
@@ -29,6 +31,63 @@ impl Default for Layer {
             width: 0,
             height: 0,
             tile_data: vec![],
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug)]
+pub struct ObjectGroupProperty {
+    pub name: String,
+    pub value: String,
+}
+
+impl ObjectGroupProperty {
+    fn new(name: &str, value: &str) -> Self {
+        Self {
+            name: name.trim().to_owned(),
+            value: value.trim().to_owned(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ObjectGroupObject {
+    pub id: i32,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub properties: Vec<ObjectGroupProperty>,
+}
+
+impl Default for ObjectGroupObject {
+    fn default() -> Self {
+        Self {
+            id: -1,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            properties: vec![],
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ObjectGroup {
+    pub id: i32,
+    pub name: String,
+    pub objects: Vec<ObjectGroupObject>,
+}
+
+impl Default for ObjectGroup {
+    fn default() -> Self {
+        Self {
+            id: -1,
+            name: "".to_owned(),
+            objects: vec![],
         }
     }
 }
@@ -109,6 +168,7 @@ pub struct Map {
     tile_width: u32,
     tile_height: u32,
     pub layers: Vec<Layer>,
+    pub object_groups: Vec<ObjectGroup>,
 }
 
 impl Map {
@@ -130,130 +190,248 @@ impl Map {
         let mut layers: Vec<Layer> = vec![];
         let mut current_layer: Option<Layer> = None;
         let mut handle_current_layer_data = false;
+        let mut object_groups: Vec<ObjectGroup> = vec![];
 
         for e in parser {
             match e {
                 Ok(XmlEvent::StartElement {
                     name, attributes, ..
-                }) => match name.local_name.as_str() {
-                    //
-                    // Handle the <map> block
-                    //
-                    "map" => {
-                        for attr in attributes {
-                            match attr.name.local_name.as_str() {
-                                "width" => {
-                                    width = Some(attr.value.parse().context(
-                                        "Expected to parse 'width' attr of <map> to u32.",
-                                    )?)
+                }) => {
+                    match name.local_name.as_str() {
+                        //
+                        // Handle the <map> block
+                        //
+                        "map" => {
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "width" => {
+                                        width = Some(attr.value.parse().context(
+                                            "Expected to parse 'width' attr of <map> to u32.",
+                                        )?)
+                                    }
+                                    "height" => {
+                                        height = Some(attr.value.parse().context(
+                                            "Expected to parse 'height' attr of <map> to u32.",
+                                        )?)
+                                    }
+                                    "tilewidth" => {
+                                        tile_width = Some(attr.value.parse().context(
+                                            "Expected to parse 'tilewidth' attr of <map> to u32.",
+                                        )?)
+                                    }
+                                    "tileheight" => {
+                                        tile_height = Some(attr.value.parse().context(
+                                            "Expected to parse 'tileheight' attr of <map> to u32.",
+                                        )?)
+                                    }
+                                    _ => {}
                                 }
-                                "height" => {
-                                    height = Some(attr.value.parse().context(
-                                        "Expected to parse 'height' attr of <map> to u32.",
-                                    )?)
-                                }
-                                "tilewidth" => {
-                                    tile_width = Some(attr.value.parse().context(
-                                        "Expected to parse 'tilewidth' attr of <map> to u32.",
-                                    )?)
-                                }
-                                "tileheight" => {
-                                    tile_height = Some(attr.value.parse().context(
-                                        "Expected to parse 'tileheight' attr of <map> to u32.",
-                                    )?)
-                                }
-                                _ => {}
                             }
                         }
-                    }
 
-                    //
-                    // Handle the <tileset> block
-                    //
-                    "tileset" => {
-                        for attr in attributes {
-                            match attr.name.local_name.as_str() {
-                                "source" => {
-                                    let tileset_path = parent_dir.join(attr.value);
-                                    tileset = Some(
-                                        tileset::TileSet::new_tsx(&tileset_path).with_context(
-                                            || {
-                                                format!(
+                        //
+                        // Handle the <tileset> block
+                        //
+                        "tileset" => {
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "source" => {
+                                        let tileset_path = parent_dir.join(attr.value);
+                                        tileset = Some(
+                                            tileset::TileSet::new_tsx(&tileset_path).with_context(
+                                                || {
+                                                    format!(
                                                     "Expected to load referenced <tileset> from {}",
                                                     tileset_path.display()
                                                 )
-                                            },
-                                        )?,
-                                    );
+                                                },
+                                            )?,
+                                        );
+                                    }
+                                    "firstgid" => {
+                                        tileset_first_gid = Some(attr.value.parse().context(
+                                            "Expected to parse <tileset> 'firstgid' to u32",
+                                        )?);
+                                    }
+                                    _ => {}
                                 }
-                                "firstgid" => {
-                                    tileset_first_gid = Some(attr.value.parse().context(
-                                        "Expected to parse <tileset> 'firstgid' to u32",
-                                    )?);
-                                }
-                                _ => {}
+                                if attr.name.local_name == "source" {}
                             }
-                            if attr.name.local_name == "source" {}
                         }
-                    }
 
-                    //
-                    // Handle the <layer> block - assigns current_layer
-                    //
-                    "layer" => {
-                        let mut layer = Layer::default();
-                        for attr in attributes {
-                            match attr.name.local_name.as_str() {
-                                "id" => {
-                                    layer.id = attr.value.parse().context(
-                                        "Expected to parse 'id' field of <layer> to u32'",
-                                    )?
+                        //
+                        // Handle the <layer> block - assigns current_layer
+                        //
+                        "layer" => {
+                            let mut layer = Layer::default();
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "id" => {
+                                        layer.id = attr.value.parse().context(
+                                            "Expected to parse 'id' field of <layer> to i32'",
+                                        )?
+                                    }
+                                    "width" => {
+                                        layer.width = attr.value.parse().context(
+                                            "Expected to parse 'width' field of <layer> to u32'",
+                                        )?
+                                    }
+                                    "height" => {
+                                        layer.height = attr.value.parse().context(
+                                            "Expected to parse 'height' field of <layer> to u32'",
+                                        )?
+                                    }
+                                    "name" => {
+                                        layer.name = attr.value;
+                                    }
+                                    _ => {}
                                 }
-                                "width" => {
-                                    layer.width = attr.value.parse().context(
-                                        "Expected to parse 'width' field of <layer> to u32'",
-                                    )?
-                                }
-                                "height" => {
-                                    layer.height = attr.value.parse().context(
-                                        "Expected to parse 'height' field of <layer> to u32'",
-                                    )?
-                                }
-                                "name" => {
-                                    layer.name = attr.value;
-                                }
-                                _ => {}
                             }
+                            // verify required fields were read
+                            if layer.id == -1 {
+                                anyhow::bail!("<layer> element missing an 'id' attribute.");
+                            }
+                            if layer.width == 0 {
+                                anyhow::bail!("<layer> element missing a 'width' attribute.");
+                            }
+                            if layer.height == 0 {
+                                anyhow::bail!("<layer> element missing a 'height' attribute.");
+                            }
+                            current_layer = Some(layer);
                         }
-                        // verify required fields were read
-                        if layer.id == -1 {
-                            anyhow::bail!("<layer> element missing an 'id' attribute.");
-                        }
-                        if layer.width == 0 {
-                            anyhow::bail!("<layer> element missing a 'width' attribute.");
-                        }
-                        if layer.height == 0 {
-                            anyhow::bail!("<layer> element missing a 'height' attribute.");
-                        }
-                        current_layer = Some(layer);
-                    }
 
-                    //
-                    // Handle the <data> block - requires that current_layer is Some
-                    //
-                    "data" => {
-                        handle_current_layer_data = false;
-                        for attr in attributes {
-                            if attr.name.local_name == "encoding" && attr.value == "csv" {
-                                handle_current_layer_data = true;
+                        //
+                        // Handle the <data> block - requires that current_layer is Some
+                        //
+                        "data" => {
+                            handle_current_layer_data = false;
+                            for attr in attributes {
+                                if attr.name.local_name == "encoding" && attr.value == "csv" {
+                                    handle_current_layer_data = true;
+                                }
+                            }
+                            if !handle_current_layer_data {
+                                anyhow::bail!("Only supported encoding for <data> block is 'csv'");
                             }
                         }
-                        if !handle_current_layer_data {
-                            anyhow::bail!("Only supported encoding for <data> block is 'csv'");
+
+                        //
+                        //  Handle <objectgroup>, and nested <object>, <properties> and <property> elements
+                        //
+                        "objectgroup" => {
+                            let mut object_group = ObjectGroup::default();
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "id" => {
+                                        object_group.id = attr.value.parse().context(
+                                            "Expected to parse 'id' field of <objectgroup> to i32",
+                                        )?
+                                    }
+                                    "name" => object_group.name = attr.value,
+                                    _ => {}
+                                }
+                            }
+                            // verify required fields
+                            if object_group.id == -1 {
+                                anyhow::bail!("<objectgroup> element missing an 'id' attribute");
+                            }
+                            if object_group.name.is_empty() {
+                                anyhow::bail!("<objectgroup> element missing a 'name' attribute");
+                            }
+
+                            object_groups.push(object_group);
                         }
+
+                        "object" => {
+                            let mut object = ObjectGroupObject::default();
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "id" => {
+                                        object.id = attr.value.parse().context(
+                                            "Expected to parse 'id' field of <object> to i32",
+                                        )?
+                                    }
+                                    "x" => {
+                                        object.x = attr.value.parse().context(
+                                            "Expected to parse 'x' field of <object> to i32",
+                                        )?
+                                    }
+                                    "y" => {
+                                        object.y = attr.value.parse().context(
+                                            "Expected to parse 'y' field of <object> to i32",
+                                        )?
+                                    }
+                                    "width" => {
+                                        object.width = attr.value.parse().context(
+                                            "Expected to parse 'width' field of <object> to u32",
+                                        )?
+                                    }
+                                    "height" => {
+                                        object.height = attr.value.parse().context(
+                                            "Expected to parse 'height' field of <object> to u32",
+                                        )?
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            // verify required fields
+                            if object.id == -1 {
+                                anyhow::bail!("<object> element missing an 'id' attribute");
+                            }
+                            if object.width == 0 {
+                                anyhow::bail!("<object> element missing a 'width' attribute");
+                            }
+                            if object.height == 0 {
+                                anyhow::bail!("<object> element missing a 'height' attribute");
+                            }
+
+                            object_groups
+                                .last_mut()
+                                .context("Expect <object> to be nested in <objectgroup>")?
+                                .objects
+                                .push(object);
+                        }
+
+                        "property" => {
+                            let mut name: Option<String> = None;
+                            let mut value: Option<String> = None;
+
+                            for attr in attributes {
+                                match attr.name.local_name.as_str() {
+                                    "name" => {
+                                        name = Some(attr.value);
+                                    }
+                                    "value" => {
+                                        value = Some(attr.value);
+                                    }
+                                    _ => {}
+                                }
+                            }
+
+                            let property = ObjectGroupProperty::new(
+                                &name.context(
+                                    "Expect <property> element to have a 'name' attribute",
+                                )?,
+                                &value.context(
+                                    "Expect <property> element to have a 'value' attribute",
+                                )?,
+                            );
+
+                            object_groups
+                                .last_mut()
+                                .context("Expect <object> to be nested in <objectgroup>")?
+                                .objects
+                                .last_mut()
+                                .context(
+                                    "Expect <property> element to be nested in an <object> element",
+                                )?
+                                .properties
+                                .push(property);
+                        }
+
+                        _ => {}
                     }
-                    _ => {}
-                },
+                }
                 Ok(XmlEvent::Characters(characters)) if handle_current_layer_data => {
                     if let Some(layer) = &mut current_layer {
                         for line in characters.split_whitespace() {
@@ -309,6 +487,7 @@ impl Map {
             tile_width,
             tile_height,
             layers,
+            object_groups,
         })
     }
 
@@ -325,6 +504,16 @@ impl Map {
         for layer in &self.layers {
             if layer.name == name {
                 return Some(layer);
+            }
+        }
+        None
+    }
+
+    /// Returns the objectgroup by the provided name, or None if not found
+    pub fn object_group_named(&self, name: &str) -> Option<&ObjectGroup> {
+        for object_group in &self.object_groups {
+            if object_group.name == name {
+                return Some(object_group);
             }
         }
         None

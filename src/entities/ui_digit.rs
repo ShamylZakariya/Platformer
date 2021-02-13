@@ -1,8 +1,6 @@
 use cgmath::*;
 use std::time::Duration;
 
-
-
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
@@ -54,9 +52,7 @@ impl Entity for UiDigit {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms
-            .data
-            .set_model_position(self.position);
+        uniforms.data.set_model_position(self.position);
     }
 
     fn entity_id(&self) -> u32 {
