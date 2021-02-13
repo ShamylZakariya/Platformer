@@ -126,16 +126,16 @@ impl GameUi {
 
         let mut entity_id_vendor = entity::IdVendor::default();
         let mut collision_space = collision::Space::new(&[]);
-        let health_dots_layer = get_layer("HealthDots");
-        let health_dots_vec = drawer_map.generate_entities(
-            health_dots_layer,
+        let entities_layer = get_layer("Entities");
+        let entities_vec = drawer_map.generate_entities(
+            entities_layer,
             &mut collision_space,
             &mut entity_id_vendor,
             |_, _| layers::ui::FOREGROUND,
         );
 
         let mut entities = HashMap::new();
-        for e in health_dots_vec {
+        for e in entities_vec {
             let sprite_name = e.sprite_name().to_string();
             let ec = EntityComponents::with_entity_drawable(
                 e,

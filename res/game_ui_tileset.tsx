@@ -161,7 +161,28 @@
    <property name="name" value="character_exclamation_point"/>
   </properties>
  </tile>
- <tile id="45">
+ <tile id="38">
+  <properties>
+   <property name="cycle" value="0"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="39">
+  <properties>
+   <property name="cycle" value="1"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="40">
+  <properties>
+   <property name="cycle" value="2"/>
+   <property name="name" value="numeral"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="63">
   <properties>
    <property name="cycle" value="default"/>
    <property name="entity_class" value="UiFlightBar"/>
