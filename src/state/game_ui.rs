@@ -127,29 +127,33 @@ impl GameUi {
         let mut entity_id_vendor = entity::IdVendor::default();
         let mut collision_space = collision::Space::new(&[]);
         let entities_layer = get_layer("Entities");
-        let entities_vec = drawer_map.generate_entities(
+
+        let entities = drawer_map.generate_entities(
             entities_layer,
             &mut collision_space,
             &mut entity_id_vendor,
             |_, _| layers::ui::FOREGROUND,
         );
 
-        let mut entities = HashMap::new();
-        for e in entities_vec {
-            let sprite_name = e.sprite_name().to_string();
-            let ec = EntityComponents::with_entity_drawable(
-                e,
-                rendering::EntityDrawable::load(
-                    &drawer_map.tileset,
-                    sprite_material.clone(),
-                    &gpu.device,
-                    &sprite_name,
-                    0,
-                ),
-                rendering::Uniforms::new(&gpu.device, sprite_size_px),
-            );
-            entities.insert(ec.entity.entity_id(), ec);
-        }
+        // convert entities to a mapping of id -> EntityComponents
+        let entities = entities
+            .into_iter()
+            .map(|e| {
+                let sprite_name = e.sprite_name().to_string();
+                let ec = EntityComponents::with_entity_drawable(
+                    e,
+                    rendering::EntityDrawable::load(
+                        &drawer_map.tileset,
+                        sprite_material.clone(),
+                        &gpu.device,
+                        &sprite_name,
+                        0,
+                    ),
+                    rendering::Uniforms::new(&gpu.device, sprite_size_px),
+                );
+                (ec.id(), ec)
+            })
+            .collect::<HashMap<_, _>>();
 
         let mut game_ui = Self {
             pipeline,

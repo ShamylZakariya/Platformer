@@ -61,9 +61,14 @@ impl AppState {
         if let Some(ref mut overlay) = self.overlay {
             overlay.update(window, dt);
         }
-        if !self.game_ui.is_paused() {
-            self.game_state.update(window, dt, &mut self.gpu);
-        }
+
+        let game_dt = if self.game_ui.is_paused() {
+            std::time::Duration::from_secs(0)
+        } else {
+            dt
+        };
+
+        self.game_state.update(window, game_dt, &mut self.gpu);
         self.game_ui
             .update(window, dt, &mut self.gpu, &self.game_state);
     }
