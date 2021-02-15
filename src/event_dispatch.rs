@@ -22,6 +22,10 @@ impl Message {
             event,
         }
     }
+
+    pub fn is_broadcast(&self) -> bool {
+        self.sender_entity_id.is_none() && self.recipient_entity_id.is_none()
+    }
 }
 
 pub trait MessageHandler {

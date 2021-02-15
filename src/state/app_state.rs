@@ -1,6 +1,6 @@
 use winit::{event::WindowEvent, window::Window};
 
-use crate::Options;
+use crate::{entity, event_dispatch, Options};
 
 use super::{
     debug_overlay::DebugOverlay, game_state::GameState, game_ui::GameUi, gpu_state::GpuState,
@@ -13,12 +13,17 @@ pub struct AppState {
     game_state: GameState,
     game_ui: GameUi,
     overlay: Option<DebugOverlay>,
+
+    entity_id_vendor: entity::IdVendor,
+    message_dispatcher: event_dispatch::Dispatcher,
 }
 
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
-        let game_state = GameState::new(&mut gpu, &options);
-        let mut game_ui = GameUi::new(&mut gpu, &options);
+        let mut entity_id_vendor = entity::IdVendor::default();
+
+        let game_state = GameState::new(&mut gpu, &options, &mut entity_id_vendor);
+        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
@@ -32,6 +37,9 @@ impl AppState {
             game_state,
             game_ui,
             overlay: overlay_ui,
+
+            entity_id_vendor,
+            message_dispatcher: event_dispatch::Dispatcher::default(),
         }
     }
 
@@ -70,9 +78,23 @@ impl AppState {
             dt
         };
 
-        self.game_state.update(window, game_dt, &mut self.gpu);
-        self.game_ui
-            .update(window, dt, &mut self.gpu, &self.game_state);
+        self.game_state.update(
+            window,
+            game_dt,
+            &mut self.gpu,
+            &mut self.message_dispatcher,
+            &mut self.entity_id_vendor,
+        );
+        self.game_ui.update(
+            window,
+            dt,
+            &mut self.gpu,
+            &self.game_state,
+            &mut self.message_dispatcher,
+            &mut self.entity_id_vendor,
+        );
+
+        event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
     pub fn render(&mut self, window: &Window) {
@@ -111,5 +133,20 @@ impl AppState {
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
+    }
+}
+
+impl event_dispatch::MessageHandler for AppState {
+    fn handle_message(&mut self, message: &event_dispatch::Message) {
+        self.game_state.handle_message(
+            message,
+            &mut self.message_dispatcher,
+            &mut self.entity_id_vendor,
+        );
+        self.game_ui.handle_message(
+            message,
+            &mut self.message_dispatcher,
+            &mut self.entity_id_vendor,
+        );
     }
 }

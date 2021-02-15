@@ -1,4 +1,3 @@
-use camera::Uniforms;
 use cgmath::*;
 use std::{collections::HashMap, path::Path, rc::Rc, time::Duration};
 
@@ -52,12 +51,15 @@ pub struct GameUi {
     time: f32,
     drawer_open: bool,
     drawer_open_progress: f32,
-    message_dispatcher: event_dispatch::Dispatcher,
     start_message_blink_countdown: f32,
 }
 
 impl GameUi {
-    pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options) -> Self {
+    pub fn new(
+        gpu: &mut gpu_state::GpuState,
+        _options: &Options,
+        entity_id_vendor: &mut entity::IdVendor,
+    ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
         let camera_uniforms = camera::Uniforms::new(&gpu.device);
@@ -137,14 +139,13 @@ impl GameUi {
         //  Load entities
         //
 
-        let mut entity_id_vendor = entity::IdVendor::default();
         let mut collision_space = collision::Space::new(&[]);
         let entities_layer = get_layer("Entities");
 
         let entities = game_ui_map.generate_entities(
             entities_layer,
             &mut collision_space,
-            &mut entity_id_vendor,
+            entity_id_vendor,
             |_, _| layers::ui::FOREGROUND,
         );
 
@@ -189,7 +190,6 @@ impl GameUi {
             time: 0.0,
             drawer_open: false,
             drawer_open_progress: 0.0,
-            message_dispatcher: event_dispatch::Dispatcher::default(),
             start_message_blink_countdown: 0.0,
         };
 
@@ -230,6 +230,8 @@ impl GameUi {
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
         game: &game_state::GameState,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
+        _entity_id_vendor: &mut entity::IdVendor,
     ) {
         self.time += dt.as_secs_f32();
 
@@ -260,7 +262,7 @@ impl GameUi {
                 dt,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
-                &mut self.message_dispatcher,
+                message_dispatcher,
                 &game_state_peek,
             );
             if let Some(ref mut uniforms) = e.uniforms {
@@ -358,6 +360,33 @@ impl GameUi {
             }
         }
     }
+
+    pub fn handle_message(
+        &mut self,
+        message: &event_dispatch::Message,
+        _message_dispatcher: &mut event_dispatch::Dispatcher,
+        _entity_id_vendor: &mut entity::IdVendor,
+    ) {
+        if let Some(recipient_entity_id) = message.recipient_entity_id {
+            // if message has a destination entity, attempt to route it there
+            if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
+                e.entity.handle_message(&message);
+            }
+        } else {
+            // if broadcast, send to everybody.
+            if message.is_broadcast() {
+                for e in self.entities.values_mut() {
+                    e.entity.handle_message(message);
+                }
+            }
+
+            // As yet, GameUi doesn't process any message itself
+            // match &message.event {
+            //     _ => {}
+            // }
+        }
+    }
+
     // MARK: Public
 
     pub fn is_paused(&self) -> bool {
@@ -390,5 +419,4 @@ impl GameUi {
 
         lerp(self.drawer_open_progress, drawer_closed_y, drawer_open_y)
     }
-
 }

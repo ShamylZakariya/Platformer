@@ -1,10 +1,9 @@
 CURRENTLY:
 TODO:
-    - Implement game UI
-        - Game Start/Over text
-            - ready as drawable/uniform pairs
-            - need to determine when to show, how to blink? etc.
-                - start message blinks at ~130ms period for ~2secs, then firebrand walks onscreen from stage left.
+    GameController
+        - move MessageDIspatcher to AppState
+        - Add GameController
+        - Send messages for things like passing a checkpoint (will need a new entity presumably) and death, etc, which are processed by GameController
 
     - Event::FirebrandStatusChanged should probably just carry a firebrand::CharacterState
     - Postprocessing shader to make Gameboy looking graphics

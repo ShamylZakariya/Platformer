@@ -97,10 +97,8 @@ pub struct GameState {
     // Collision detection and dispatch
     map: map::Map,
     collision_space: collision::Space,
-    message_dispatcher: event_dispatch::Dispatcher,
 
     // Entity rendering
-    entity_id_vendor: entity::IdVendor,
     entity_tileset: tileset::TileSet,
     entity_material: Rc<rendering::Material>,
     entities: HashMap<u32, entity::EntityComponents>,
@@ -129,9 +127,12 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(gpu: &mut gpu_state::GpuState, options: &Options) -> Self {
+    pub fn new(
+        gpu: &mut gpu_state::GpuState,
+        options: &Options,
+        entity_id_vendor: &mut entity::IdVendor,
+    ) -> Self {
         // Load the stage map
-        let mut entity_id_vendor = entity::IdVendor::default();
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
         let sprite_size_px = vec2(
@@ -211,7 +212,7 @@ impl GameState {
             let entities = map.generate_entities(
                 entity_layer,
                 &mut collision_space,
-                &mut entity_id_vendor,
+                entity_id_vendor,
                 |_, _| layers::stage::ENTITIES,
             );
 
@@ -370,8 +371,6 @@ impl GameState {
             stage_sprite_drawable,
             map,
             collision_space,
-            message_dispatcher: event_dispatch::Dispatcher::default(),
-            entity_id_vendor,
             entity_tileset,
             entity_material,
             entities: HashMap::new(),
@@ -399,7 +398,7 @@ impl GameState {
         }
 
         for se in stage_entities {
-            game_state.request_add_entity(se);
+            game_state.request_add_entity(entity_id_vendor, se);
         }
 
         game_state
@@ -462,6 +461,8 @@ impl GameState {
         _window: &Window,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
+        _entity_id_vendor: &mut entity::IdVendor,
     ) {
         self.time += dt.as_secs_f32();
 
@@ -499,7 +500,7 @@ impl GameState {
                     dt,
                     &self.map,
                     &mut self.collision_space,
-                    &mut self.message_dispatcher,
+                    message_dispatcher,
                     &game_state_peek,
                 );
                 if let Some(ref mut uniforms) = e.uniforms {
@@ -558,12 +559,6 @@ impl GameState {
         //
 
         self.update_entity_visibility();
-
-        //
-        // Dispatch collected messages
-        //
-
-        event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
     pub fn render(
@@ -663,6 +658,157 @@ impl GameState {
         }
     }
 
+    pub fn handle_message(
+        &mut self,
+        message: &event_dispatch::Message,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
+        entity_id_vendor: &mut entity::IdVendor,
+    ) {
+        if let Some(recipient_entity_id) = message.recipient_entity_id {
+            //
+            // if the message has a destination entity, route it - if no `destination
+            // entity is found that's OK, it might be expired.
+            //
+            if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
+                e.entity.handle_message(&message);
+            }
+        } else {
+            // if broadcast, send to everybody.
+            if message.is_broadcast() {
+                for e in self.entities.values_mut() {
+                    e.entity.handle_message(message);
+                }
+            }
+
+            match &message.event {
+                Event::TryShootFireball {
+                    origin,
+                    direction,
+                    velocity,
+                    damage,
+                } => {
+                    if self.player_can_shoot_fireball() {
+                        self.request_add_entity(
+                            entity_id_vendor,
+                            Box::new(entities::fireball::Fireball::new_fireball(
+                                self.firebrand_entity_id,
+                                point3(origin.x, origin.y, layers::stage::FOREGROUND),
+                                *direction,
+                                *velocity,
+                                *damage,
+                            )),
+                        );
+
+                        // Reply to firebrand that a shot was fired
+                        message_dispatcher
+                            .global_to_entity(self.firebrand_entity_id, Event::DidShootFireball);
+                    }
+                }
+
+                Event::PlayEntityDeathAnimation {
+                    position,
+                    direction,
+                } => {
+                    self.request_add_entity(
+                        entity_id_vendor,
+                        Box::new(entities::death_animation::DeathAnimation::new_enemy_death(
+                            point3(position.x, position.y, layers::stage::FOREGROUND),
+                            *direction,
+                        )),
+                    );
+                }
+
+                Event::SpawnEntity {
+                    class_name,
+                    spawn_point_sprite,
+                    spawn_point_tile,
+                } => {
+                    match entities::instantiate_map_sprite(
+                        class_name,
+                        spawn_point_sprite,
+                        spawn_point_tile,
+                        &self.map,
+                        &mut self.collision_space,
+                        Some(entity_id_vendor),
+                    ) {
+                        Ok(entity) => {
+                            let id = self.request_add_entity(entity_id_vendor, entity);
+                            message_dispatcher.global_to_entity(
+                                message.sender_entity_id.unwrap(),
+                                Event::EntityWasSpawned {
+                                    entity_id: Some(id),
+                                },
+                            );
+                        }
+                        Err(e) => {
+                            println!("Unable to instantiate \"{}\", error: {:?}", class_name, e);
+                            panic!("Failed to instantiate SpawnPoint entity");
+                        }
+                    }
+                }
+
+                Event::ShootFiresprite {
+                    position,
+                    dir,
+                    velocity,
+                    damage,
+                } => {
+                    let sender_id = message
+                        .sender_entity_id
+                        .expect("Expect ShootFiresprite message to have a sender_entity_id");
+                    self.request_add_entity(
+                        entity_id_vendor,
+                        Box::new(entities::fireball::Fireball::new_firesprite(
+                            sender_id,
+                            point3(position.x, position.y, layers::stage::FOREGROUND),
+                            *dir,
+                            *velocity,
+                            *damage,
+                        )),
+                    );
+                }
+
+                Event::BossEncountered { arena_left } => {
+                    self.on_boss_fight_started(message_dispatcher, *arena_left);
+                }
+
+                Event::BossDefeated => {
+                    self.on_boss_was_defeated(message_dispatcher);
+                }
+
+                Event::BossDied => {
+                    self.on_boss_died(message_dispatcher);
+                }
+
+                Event::StartCameraShake { pattern } => {
+                    self.camera_shaker = Some(CameraShaker::new(pattern.clone()));
+                }
+
+                Event::EndCameraShake => {
+                    self.camera_shaker = None;
+                }
+
+                Event::FirebrandDied => {
+                    self.on_player_dead(entity_id_vendor, message_dispatcher);
+                }
+
+                Event::FirebrandStatusChanged {
+                    health,
+                    flight,
+                    vials,
+                    lives,
+                } => {
+                    self.game_state_peek.player_health = *health;
+                    self.game_state_peek.player_flight = *flight;
+                    self.game_state_peek.player_vials = *vials;
+                    self.game_state_peek.player_lives = *lives;
+                }
+
+                _ => {}
+            }
+        }
+    }
+
     pub fn game_state_peek(&self) -> GameStatePeek {
         self.game_state_peek
     }
@@ -758,9 +904,13 @@ impl GameState {
     /// Request that the provided entity be added to the GameState at the next update.
     /// Returns the entity_id of the entity if it's already been initialized, or the
     /// id that will be assigned when it's late initialized at insertion time.
-    fn request_add_entity(&mut self, entity: Box<dyn entity::Entity>) -> u32 {
+    fn request_add_entity(
+        &mut self,
+        entity_id_vendor: &mut entity::IdVendor,
+        entity: Box<dyn entity::Entity>,
+    ) -> u32 {
         if entity.entity_id() == 0 {
-            let id = self.entity_id_vendor.next_id();
+            let id = entity_id_vendor.next_id();
             self.entities_to_add.push(EntityAdditionRequest {
                 entity_id: id,
                 entity,
@@ -820,7 +970,11 @@ impl GameState {
         self.entities.insert(components.id(), components);
     }
 
-    fn on_boss_fight_started(&mut self, arena_left_bounds: f32) {
+    fn on_boss_fight_started(
+        &mut self,
+        _message_dispatcher: &mut event_dispatch::Dispatcher,
+        arena_left_bounds: f32,
+    ) {
         println!("\n\nBOSS FIGHT!!\n\n");
         self.boss_fight_start_time = Some(self.time);
         self.boss_fight_arena_left_bounds = Some(arena_left_bounds);
@@ -828,7 +982,7 @@ impl GameState {
             Some(self.camera_controller.viewport_bounds(0.0).left());
     }
 
-    fn on_boss_was_defeated(&mut self) {
+    fn on_boss_was_defeated(&mut self, _message_dispatcher: &mut event_dispatch::Dispatcher) {
         println!("\n\nBOSS DEFEATED!!\n\n");
         //
         // Clear all entities from the stage
@@ -840,166 +994,24 @@ impl GameState {
         });
     }
 
-    fn on_boss_died(&mut self) {
+    fn on_boss_died(&mut self, message_dispatcher: &mut event_dispatch::Dispatcher) {
         //
         //  Kick off the floor raise.
         //
 
-        self.message_dispatcher.broadcast(Event::RaiseExitFloor);
+        message_dispatcher.broadcast(Event::RaiseExitFloor);
     }
 
-    fn on_player_dead(&mut self) {
+    fn on_player_dead(
+        &mut self,
+        entity_id_vendor: &mut entity::IdVendor,
+        _message_dispatcher: &mut event_dispatch::Dispatcher,
+    ) {
         // spawn eight DeathAnimations, one in each compass dir
         let position = self.get_firebrand().entity.position();
         for dir in CompassDir::iter() {
             let e = entities::death_animation::DeathAnimation::new_firebrand_death(position, dir);
-            self.request_add_entity(Box::new(e));
-        }
-    }
-}
-
-impl event_dispatch::MessageHandler for GameState {
-    fn handle_message(&mut self, message: &event_dispatch::Message) {
-        if let Some(recipient_entity_id) = message.recipient_entity_id {
-            //
-            // if the message has a destination entity, route it - if no destination
-            // entity is found that's OK, it might be expired.
-            //
-            if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
-                e.entity.handle_message(&message);
-            }
-        } else {
-            // In the case that we have neither a sender nor receiver this is a global
-            // broadcast and we send to everybody.
-            if message.sender_entity_id.is_none() && message.recipient_entity_id.is_none() {
-                for e in self.entities.values_mut() {
-                    e.entity.handle_message(message);
-                }
-            }
-
-            match &message.event {
-                Event::TryShootFireball {
-                    origin,
-                    direction,
-                    velocity,
-                    damage,
-                } => {
-                    if self.player_can_shoot_fireball() {
-                        self.request_add_entity(Box::new(
-                            entities::fireball::Fireball::new_fireball(
-                                self.firebrand_entity_id,
-                                point3(origin.x, origin.y, layers::stage::FOREGROUND),
-                                *direction,
-                                *velocity,
-                                *damage,
-                            ),
-                        ));
-
-                        // Reply to firebrand that a shot was fired
-                        self.message_dispatcher
-                            .global_to_entity(self.firebrand_entity_id, Event::DidShootFireball);
-                    }
-                }
-
-                Event::PlayEntityDeathAnimation {
-                    position,
-                    direction,
-                } => {
-                    self.request_add_entity(Box::new(
-                        entities::death_animation::DeathAnimation::new_enemy_death(
-                            point3(position.x, position.y, layers::stage::FOREGROUND),
-                            *direction,
-                        ),
-                    ));
-                }
-
-                Event::SpawnEntity {
-                    class_name,
-                    spawn_point_sprite,
-                    spawn_point_tile,
-                } => {
-                    match entities::instantiate_map_sprite(
-                        class_name,
-                        spawn_point_sprite,
-                        spawn_point_tile,
-                        &self.map,
-                        &mut self.collision_space,
-                        Some(&mut self.entity_id_vendor),
-                    ) {
-                        Ok(entity) => {
-                            let id = self.request_add_entity(entity);
-                            self.message_dispatcher.global_to_entity(
-                                message.sender_entity_id.unwrap(),
-                                Event::EntityWasSpawned {
-                                    entity_id: Some(id),
-                                },
-                            );
-                        }
-                        Err(e) => {
-                            println!("Unable to instantiate \"{}\", error: {:?}", class_name, e);
-                            panic!("Failed to instantiate SpawnPoint entity");
-                        }
-                    }
-                }
-
-                Event::ShootFiresprite {
-                    position,
-                    dir,
-                    velocity,
-                    damage,
-                } => {
-                    let sender_id = message
-                        .sender_entity_id
-                        .expect("Expect ShootFiresprite message to have a sender_entity_id");
-                    self.request_add_entity(Box::new(
-                        entities::fireball::Fireball::new_firesprite(
-                            sender_id,
-                            point3(position.x, position.y, layers::stage::FOREGROUND),
-                            *dir,
-                            *velocity,
-                            *damage,
-                        ),
-                    ));
-                }
-
-                Event::BossEncountered { arena_left } => {
-                    self.on_boss_fight_started(*arena_left);
-                }
-
-                Event::BossDefeated => {
-                    self.on_boss_was_defeated();
-                }
-
-                Event::BossDied => {
-                    self.on_boss_died();
-                }
-
-                Event::StartCameraShake { pattern } => {
-                    self.camera_shaker = Some(CameraShaker::new(pattern.clone()));
-                }
-
-                Event::EndCameraShake => {
-                    self.camera_shaker = None;
-                }
-
-                Event::FirebrandDied => {
-                    self.on_player_dead();
-                }
-
-                Event::FirebrandStatusChanged {
-                    health,
-                    flight,
-                    vials,
-                    lives,
-                } => {
-                    self.game_state_peek.player_health = *health;
-                    self.game_state_peek.player_flight = *flight;
-                    self.game_state_peek.player_vials = *vials;
-                    self.game_state_peek.player_lives = *lives;
-                }
-
-                _ => {}
-            }
+            self.request_add_entity(entity_id_vendor, Box::new(e));
         }
     }
 }
