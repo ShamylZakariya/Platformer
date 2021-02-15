@@ -24,6 +24,8 @@ use super::{
 // ---------------------------------------------------------------------------------------------------------------------
 
 const DRAWER_OPEN_VEL: f32 = 2.0;
+const START_MESSAGE_DURATION: f32 = 2.0;
+const START_MESSAGE_BLINK_PERIOD: f32 = 0.25;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -51,6 +53,7 @@ pub struct GameUi {
     drawer_open: bool,
     drawer_open_progress: f32,
     message_dispatcher: event_dispatch::Dispatcher,
+    start_message_blink_countdown: f32,
 }
 
 impl GameUi {
@@ -187,6 +190,7 @@ impl GameUi {
             drawer_open: false,
             drawer_open_progress: 0.0,
             message_dispatcher: event_dispatch::Dispatcher::default(),
+            start_message_blink_countdown: 0.0,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -283,6 +287,10 @@ impl GameUi {
 
         center_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);
         center_drawable(&self.game_start_drawable, &mut self.game_start_uniforms);
+
+        // update countdowns
+        self.start_message_blink_countdown =
+            (self.start_message_blink_countdown - dt.as_secs_f32()).max(0.0);
     }
 
     pub fn render(
@@ -339,16 +347,25 @@ impl GameUi {
             }
         }
 
-        // self.game_over_drawable.draw(
-        //     &mut render_pass,
-        //     &self.camera_uniforms,
-        //     &self.game_over_uniforms,
-        // );
+        if self.start_message_blink_countdown > 0.0 {
+            let cycle = (self.start_message_blink_countdown / START_MESSAGE_BLINK_PERIOD) as i32;
+            if cycle % 2 == 1 {
+                self.game_start_drawable.draw(
+                    &mut render_pass,
+                    &self.camera_uniforms,
+                    &self.game_start_uniforms,
+                );
+            }
+        }
     }
     // MARK: Public
 
     pub fn is_paused(&self) -> bool {
         self.drawer_open
+    }
+
+    pub fn show_start_message(&mut self) {
+        self.start_message_blink_countdown = START_MESSAGE_DURATION;
     }
 
     // MARK: Private
@@ -373,4 +390,5 @@ impl GameUi {
 
         lerp(self.drawer_open_progress, drawer_closed_y, drawer_open_y)
     }
+
 }

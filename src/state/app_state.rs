@@ -18,12 +18,14 @@ pub struct AppState {
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let game_state = GameState::new(&mut gpu, &options);
-        let game_ui = GameUi::new(&mut gpu, &options);
+        let mut game_ui = GameUi::new(&mut gpu, &options);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None
         };
+
+        game_ui.show_start_message();
 
         Self {
             gpu,

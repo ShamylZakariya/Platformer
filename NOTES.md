@@ -4,6 +4,8 @@ TODO:
         - Game Start/Over text
             - ready as drawable/uniform pairs
             - need to determine when to show, how to blink? etc.
+                - start message blinks at ~130ms period for ~2secs, then firebrand walks onscreen from stage left.
+
     - Event::FirebrandStatusChanged should probably just carry a firebrand::CharacterState
     - Postprocessing shader to make Gameboy looking graphics
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
