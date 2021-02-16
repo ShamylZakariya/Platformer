@@ -1,9 +1,13 @@
 CURRENTLY:
+    CheckPoint
+        - usable for constructing firebrand
+        - needs to send a message when firebrand passes it, to be received by... GameController maybe
+
 TODO:
     GameController
         - Add GameController
         - Send messages for things like passing a checkpoint (will need a new entity presumably) and death, etc, which are processed by GameController
-        - make GameState take some constructor parameters, like player init position, lives remaining, level to laod, etc. 
+        - make GameState take some constructor parameters, like player init position, lives remaining, level to laod, etc.
         - when player passes a checkpoint that will be saved by GameController which will remember that and pass it on when constructing a new GameState after player dies.
 
     - Event::FirebrandStatusChanged should probably just carry a firebrand::CharacterState
