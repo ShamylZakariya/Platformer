@@ -106,7 +106,7 @@
  </tile>
  <tile id="37">
   <properties>
-   <property name="entity_class" value="Firebrand"/>
+   <property name="entity_class" value="CheckPoint"/>
   </properties>
  </tile>
  <tile id="38">

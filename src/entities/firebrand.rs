@@ -15,7 +15,6 @@ use crate::{
         constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },
-    tileset,
 };
 
 use super::util::HorizontalDir;
@@ -396,16 +395,26 @@ pub struct Firebrand {
     did_send_death_message: bool,
 }
 
-impl Default for Firebrand {
-    fn default() -> Self {
+impl Firebrand {
+    pub fn new(position: Point3<f32>) -> Firebrand {
+        let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
+        let collider = sprite::Sprite::unit(
+            sprite::CollisionShape::Square,
+            position.xy().cast().unwrap(),
+            position.z,
+            point2(0.0, 0.0),
+            vec2(0.0, 0.0),
+            vec4(1.0, 1.0, 1.0, 1.0),
+            mask,
+        );
         Self {
             entity_id: 0,
-            collider: None,
+            collider: Some(collider),
             pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
             input_state: FirebrandInputState::default(),
-            character_state: CharacterState::new(point2(0.0, 0.0)),
+            character_state: CharacterState::new(position.xy()),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
@@ -426,22 +435,11 @@ impl Default for Firebrand {
 }
 
 impl Entity for Firebrand {
-    fn init_from_map_sprite(
-        &mut self,
-        entity_id: u32,
-        sprite: &sprite::Sprite,
-        _tile: &tileset::Tile,
-        map: &map::Map,
-        collision_space: &mut collision::Space,
-    ) {
+    fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
-        self.collider = Some(*sprite);
         self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
-        self.character_state.position = sprite.origin.xy();
-
         if let Some(ref mut collider) = self.collider {
-            collider.mask |= SHOOTABLE;
-            collider.collision_shape = CollisionShape::Square;
+            collider.entity_id = Some(entity_id);
             collision_space.add_dynamic_sprite(collider);
         }
     }

@@ -75,6 +75,17 @@ impl Default for ObjectGroupObject {
     }
 }
 
+impl ObjectGroupObject {
+    pub fn property(&self, named: &str) -> Option<&str> {
+        for prop in self.properties.iter() {
+            if prop.name == named {
+                return Some(&prop.value);
+            }
+        }
+        None
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct ObjectGroup {
     pub id: i32,

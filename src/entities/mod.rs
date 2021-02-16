@@ -1,6 +1,7 @@
 pub mod bat;
 pub mod boss_fight_trigger;
 pub mod boss_fish;
+pub mod check_point;
 pub mod death_animation;
 pub mod exit_door;
 pub mod falling_bridge;
@@ -28,6 +29,7 @@ pub enum EntityClass {
     Bat,
     BossFightTrigger,
     BossFish,
+    CheckPoint,
     DeathAnimation,
     ExitDoor,
     Firebrand,
@@ -90,10 +92,12 @@ pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entit
         }
         "BossFish" => Some(Box::new(boss_fish::BossFish::default()) as Box<dyn entity::Entity>),
         "Bat" => Some(Box::new(bat::Bat::default()) as Box<dyn entity::Entity>),
+        "CheckPoint" => {
+            Some(Box::new(check_point::CheckPoint::default()) as Box<dyn entity::Entity>)
+        }
         "FallingBridge" => {
             Some(Box::new(falling_bridge::FallingBridge::default()) as Box<dyn entity::Entity>)
         }
-        "Firebrand" => Some(Box::new(firebrand::Firebrand::default()) as Box<dyn entity::Entity>),
         "FireSprite" => {
             Some(Box::new(fire_sprite::FireSprite::default()) as Box<dyn entity::Entity>)
         }

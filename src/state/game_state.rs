@@ -102,7 +102,8 @@ pub struct GameState {
     entity_tileset: tileset::TileSet,
     entity_material: Rc<rendering::Material>,
     entities: HashMap<u32, entity::EntityComponents>,
-    firebrand_entity_id: u32,
+    firebrand_entity_id: Option<u32>,
+    firebrand_checkpoint: u32,
     visible_entities: HashSet<u32>,
     entities_to_add: Vec<EntityAdditionRequest>,
 
@@ -127,10 +128,13 @@ pub struct GameState {
 }
 
 impl GameState {
+    /// Creates new GameState
+    /// start_checkpoint: Index of the checkpoint to place character at
     pub fn new(
         gpu: &mut gpu_state::GpuState,
         options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
+        start_checkpoint: u32,
     ) -> Self {
         // Load the stage map
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -302,15 +306,8 @@ impl GameState {
             )
         });
 
-        // Collect our entities into requests for construction and record firebrand's
-        // entity ID while we're at it.
-        let mut firebrand_entity_id: u32 = 0;
         let mut entity_add_requests = vec![];
         for e in entities.into_iter() {
-            if e.sprite_name() == "firebrand" {
-                firebrand_entity_id = e.entity_id();
-            }
-
             entity_add_requests.push(EntityAdditionRequest {
                 entity_id: e.entity_id(),
                 entity: e,
@@ -374,7 +371,8 @@ impl GameState {
             entity_tileset,
             entity_material,
             entities: HashMap::new(),
-            firebrand_entity_id,
+            firebrand_entity_id: None,
+            firebrand_checkpoint: start_checkpoint,
             visible_entities: HashSet::new(),
             entities_to_add: Vec::new(),
             flipbook_animations,
@@ -462,30 +460,48 @@ impl GameState {
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
         message_dispatcher: &mut event_dispatch::Dispatcher,
-        _entity_id_vendor: &mut entity::IdVendor,
+        entity_id_vendor: &mut entity::IdVendor,
     ) {
-        self.time += dt.as_secs_f32();
+        //
+        //  Process pending entity additions
+        //
 
+        self.process_entity_additions(gpu);
+
+        //
+        // If firebrand hasn't been constructed yet, we need to instantiate him at the assigned checkpoint
+        //
+
+        if self.firebrand_entity_id.is_none() {
+            // find the assigned checkpoint by sorting checkpoints on X and picking by index
+            let mut checkpoints = self.entities_of_type(entities::EntityClass::CheckPoint);
+            checkpoints.sort_by(|a, b| {
+                a.entity
+                    .position()
+                    .x
+                    .partial_cmp(&b.entity.position().x)
+                    .unwrap()
+            });
+            let positions = checkpoints
+                .iter()
+                .map(|ec| ec.entity.position())
+                .collect::<Vec<_>>();
+            let position = positions[self.firebrand_checkpoint as usize];
+
+            // create firebrand and immediately process addition request since update()
+            // depends on firebrand's location.
+            self.firebrand_entity_id = Some(self.request_add_entity(
+                entity_id_vendor,
+                Box::new(entities::firebrand::Firebrand::new(position)),
+            ));
+            self.process_entity_additions(gpu);
+        }
+
+        self.time += dt.as_secs_f32();
         let current_map_bounds = self.current_map_bounds();
         let firebrand = &self.get_firebrand().entity;
-
-        //
-        //  Update game state peek
-        //
-
         self.game_state_peek.player_position = firebrand.position().xy();
         self.game_state_peek.current_map_bounds = current_map_bounds;
-
-        //
-        //  Process entity additions
-        //
-
-        {
-            let additions = std::mem::take(&mut self.entities_to_add);
-            for addition in additions {
-                self.add_entity(gpu, addition);
-            }
-        }
 
         //
         //  Update entities - if any are expired, remove them.
@@ -532,14 +548,7 @@ impl GameState {
         //
 
         let tracking = if self.camera_tracks_character {
-            Some(
-                self.entities
-                    .get(&self.firebrand_entity_id)
-                    .expect("firebrand_entity_id should be the player's entity_id")
-                    .entity
-                    .position()
-                    .xy(),
-            )
+            Some(self.get_firebrand().entity.position().xy())
         } else {
             None
         };
@@ -691,7 +700,7 @@ impl GameState {
                         self.request_add_entity(
                             entity_id_vendor,
                             Box::new(entities::fireball::Fireball::new_fireball(
-                                self.firebrand_entity_id,
+                                self.firebrand_entity_id.unwrap(),
                                 point3(origin.x, origin.y, layers::stage::FOREGROUND),
                                 *direction,
                                 *velocity,
@@ -700,8 +709,10 @@ impl GameState {
                         );
 
                         // Reply to firebrand that a shot was fired
-                        message_dispatcher
-                            .global_to_entity(self.firebrand_entity_id, Event::DidShootFireball);
+                        message_dispatcher.global_to_entity(
+                            self.firebrand_entity_id.unwrap(),
+                            Event::DidShootFireball,
+                        );
                     }
                 }
 
@@ -813,6 +824,13 @@ impl GameState {
         self.game_state_peek
     }
 
+    pub fn entities_of_type(&self, entity_class: entities::EntityClass) -> Vec<&EntityComponents> {
+        self.entities
+            .values()
+            .filter(|ec| ec.entity.entity_class() == entity_class)
+            .collect()
+    }
+
     /// Returns true iff the player can shoot.
     pub fn player_can_shoot_fireball(&self) -> bool {
         // The original game only allows one fireball on screen at a time; we have dynamic viewport sizes
@@ -820,12 +838,7 @@ impl GameState {
         // the stage width in the original game (since character is always in center)
 
         let mut closest_fireball_distance = f32::MAX;
-        let character_position = self
-            .entities
-            .get(&self.firebrand_entity_id)
-            .unwrap()
-            .entity
-            .position();
+        let character_position = self.get_firebrand().entity.position();
         for e in self.entities.values() {
             if e.class() == EntityClass::Fireball {
                 let dist = (e.entity.position().x - character_position.x).abs();
@@ -897,7 +910,11 @@ impl GameState {
 
     pub fn get_firebrand(&self) -> &EntityComponents {
         self.entities
-            .get(&self.firebrand_entity_id)
+            .get(
+                &self
+                    .firebrand_entity_id
+                    .expect("Called get_firebrand before instantiating player"),
+            )
             .expect("Expect firebrand_entity_id to be valid")
     }
 
@@ -968,6 +985,13 @@ impl GameState {
         };
 
         self.entities.insert(components.id(), components);
+    }
+
+    /// Adds all entities in the entities_to_add queue
+    fn process_entity_additions(&mut self, gpu: &mut gpu_state::GpuState) {
+        for addition in std::mem::take(&mut self.entities_to_add) {
+            self.add_entity(gpu, addition);
+        }
     }
 
     fn on_boss_fight_started(

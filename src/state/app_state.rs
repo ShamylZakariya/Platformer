@@ -22,7 +22,9 @@ impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let mut entity_id_vendor = entity::IdVendor::default();
 
-        let game_state = GameState::new(&mut gpu, &options, &mut entity_id_vendor);
+        let checkpoint_index: u32 = 1;
+        let game_state =
+            GameState::new(&mut gpu, &options, &mut entity_id_vendor, checkpoint_index);
         let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
