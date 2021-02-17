@@ -3,13 +3,15 @@ use winit::{event::WindowEvent, window::Window};
 use crate::{entity, event_dispatch, Options};
 
 use super::{
-    debug_overlay::DebugOverlay, game_state::GameState, game_ui::GameUi, gpu_state::GpuState,
+    debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
+    game_ui::GameUi, gpu_state::GpuState,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct AppState {
     gpu: GpuState,
+    game_controller: GameController,
     game_state: GameState,
     game_ui: GameUi,
     overlay: Option<DebugOverlay>,
@@ -22,9 +24,13 @@ impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let mut entity_id_vendor = entity::IdVendor::default();
 
-        let checkpoint_index: u32 = 1;
-        let game_state =
-            GameState::new(&mut gpu, &options, &mut entity_id_vendor, checkpoint_index);
+        let game_controller = GameController::default();
+        let game_state = GameState::new(
+            &mut gpu,
+            &options,
+            &mut entity_id_vendor,
+            game_controller.current_checkpoint(),
+        );
         let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
@@ -36,6 +42,7 @@ impl AppState {
 
         Self {
             gpu,
+            game_controller,
             game_state,
             game_ui,
             overlay: overlay_ui,
@@ -80,6 +87,9 @@ impl AppState {
             dt
         };
 
+        self.game_controller
+            .update(window, dt, &mut self.game_state);
+
         self.game_state.update(
             window,
             game_dt,
@@ -100,7 +110,6 @@ impl AppState {
     }
 
     pub fn render(&mut self, window: &Window) {
-
         let frame = self.gpu.next_frame();
         let mut encoder = self.gpu.encoder();
 
@@ -131,6 +140,12 @@ impl AppState {
 
 impl event_dispatch::MessageHandler for AppState {
     fn handle_message(&mut self, message: &event_dispatch::Message) {
+        self.game_controller.handle_message(
+            message,
+            &mut self.message_dispatcher,
+            &mut self.entity_id_vendor,
+            &mut self.game_state,
+        );
         self.game_state.handle_message(
             message,
             &mut self.message_dispatcher,

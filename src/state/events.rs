@@ -19,6 +19,9 @@ pub enum Event {
         lives: u32,
     },
 
+    /// Sent by a checkpoint - once - when firebrand passes it
+    FirebrandPassedCheckpoint,
+
     /// Sent by Firebrand to State to signal request to shoot fireball.
     /// If State determines a fireball may be shot (there is some rate limiting)
     /// State will reply with DidShootFireball

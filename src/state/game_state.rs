@@ -473,16 +473,8 @@ impl GameState {
         //
 
         if self.firebrand_entity_id.is_none() {
-            // find the assigned checkpoint by sorting checkpoints on X and picking by index
-            let mut checkpoints = self.entities_of_type(entities::EntityClass::CheckPoint);
-            checkpoints.sort_by(|a, b| {
-                a.entity
-                    .position()
-                    .x
-                    .partial_cmp(&b.entity.position().x)
-                    .unwrap()
-            });
-            let positions = checkpoints
+            let positions = self
+                .ordered_checkpoints()
                 .iter()
                 .map(|ec| ec.entity.position())
                 .collect::<Vec<_>>();
@@ -829,6 +821,31 @@ impl GameState {
             .values()
             .filter(|ec| ec.entity.entity_class() == entity_class)
             .collect()
+    }
+
+    /// Returns vector of the level's checkpoints, sorted along x from left to right,
+    /// such that checkpoint 0 is the "first" in the level, and so on.
+    pub fn ordered_checkpoints(&self) -> Vec<&EntityComponents> {
+        // find the assigned checkpoint by sorting checkpoints on X and picking by index
+        let mut checkpoints = self.entities_of_type(entities::EntityClass::CheckPoint);
+        checkpoints.sort_by(|a, b| {
+            a.entity
+                .position()
+                .x
+                .partial_cmp(&b.entity.position().x)
+                .unwrap()
+        });
+        checkpoints
+    }
+
+    /// Returns the index of the checkpoint with a given entity_id, if one exists, otherwise None.
+    pub fn index_of_checkpoint(&self, entity_id: u32) -> Option<u32> {
+        self.ordered_checkpoints()
+            .iter()
+            .enumerate()
+            .filter(|(_, ec)| ec.entity.entity_id() == entity_id)
+            .map(|(idx, _)| idx as u32)
+            .nth(0)
     }
 
     /// Returns true iff the player can shoot.

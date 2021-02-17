@@ -7,12 +7,14 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision},
+    state::events::Event,
     tileset,
 };
 
 pub struct CheckPoint {
     entity_id: u32,
     position: Point3<f32>,
+    did_send_pass_message: bool,
 }
 
 impl Default for CheckPoint {
@@ -20,6 +22,7 @@ impl Default for CheckPoint {
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
+            did_send_pass_message: false,
         }
     }
 }
@@ -42,9 +45,13 @@ impl Entity for CheckPoint {
         _dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
-        _message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        message_dispatcher: &mut Dispatcher,
+        game_state_peek: &GameStatePeek,
     ) {
+        if !self.did_send_pass_message && game_state_peek.player_position.x > self.position.x {
+            message_dispatcher.entity_to_global(self.entity_id(), Event::FirebrandPassedCheckpoint);
+            self.did_send_pass_message = true;
+        }
     }
 
     fn entity_id(&self) -> u32 {
