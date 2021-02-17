@@ -10,6 +10,7 @@ use super::{
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct AppState {
+    options:Options,
     gpu: GpuState,
     game_controller: GameController,
     game_state: GameState,
@@ -41,6 +42,7 @@ impl AppState {
         game_ui.show_start_message();
 
         Self {
+            options,
             gpu,
             game_controller,
             game_state,
@@ -135,6 +137,16 @@ impl AppState {
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
+    }
+
+    /// Starts a new game at the current checkpoint
+    fn start_game(&mut self) {
+        self.game_state = GameState::new(
+            &mut self.gpu,
+            &self.options,
+            &mut self.entity_id_vendor,
+            self.game_controller.current_checkpoint(),
+        );
     }
 }
 

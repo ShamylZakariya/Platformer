@@ -6,12 +6,14 @@ use super::{events::Event, game_state::GameState};
 
 pub struct GameController {
     current_checkpoint: u32,
+    num_lives: u32,
 }
 
 impl Default for GameController {
     fn default() -> Self {
         Self {
             current_checkpoint: 0,
+            num_lives: 3,
         }
     }
 }

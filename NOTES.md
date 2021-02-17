@@ -1,7 +1,8 @@
 CURRENTLY:
     CheckPoint
-        - usable for constructing firebrand
-        - needs to send a message when firebrand passes it, to be received by... GameController maybe
+        - GameController owns checkpoint and lives
+        - need to decrement lives on restart and pass that on to firebrand so it's visible in the game state peek or wherever UI sources it
+        - need to either make GameController own GameState or have it send a message (or something) to AppState to trigger call to start_game or whatever to kick off a new GameState from the last checkpoint.
 
 TODO:
     GameController
