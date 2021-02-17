@@ -100,18 +100,9 @@ impl AppState {
     }
 
     pub fn render(&mut self, window: &Window) {
-        let frame = self
-            .gpu
-            .swap_chain
-            .get_current_frame()
-            .expect("Timeout getting texture");
 
-        let mut encoder = self
-            .gpu
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let frame = self.gpu.next_frame();
+        let mut encoder = self.gpu.encoder();
 
         //
         //  Render game and UI overlay

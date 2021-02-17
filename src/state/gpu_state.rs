@@ -63,10 +63,30 @@ impl GpuState {
 
     pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
-        self.sc_desc.width = new_size.width;
-        self.sc_desc.height = new_size.height;
+        self.sc_desc.width = new_size.width.max(1);
+        self.sc_desc.height = new_size.height.max(1);
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+    }
+
+    /// Returns a new swap chain frame for rendering into
+    pub fn next_frame(&mut self) -> wgpu::SwapChainFrame {
+        match self.swap_chain.get_current_frame() {
+            Ok(frame) => frame,
+            Err(_) => {
+                self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+                self.swap_chain
+                    .get_current_frame()
+                    .expect("Failed to acquire next swap chain texture!")
+            }
+        }
+    }
+
+    pub fn encoder(&self) -> wgpu::CommandEncoder {
+        self.device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            })
     }
 }
