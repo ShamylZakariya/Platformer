@@ -666,9 +666,9 @@ impl Map {
         E: FnMut(&Sprite, &tileset::Tile) -> u32,
     {
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
-        let flipped_horizontally_flag = 0x80000000 as u32;
-        let flipped_vertically_flag = 0x40000000 as u32;
-        let flipped_diagonally_flag = 0x20000000 as u32;
+        let flipped_horizontally_flag = 0x80000000;
+        let flipped_vertically_flag = 0x40000000;
+        let flipped_diagonally_flag = 0x20000000;
 
         for y in 0..layer.height {
             for x in 0..layer.width {

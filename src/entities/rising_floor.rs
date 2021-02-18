@@ -28,11 +28,14 @@ pub struct RisingFloor {
 impl RisingFloor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
         let bounds = find_bounds(&stage_sprites);
-        let mut collider = sprite::Sprite::default();
-        collider.collision_shape = sprite::CollisionShape::Square;
-        collider.origin = point3(bounds.origin.x, bounds.origin.y, 0.0);
-        collider.extent = bounds.extent;
-        collider.mask = crate::state::constants::sprite_masks::COLLIDER;
+
+        let collider = sprite::core::Sprite {
+            collision_shape: sprite::CollisionShape::Square,
+            origin: point3(bounds.origin.x, bounds.origin.y, 0.0),
+            extent: bounds.extent,
+            mask: crate::state::constants::sprite_masks::COLLIDER,
+            ..Default::default()
+        };
 
         Self {
             entity_id: 0,
@@ -126,7 +129,7 @@ impl RisingFloor {
     }
 
     fn camera_shake_pattern(&self) -> Vec<(Vector2<f32>, f32)> {
-        let d = 1.5 / 30.0 as f32;
+        let d = 1.5 / 30.0_f32;
         let p = 1.0 / self.pixels_per_unit;
         vec![
             (vec2(-4.0 * p, 0.0), d),

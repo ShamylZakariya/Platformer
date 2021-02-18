@@ -862,7 +862,7 @@ impl GameState {
             .enumerate()
             .filter(|(_, ec)| ec.entity.entity_id() == entity_id)
             .map(|(idx, _)| idx as u32)
-            .nth(0)
+            .next() // next() get's 0th element
     }
 
     /// Returns true iff the player can shoot.

@@ -50,37 +50,28 @@ pub enum EntityClass {
 
 impl EntityClass {
     pub fn is_enemy(&self) -> bool {
-        match self {
+        matches!(
+            self,
             EntityClass::Bat
-            | EntityClass::FlyingFish
-            | EntityClass::FireSprite
-            | EntityClass::Hoodie => true,
-            _ => false,
-        }
+                | EntityClass::FlyingFish
+                | EntityClass::FireSprite
+                | EntityClass::Hoodie
+        )
     }
     pub fn is_projectile(&self) -> bool {
-        match self {
-            EntityClass::Fireball => true,
-            _ => false,
-        }
+        matches!(self, EntityClass::Fireball)
     }
     pub fn is_boss(&self) -> bool {
-        match self {
-            EntityClass::BossFish => true,
-            _ => false,
-        }
+        matches!(self, EntityClass::BossFish)
     }
     pub fn is_player(&self) -> bool {
-        match self {
-            EntityClass::Firebrand => true,
-            _ => false,
-        }
+        matches!(self, EntityClass::Firebrand)
     }
     pub fn is_ui(&self) -> bool {
-        match self {
-            EntityClass::UiDigit | EntityClass::UiFlightBar | EntityClass::UiHealthDot => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            EntityClass::UiDigit | EntityClass::UiFlightBar | EntityClass::UiHealthDot
+        )
     }
 }
 

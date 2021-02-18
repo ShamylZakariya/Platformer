@@ -52,7 +52,6 @@ impl Space {
         self.static_unit_sprites
             .get(&(point))
             .filter(|s| s.mask & mask != 0)
-            .map(|s| s)
     }
 
     pub fn add_static_sprite(&mut self, sprite: &Sprite) {
@@ -172,7 +171,6 @@ impl Space {
         self.static_unit_sprites
             .get(&(point))
             .filter(|s| s.mask & mask != 0)
-            .map(|s| s)
     }
 }
 

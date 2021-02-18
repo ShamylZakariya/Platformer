@@ -128,10 +128,7 @@ impl CompassDir {
 
     pub fn is_diagonal(&self) -> bool {
         use CompassDir::*;
-        match self {
-            North | East | South | West => false,
-            _ => true,
-        }
+        !matches!(self, North | South | East | West)
     }
 
     pub fn iter() -> impl Iterator<Item = CompassDir> {

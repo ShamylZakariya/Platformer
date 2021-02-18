@@ -90,7 +90,7 @@ pub mod intersection {
         l2p1: &Point2<f32>,
         l2p2: &Point2<f32>,
     ) -> Option<Point2<f32>> {
-        let e = 1e-4 as f32;
+        let e = 1e-4_f32;
         let a1 = l1p2.y - l1p1.y;
         let b1 = l1p1.x - l1p2.x;
         let c1 = a1 * l1p1.x + b1 * l1p1.y;

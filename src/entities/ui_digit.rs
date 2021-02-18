@@ -91,7 +91,7 @@ impl Entity for UiDigit {
             _ => 0,
         } as i32;
 
-        let value = value / (10 as i32).pow(self.digit);
+        let value = value / (10_i32).pow(self.digit);
         self.cycle = (value % 10) as u32;
     }
 

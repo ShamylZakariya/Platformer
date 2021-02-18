@@ -918,10 +918,7 @@ impl Firebrand {
     }
 
     pub fn is_wallholding(&self) -> bool {
-        match self.character_state.stance {
-            Stance::WallHold(_) => true,
-            _ => false,
-        }
+        matches!(self.character_state.stance, Stance::WallHold(_))
     }
 
     pub fn is_in_injury(&self) -> bool {

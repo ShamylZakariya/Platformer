@@ -343,12 +343,10 @@ impl Sprite {
         };
 
         if x_overlap && y_overlap {
-            match self.collision_shape {
-                CollisionShape::None => false,
-                // TODO: Implement colliders for corner blocks? GGQ doesn't need them,
-                // but it seems like I'd want to flesh that out for a real 2d engine.
-                _ => true,
-            }
+            // TODO: Implement colliders for corner blocks? GGQ doesn't need them,
+            // but it seems like I'd want to flesh that out for a real 2d engine.
+            // So for now, we treat any non-none shape as rectangular.
+            !matches!(self.collision_shape, CollisionShape::None)
         } else {
             false
         }

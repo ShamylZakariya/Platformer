@@ -36,10 +36,7 @@ impl ButtonState {
     }
 
     pub fn is_active(&self) -> bool {
-        match self {
-            ButtonState::Pressed | ButtonState::Down => true,
-            _ => false,
-        }
+        matches!(self, ButtonState::Pressed | ButtonState::Down)
     }
 }
 
