@@ -17,6 +17,7 @@ use crate::{geom::lerp, map};
 
 use super::{
     constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},
+    events::Event,
     game_state,
 };
 
@@ -52,6 +53,7 @@ pub struct GameUi {
     drawer_open: bool,
     drawer_open_progress: f32,
     start_message_blink_countdown: f32,
+    game_over_message_visible: bool,
 }
 
 impl GameUi {
@@ -191,6 +193,7 @@ impl GameUi {
             drawer_open: false,
             drawer_open_progress: 0.0,
             start_message_blink_countdown: 0.0,
+            game_over_message_visible: false,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -359,6 +362,14 @@ impl GameUi {
                 );
             }
         }
+
+        if self.game_over_message_visible {
+            self.game_over_drawable.draw(
+                &mut render_pass,
+                &self.camera_uniforms,
+                &self.game_over_uniforms,
+            );
+        }
     }
 
     pub fn handle_message(
@@ -380,10 +391,12 @@ impl GameUi {
                 }
             }
 
-            // As yet, GameUi doesn't process any message itself
-            // match &message.event {
-            //     _ => {}
-            // }
+            match &message.event {
+                Event::FirebrandCreated => self.show_start_message(),
+                Event::GameOver => self.show_game_over_message(),
+
+                _ => {}
+            }
         }
     }
 
@@ -395,6 +408,10 @@ impl GameUi {
 
     pub fn show_start_message(&mut self) {
         self.start_message_blink_countdown = START_MESSAGE_DURATION;
+    }
+
+    pub fn show_game_over_message(&mut self) {
+        self.game_over_message_visible = true;
     }
 
     // MARK: Private

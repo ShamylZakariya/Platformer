@@ -1,7 +1,6 @@
 use cgmath::*;
 use rand::{prelude::*, Rng};
 use std::time::Duration;
-use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     entity::{Entity, GameStatePeek},
@@ -125,16 +124,16 @@ impl Entity for BossFish {
         self.collider.collision_shape = sprite::CollisionShape::Square;
     }
 
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        match (key, state) {
-            (VirtualKeyCode::Delete, ElementState::Pressed) => {
-                println!("\n\nBOSSFISH SUICIDE\n\n");
-                self.hit_points = 0;
-                true
-            }
-            _ => false,
-        }
-    }
+    // fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    //     match (key, state) {
+    //         (VirtualKeyCode::Delete, ElementState::Pressed) => {
+    //             println!("\n\nBOSSFISH SUICIDE\n\n");
+    //             self.hit_points = 0;
+    //             true
+    //         }
+    //         _ => false,
+    //     }
+    // }
 
     fn update(
         &mut self,

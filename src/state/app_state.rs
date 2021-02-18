@@ -10,7 +10,7 @@ use super::{
 // --------------------------------------------------------------------------------------------------------------------
 
 pub struct AppState {
-    options:Options,
+    options: Options,
     gpu: GpuState,
     game_controller: GameController,
     game_state: GameState,
@@ -31,15 +31,14 @@ impl AppState {
             &options,
             &mut entity_id_vendor,
             game_controller.current_checkpoint(),
+            game_controller.lives_remaining(),
         );
-        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
+        let game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None
         };
-
-        game_ui.show_start_message();
 
         Self {
             options,
@@ -137,16 +136,6 @@ impl AppState {
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
-    }
-
-    /// Starts a new game at the current checkpoint
-    fn start_game(&mut self) {
-        self.game_state = GameState::new(
-            &mut self.gpu,
-            &self.options,
-            &mut self.entity_id_vendor,
-            self.game_controller.current_checkpoint(),
-        );
     }
 }
 

@@ -103,7 +103,8 @@ pub struct GameState {
     entity_material: Rc<rendering::Material>,
     entities: HashMap<u32, entity::EntityComponents>,
     firebrand_entity_id: Option<u32>,
-    firebrand_checkpoint: u32,
+    firebrand_start_checkpoint: u32,
+    firebrand_start_lives_remaining: u32,
     visible_entities: HashSet<u32>,
     entities_to_add: Vec<EntityAdditionRequest>,
 
@@ -135,6 +136,7 @@ impl GameState {
         options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
         start_checkpoint: u32,
+        lives_remaining: u32,
     ) -> Self {
         // Load the stage map
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
@@ -372,7 +374,8 @@ impl GameState {
             entity_material,
             entities: HashMap::new(),
             firebrand_entity_id: None,
-            firebrand_checkpoint: start_checkpoint,
+            firebrand_start_checkpoint: start_checkpoint,
+            firebrand_start_lives_remaining: lives_remaining,
             visible_entities: HashSet::new(),
             entities_to_add: Vec::new(),
             flipbook_animations,
@@ -478,13 +481,16 @@ impl GameState {
                 .iter()
                 .map(|ec| ec.entity.position())
                 .collect::<Vec<_>>();
-            let position = positions[self.firebrand_checkpoint as usize];
+            let position = positions[self.firebrand_start_checkpoint as usize];
 
             // create firebrand and immediately process addition request since update()
             // depends on firebrand's location.
             self.firebrand_entity_id = Some(self.request_add_entity(
                 entity_id_vendor,
-                Box::new(entities::firebrand::Firebrand::new(position)),
+                Box::new(entities::firebrand::Firebrand::new(
+                    position,
+                    self.firebrand_start_lives_remaining,
+                )),
             ));
             self.process_entity_additions(gpu);
         }
@@ -810,6 +816,17 @@ impl GameState {
                 _ => {}
             }
         }
+    }
+
+    pub fn restart_game_at_checkpoint(&mut self, start_checkpoint: u32, lives_remaining: u32) {
+        println!(
+            "GameState::restart_game_at_checkpoint checkpoint:{} lives_remaining: {}",
+            start_checkpoint, lives_remaining
+        );
+    }
+
+    pub fn game_over(&mut self) {
+        println!("GameState::game_over");
     }
 
     pub fn game_state_peek(&self) -> GameStatePeek {

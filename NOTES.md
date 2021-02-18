@@ -3,15 +3,11 @@ CURRENTLY:
         - GameController owns checkpoint and lives
         - need to decrement lives on restart and pass that on to firebrand so it's visible in the game state peek or wherever UI sources it
         - need to either make GameController own GameState or have it send a message (or something) to AppState to trigger call to start_game or whatever to kick off a new GameState from the last checkpoint.
+        - When firebrand dies we have 3 seconds of the death animation, followed by fade to white over 1 second, 1 second of white, 1 second fade back to normal and blink the ready text.
 
 TODO:
-    GameController
-        - Add GameController
-        - Send messages for things like passing a checkpoint (will need a new entity presumably) and death, etc, which are processed by GameController
-        - make GameState take some constructor parameters, like player init position, lives remaining, level to laod, etc.
-        - when player passes a checkpoint that will be saved by GameController which will remember that and pass it on when constructing a new GameState after player dies.
-
     - Event::FirebrandStatusChanged should probably just carry a firebrand::CharacterState
+    - We need the fade in, fade out animation. Best way to di it is via postprocessing shader.
     - Postprocessing shader to make Gameboy looking graphics
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
 

@@ -5,6 +5,9 @@ use crate::{entities::util::HorizontalDir, sprite, tileset};
 /// An Event payload for Message
 #[derive(Debug, Clone)]
 pub enum Event {
+    /// Sent when Firebrand is created and game has started
+    FirebrandCreated,
+
     /// Received by an Entity when contacted by Firebrand
     FirebrandContact,
 
@@ -105,4 +108,7 @@ pub enum Event {
     },
 
     EndCameraShake,
+
+    // Broadcast when firebrand has died with no remaining lives
+    GameOver,
 }

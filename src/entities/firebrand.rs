@@ -347,7 +347,7 @@ pub struct CharacterState {
 }
 
 impl CharacterState {
-    fn new(position: Point2<f32>) -> Self {
+    fn new(position: Point2<f32>, num_lives_remaining: u32) -> Self {
         CharacterState {
             position,
             position_offset: Zero::zero(),
@@ -356,7 +356,7 @@ impl CharacterState {
             facing: HorizontalDir::East,
             hit_points: HIT_POINTS,
             num_vials: 51,
-            num_lives: 8,
+            num_lives: num_lives_remaining,
             alive: true,
         }
     }
@@ -392,11 +392,12 @@ pub struct Firebrand {
     invulnerability_countdown: f32,
     last_shoot_time: f32,
     frozen: bool,
+    did_send_creation_message: bool,
     did_send_death_message: bool,
 }
 
 impl Firebrand {
-    pub fn new(position: Point3<f32>) -> Firebrand {
+    pub fn new(position: Point3<f32>, num_lives_remaining: u32) -> Firebrand {
         let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
         let collider = sprite::Sprite::unit(
             sprite::CollisionShape::Square,
@@ -414,7 +415,7 @@ impl Firebrand {
             time: 0.0,
             step: 0,
             input_state: FirebrandInputState::default(),
-            character_state: CharacterState::new(position.xy()),
+            character_state: CharacterState::new(position.xy(), num_lives_remaining),
             overlapping_sprites: HashSet::new(),
             contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
@@ -429,6 +430,7 @@ impl Firebrand {
             invulnerability_countdown: 0.0,
             last_shoot_time: 0.0,
             frozen: false,
+            did_send_creation_message: false,
             did_send_death_message: false,
         }
     }
@@ -445,7 +447,17 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        self.input_state.process_keyboard(key, state)
+        if self.input_state.process_keyboard(key, state) {
+            true
+        } else {
+            match (key, state) {
+                (VirtualKeyCode::Delete, ElementState::Pressed) => {
+                    self.receive_injury(self.character_state.hit_points);
+                    true
+                }
+                _ => false,
+            }
+        }
     }
 
     fn update(
@@ -467,6 +479,9 @@ impl Entity for Firebrand {
                 self.did_send_death_message = true;
             }
             return;
+        } else if !self.did_send_creation_message {
+            message_dispatcher.broadcast(Event::FirebrandCreated);
+            self.did_send_creation_message = true;
         }
 
         let dt = dt.as_secs_f32();
