@@ -54,6 +54,15 @@ impl Space {
             .filter(|s| s.mask & mask != 0)
     }
 
+    pub fn has_static_sprite(&self, sprite: &Sprite) -> bool {
+        let coord = point2(
+            sprite.origin.x.floor() as i32,
+            sprite.origin.y.floor() as i32,
+        );
+
+        self.static_unit_sprites.contains_key(&coord)
+    }
+
     pub fn add_static_sprite(&mut self, sprite: &Sprite) {
         let coord = point2(
             sprite.origin.x.floor() as i32,

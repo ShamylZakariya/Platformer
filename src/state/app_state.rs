@@ -88,9 +88,6 @@ impl AppState {
             dt
         };
 
-        self.game_controller
-            .update(window, dt, &mut self.game_state);
-
         self.game_state.update(
             window,
             game_dt,
@@ -98,6 +95,7 @@ impl AppState {
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
         );
+
         self.game_ui.update(
             window,
             dt,
@@ -105,6 +103,13 @@ impl AppState {
             &self.game_state,
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
+        );
+
+        self.game_controller.update(
+            window,
+            dt,
+            &mut self.game_state,
+            &mut self.message_dispatcher,
         );
 
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);

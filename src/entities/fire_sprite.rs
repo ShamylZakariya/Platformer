@@ -132,6 +132,10 @@ impl Entity for FireSprite {
             .set_sprite_scale(vec2(xscale, 1.0));
     }
 
+    fn remove_collider(&self, collision_space: &mut collision::Space) {
+        collision_space.remove_dynamic_sprite(&self.collider);
+    }
+
     fn entity_id(&self) -> u32 {
         self.entity_id
     }

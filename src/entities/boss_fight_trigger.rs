@@ -79,4 +79,10 @@ impl Entity for BossFightTrigger {
     fn position(&self) -> Point3<f32> {
         point3(self.position.x, self.position.y, 0.0)
     }
+
+    fn handle_message(&mut self, message: &Message) {
+        if matches!(message.event, Event::ResetState) {
+            self.did_send_fight_started_message = false;
+        }
+    }
 }

@@ -69,4 +69,10 @@ impl Entity for CheckPoint {
     fn should_draw(&self) -> bool {
         false
     }
+
+    fn handle_message(&mut self, message: &Message) {
+        if matches!(message.event, Event::ResetState) {
+            self.did_send_pass_message = false;
+        }
+    }
 }

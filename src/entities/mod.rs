@@ -73,6 +73,13 @@ impl EntityClass {
             EntityClass::UiDigit | EntityClass::UiFlightBar | EntityClass::UiHealthDot
         )
     }
+    pub fn survives_level_restart(&self) -> bool {
+        use EntityClass::*;
+        matches!(
+            self,
+            BossFightTrigger | CheckPoint | ExitDoor | FallingBridge | RisingFloor | SpawnPoint
+        )
+    }
 }
 
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {

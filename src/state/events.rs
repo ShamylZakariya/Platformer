@@ -111,4 +111,7 @@ pub enum Event {
 
     // Broadcast when firebrand has died with no remaining lives
     GameOver,
+
+    // Broadcast when GameState reset the level after player death
+    ResetState,
 }

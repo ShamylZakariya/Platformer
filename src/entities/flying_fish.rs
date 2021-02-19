@@ -26,7 +26,7 @@ const HIT_POINTS: i32 = 1;
 pub struct FlyingFish {
     entity_id: u32,
     spawn_point_id: u32,
-    sprite: sprite::Sprite,
+    collider: sprite::Sprite,
     centroid: Point2<f32>,
     position: Point3<f32>,
     time_in_phase: f32,
@@ -43,7 +43,7 @@ impl Default for FlyingFish {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            sprite: sprite::Sprite::default(),
+            collider: sprite::Sprite::default(),
             centroid: point2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             time_in_phase: 0.0,
@@ -80,11 +80,11 @@ impl Entity for FlyingFish {
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.sprite = *sprite;
-        self.sprite.entity_id = Some(entity_id);
-        self.sprite.mask = sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.sprite.collision_shape = sprite::CollisionShape::Square;
-        collision_space.add_dynamic_sprite(&self.sprite);
+        self.collider = *sprite;
+        self.collider.entity_id = Some(entity_id);
+        self.collider.mask = sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
+        self.collider.collision_shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_sprite(&self.collider);
     }
 
     fn update(
@@ -143,9 +143,9 @@ impl Entity for FlyingFish {
         //  Update the sprite for collision detection
         //
 
-        self.sprite.origin.x = self.position.x;
-        self.sprite.origin.y = self.position.y;
-        collision_space.update_dynamic_sprite(&self.sprite);
+        self.collider.origin.x = self.position.x;
+        self.collider.origin.y = self.position.y;
+        collision_space.update_dynamic_sprite(&self.collider);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -157,6 +157,10 @@ impl Entity for FlyingFish {
             .data
             .set_model_position(self.position + vec3(xoffset, 0.0, 0.0))
             .set_sprite_scale(vec2(xscale, 1.0));
+    }
+
+    fn remove_collider(&self, collision_space: &mut collision::Space) {
+        collision_space.remove_dynamic_sprite(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

@@ -41,9 +41,13 @@ impl ExitDoor {
             bounds,
             mode: Mode::Closed,
             open_dir,
-            // we have two doors, so only send the message from the west door
-            should_send_exit_message: open_dir == HorizontalDir::West,
+            should_send_exit_message: ExitDoor::should_send_exit_message_for_dir(open_dir),
         }
+    }
+
+    fn should_send_exit_message_for_dir(dir: HorizontalDir) -> bool {
+        // we have two doors, so only send the message from the west door
+        dir == HorizontalDir::West
     }
 }
 
@@ -61,7 +65,11 @@ impl Entity for ExitDoor {
         game_state_peek: &GameStatePeek,
     ) {
         match self.mode {
-            Mode::Closed => {}
+            Mode::Closed => {
+                self.offset.x = 0.0;
+                self.should_send_exit_message =
+                    ExitDoor::should_send_exit_message_for_dir(self.open_dir);
+            }
             Mode::Opening => match self.open_dir {
                 HorizontalDir::East => {
                     self.offset.x += OPEN_SPEED * dt.as_secs_f32();
@@ -85,7 +93,6 @@ impl Entity for ExitDoor {
                     && game_state_peek.player_position.x
                         > self.bounds.left() + self.bounds.width() * 0.5
                 {
-                    println!("Sending exit message");
                     message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
                     self.should_send_exit_message = false;
                 }
@@ -126,8 +133,10 @@ impl Entity for ExitDoor {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::OpenExitDoor = message.event {
-            self.mode = Mode::Opening;
+        match message.event {
+            Event::OpenExitDoor => self.mode = Mode::Opening,
+            Event::ResetState => self.mode = Mode::Closed,
+            _ => {}
         }
     }
 }

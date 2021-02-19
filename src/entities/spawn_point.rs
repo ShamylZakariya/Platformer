@@ -112,6 +112,10 @@ impl Entity for SpawnPoint {
             Event::EntityWasSpawned { entity_id } => {
                 self.spawned_entity_id = entity_id;
             }
+            Event::ResetState => {
+                self.spawned_entity_id = None;
+                self.did_become_visible = false;
+            }
             _ => {}
         }
     }

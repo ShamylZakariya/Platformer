@@ -53,7 +53,7 @@ impl RisingFloor {
 impl Entity for RisingFloor {
     fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
-        self.offset.y -= self.bounds.extent.y;
+        self.offset.y = -self.bounds.extent.y;
         self.collider.entity_id = Some(entity_id);
 
         self.update_collider();
@@ -86,9 +86,9 @@ impl Entity for RisingFloor {
                 message_dispatcher.broadcast(Event::EndCameraShake);
                 message_dispatcher.broadcast(Event::OpenExitDoor);
             }
-            self.update_collider();
-            collision_space.update_dynamic_sprite(&self.collider);
         }
+        self.update_collider();
+        collision_space.update_dynamic_sprite(&self.collider);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -116,8 +116,14 @@ impl Entity for RisingFloor {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::RaiseExitFloor = message.event {
-            self.rising = true;
+        match message.event {
+            Event::RaiseExitFloor => self.rising = true,
+            Event::ResetState => {
+                self.rising = false;
+                self.offset.y = -self.bounds.extent.y;
+                self.sent_started_rising_message = false;
+            }
+            _ => {}
         }
     }
 }

@@ -15,8 +15,9 @@ const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
 pub struct FallingBridge {
     entity_id: u32,
-    sprite: Option<sprite::Sprite>,
+    collider: Option<sprite::Sprite>,
     position: Point3<f32>,
+    offset: Vector3<f32>,
     time_remaining: Option<f32>,
     is_falling: bool,
     vertical_velocity: f32,
@@ -27,8 +28,9 @@ impl Default for FallingBridge {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            sprite: None,
+            collider: None,
             position: point3(0.0, 0.0, 0.0),
+            offset: vec3(0.0, 0.0, 0.0),
             time_remaining: None,
             is_falling: false,
             vertical_velocity: 0.0,
@@ -47,7 +49,7 @@ impl Entity for FallingBridge {
         collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.sprite = Some(*sprite);
+        self.collider = Some(*sprite);
         self.position = sprite.origin;
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
         collision_space.add_static_sprite(sprite);
@@ -63,9 +65,13 @@ impl Entity for FallingBridge {
     ) {
         let dt = dt.as_secs_f32();
 
-        if self.is_falling {
+        let collider = self
+            .collider
+            .expect("Should have a sprite associated with FallingBridge instance");
+
+        if self.is_falling && self.should_draw() {
             self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
-            self.position.y += self.vertical_velocity * dt;
+            self.offset.y += self.vertical_velocity * dt;
         } else if let Some(mut time_remaining) = self.time_remaining {
             time_remaining -= dt;
             if time_remaining <= 0.0 {
@@ -73,19 +79,19 @@ impl Entity for FallingBridge {
                 self.is_falling = true;
                 self.time_remaining = None;
 
-                collision_space.remove_static_sprite(
-                    &self
-                        .sprite
-                        .expect("Should have a sprite associated with FallingBridge instance"),
-                );
+                collision_space.remove_static_sprite(&collider);
             } else {
                 self.time_remaining = Some(time_remaining);
             }
+        } else if !collision_space.has_static_sprite(&collider) {
+            collision_space.add_static_sprite(&collider);
         }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        uniforms.data.set_model_position(self.position);
+        uniforms
+            .data
+            .set_model_position(self.position + self.offset);
     }
 
     fn entity_id(&self) -> u32 {
@@ -96,17 +102,16 @@ impl Entity for FallingBridge {
         crate::entities::EntityClass::FallingBridge
     }
 
+    fn should_draw(&self) -> bool {
+        self.position.y + self.offset.y > -1.0
+    }
+
     fn is_alive(&self) -> bool {
-        // once we fall off bottom of the screen, we're done
-        self.position.y > -1.0
+        true
     }
 
     fn position(&self) -> Point3<f32> {
-        point3(
-            self.position.x,
-            self.position.y,
-            self.sprite.unwrap().origin.z,
-        )
+        self.position + self.offset
     }
 
     fn sprite_name(&self) -> &str {
@@ -118,11 +123,20 @@ impl Entity for FallingBridge {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::FirebrandContact = message.event {
-            if self.time_remaining.is_none() {
-                self.position.y -= 2.0 / self.sprite_size_px.y;
-                self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
+        match message.event {
+            Event::FirebrandContact => {
+                if self.time_remaining.is_none() {
+                    self.offset.y -= 2.0 / self.sprite_size_px.y;
+                    self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
+                }
             }
+            Event::ResetState => {
+                self.time_remaining = None;
+                self.is_falling = false;
+                self.vertical_velocity = 0.0;
+                self.offset = vec3(0.0, 0.0, 0.0);
+            }
+            _ => {}
         }
     }
 }

@@ -21,7 +21,7 @@ pub struct GameController {
 impl Default for GameController {
     fn default() -> Self {
         Self {
-            current_checkpoint: 0,
+            current_checkpoint: 2,
             lives_remaining: 3,
             restart_game_countdown: None,
             game_over_countdown: None,
@@ -35,14 +35,18 @@ impl GameController {
         _window: &Window,
         dt: std::time::Duration,
         game_state: &mut GameState,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
     ) {
         let dt = dt.as_secs_f32();
         if let Some(restart_game_countdown) = self.restart_game_countdown {
             let restart_game_countdown = restart_game_countdown - dt;
             if restart_game_countdown < 0.0 {
                 self.restart_game_countdown = None;
-                game_state
-                    .restart_game_at_checkpoint(self.current_checkpoint, self.lives_remaining);
+                game_state.restart_game_at_checkpoint(
+                    self.current_checkpoint,
+                    self.lives_remaining,
+                    message_dispatcher,
+                );
             } else {
                 self.restart_game_countdown = Some(restart_game_countdown);
             }
@@ -52,7 +56,7 @@ impl GameController {
             let game_over_countdown = game_over_countdown - dt;
             if game_over_countdown < 0.0 {
                 self.game_over_countdown = None;
-                game_state.game_over();
+                game_state.game_over(message_dispatcher);
             } else {
                 self.game_over_countdown = Some(game_over_countdown);
             }

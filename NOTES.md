@@ -1,8 +1,6 @@
 CURRENTLY:
     CheckPoint
-        - GameController owns checkpoint and lives
-        - need to decrement lives on restart and pass that on to firebrand so it's visible in the game state peek or wherever UI sources it
-        - need to either make GameController own GameState or have it send a message (or something) to AppState to trigger call to start_game or whatever to kick off a new GameState from the last checkpoint.
+        - GameState::restart works, but has issue where entities removed from stage leave their colliders
         - When firebrand dies we have 3 seconds of the death animation, followed by fade to white over 1 second, 1 second of white, 1 second fade back to normal and blink the ready text.
 
 TODO:

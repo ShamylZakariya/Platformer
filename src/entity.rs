@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Duration};
+use std::{collections::HashSet, fmt::Debug, time::Duration};
 
 use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
@@ -106,6 +106,9 @@ pub trait Entity {
 
     /// Write updated state into this entity's uniform buffer for rendering.
     fn update_uniforms(&self, _uniforms: &mut rendering::Uniforms) {}
+
+    /// Called on an entity before removing it from GameState
+    fn remove_collider(&self, _collision_space: &mut collision::Space) {}
 
     /// The unique id for this Entity, a value from [0,u32::MAX]
     fn entity_id(&self) -> u32;
@@ -223,5 +226,17 @@ impl EntityComponents {
 
     pub fn class(&self) -> crate::entities::EntityClass {
         self.entity.entity_class()
+    }
+}
+
+impl Debug for EntityComponents {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[EntityComponents id: {} class: {:?} position: {:?}]",
+            self.id(),
+            self.class(),
+            self.entity.position()
+        )
     }
 }

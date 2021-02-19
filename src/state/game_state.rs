@@ -818,15 +818,43 @@ impl GameState {
         }
     }
 
-    pub fn restart_game_at_checkpoint(&mut self, start_checkpoint: u32, lives_remaining: u32) {
+    pub fn restart_game_at_checkpoint(
+        &mut self,
+        start_checkpoint: u32,
+        lives_remaining: u32,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
+    ) {
         println!(
             "GameState::restart_game_at_checkpoint checkpoint:{} lives_remaining: {}",
             start_checkpoint, lives_remaining
         );
+
+        self.firebrand_start_checkpoint = start_checkpoint;
+        self.firebrand_start_lives_remaining = lives_remaining;
+
+        self.firebrand_entity_id = None;
+        self.visible_entities.clear();
+        self.boss_fight_start_time = None;
+        self.boss_fight_arena_left_bounds = None;
+        self.viewport_left_when_boss_encountered = None;
+        self.camera_shaker = None;
+
+        // For every entity which will be removed in reset, we need to remove collider.
+        for ec in self.entities.values() {
+            if !ec.entity.entity_class().survives_level_restart() {
+                ec.entity.remove_collider(&mut self.collision_space);
+            }
+        }
+
+        // prune out everything which doesn't survive a level restart, and broadcast a reset event
+        self.entities
+            .retain(|_, e| e.entity.entity_class().survives_level_restart());
+
+        message_dispatcher.broadcast(Event::ResetState);
     }
 
-    pub fn game_over(&mut self) {
-        println!("GameState::game_over");
+    pub fn game_over(&mut self, message_dispatcher: &mut event_dispatch::Dispatcher) {
+        message_dispatcher.broadcast(Event::GameOver);
     }
 
     pub fn game_state_peek(&self) -> GameStatePeek {
@@ -1042,21 +1070,23 @@ impl GameState {
 
     fn on_boss_was_defeated(&mut self, _message_dispatcher: &mut event_dispatch::Dispatcher) {
         println!("\n\nBOSS DEFEATED!!\n\n");
-        //
-        // Clear all entities from the stage
-        //
 
-        self.entities.retain(|_, e| {
-            let c = e.entity.entity_class();
-            !c.is_enemy() && !c.is_projectile()
-        });
+        // Clear enemies and projectiles from stage
+        let should_retain = |ec: &EntityComponents| -> bool {
+            !ec.class().is_enemy() && !ec.class().is_projectile()
+        };
+
+        for ec in self.entities.values() {
+            if !should_retain(ec) {
+                ec.entity.remove_collider(&mut self.collision_space);
+            }
+        }
+
+        self.entities.retain(|_, ec| should_retain(ec));
     }
 
     fn on_boss_died(&mut self, message_dispatcher: &mut event_dispatch::Dispatcher) {
-        //
         //  Kick off the floor raise.
-        //
-
         message_dispatcher.broadcast(Event::RaiseExitFloor);
     }
 

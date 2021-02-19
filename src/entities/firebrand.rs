@@ -812,6 +812,12 @@ impl Entity for Firebrand {
         }
     }
 
+    fn remove_collider(&self, collision_space: &mut collision::Space) {
+        if let Some(collider) = self.collider {
+            collision_space.remove_dynamic_sprite(&collider);
+        }
+    }
+
     fn entity_id(&self) -> u32 {
         self.entity_id
     }

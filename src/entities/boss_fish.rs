@@ -124,16 +124,20 @@ impl Entity for BossFish {
         self.collider.collision_shape = sprite::CollisionShape::Square;
     }
 
-    // fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-    //     match (key, state) {
-    //         (VirtualKeyCode::Delete, ElementState::Pressed) => {
-    //             println!("\n\nBOSSFISH SUICIDE\n\n");
-    //             self.hit_points = 0;
-    //             true
-    //         }
-    //         _ => false,
-    //     }
-    // }
+    fn process_keyboard(
+        &mut self,
+        key: winit::event::VirtualKeyCode,
+        state: winit::event::ElementState,
+    ) -> bool {
+        match (key, state) {
+            (winit::event::VirtualKeyCode::End, winit::event::ElementState::Pressed) => {
+                println!("\n\nBOSSFISH SUICIDE\n\n");
+                self.hit_points = 0;
+                true
+            }
+            _ => false,
+        }
+    }
 
     fn update(
         &mut self,
@@ -225,6 +229,10 @@ impl Entity for BossFish {
             .set_color(vec4(1.0, 1.0, 1.0, alpha))
             .set_model_position(self.position + vec3(xoffset, 0.0, 0.0))
             .set_sprite_scale(vec2(xscale, 1.0));
+    }
+
+    fn remove_collider(&self, collision_space: &mut collision::Space) {
+        collision_space.remove_dynamic_sprite(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {
