@@ -21,7 +21,7 @@ pub struct GameController {
 impl Default for GameController {
     fn default() -> Self {
         Self {
-            current_checkpoint: 2,
+            current_checkpoint: 0,
             lives_remaining: 3,
             restart_game_countdown: None,
             game_over_countdown: None,
@@ -74,10 +74,7 @@ impl GameController {
             Event::FirebrandPassedCheckpoint => {
                 if let Some(sender_id) = message.sender_entity_id {
                     if let Some(idx) = game_state.index_of_checkpoint(sender_id) {
-                        println!(
-                            "Firebrand passed checkpoint: {:?} index: {}",
-                            message.sender_entity_id, idx
-                        );
+                        self.current_checkpoint = self.current_checkpoint.max(idx);
                     }
                 }
             }

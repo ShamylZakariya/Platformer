@@ -1,6 +1,6 @@
 use cgmath::*;
 
-use crate::{entities::util::HorizontalDir, sprite, tileset};
+use crate::{entities::{self, util::HorizontalDir}, sprite, tileset};
 
 /// An Event payload for Message
 #[derive(Debug, Clone)]
@@ -16,10 +16,7 @@ pub enum Event {
 
     /// Sent by Firebrand to GameState to notify change of health, flight time, etc
     FirebrandStatusChanged {
-        health: (u32, u32), // tuple of (current health, max health)
-        flight: (f32, f32), // tuple of (flight time remaining, max flight time) in seconds
-        vials: u32,
-        lives: u32,
+        status: entities::firebrand::CharacterState,
     },
 
     /// Sent by a checkpoint - once - when firebrand passes it
@@ -102,6 +99,8 @@ pub enum Event {
     // Sent when the player passes through the exit door
     PlayerPassedThroughExitDoor,
 
+    // Sent to signal to GameState that the camera should start shaking, using the offset pattern specified
+    // Shaking will continue until GameState receives EndCameraShake.
     StartCameraShake {
         // vector of camera offsets in world units, and timing delay for that offset
         pattern: Vec<(Vector2<f32>, f32)>,

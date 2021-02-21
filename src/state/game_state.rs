@@ -801,16 +801,12 @@ impl GameState {
                     self.on_player_dead(entity_id_vendor, message_dispatcher);
                 }
 
-                Event::FirebrandStatusChanged {
-                    health,
-                    flight,
-                    vials,
-                    lives,
-                } => {
-                    self.game_state_peek.player_health = *health;
-                    self.game_state_peek.player_flight = *flight;
-                    self.game_state_peek.player_vials = *vials;
-                    self.game_state_peek.player_lives = *lives;
+                Event::FirebrandStatusChanged { status } => {
+                    self.game_state_peek.player_health = (status.hit_points, status.hit_points_max);
+                    self.game_state_peek.player_flight =
+                        (status.flight_time_remaining, status.flight_time_max);
+                    self.game_state_peek.player_vials = status.num_vials;
+                    self.game_state_peek.player_lives = status.num_lives;
                 }
 
                 _ => {}

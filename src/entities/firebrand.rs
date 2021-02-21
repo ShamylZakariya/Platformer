@@ -315,7 +315,7 @@ impl sprite::collision::Space {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug,Clone,Copy)]
 pub struct CharacterState {
     // The current position of the character
     pub position: Point2<f32>,
@@ -336,6 +336,15 @@ pub struct CharacterState {
     // player's current remaining hitpoints
     pub hit_points: u32,
 
+    // player's max hit points
+    pub hit_points_max: u32,
+
+    // flight time remaining, in seconds
+    pub flight_time_remaining: f32,
+
+    // max flight time, in seconds
+    pub flight_time_max: f32,
+
     // number of vials player has caught
     pub num_vials: u32,
 
@@ -355,7 +364,10 @@ impl CharacterState {
             stance: Stance::Standing,
             facing: HorizontalDir::East,
             hit_points: HIT_POINTS,
-            num_vials: 51,
+            hit_points_max: HIT_POINTS,
+            flight_time_remaining: FLIGHT_DURATION,
+            flight_time_max: FLIGHT_DURATION,
+            num_vials: 0,
             num_lives: num_lives_remaining,
             alive: true,
         }
@@ -375,10 +387,10 @@ pub struct Firebrand {
     character_state: CharacterState,
 
     // sprites the character is overlapping and might collide with
-    pub overlapping_sprites: HashSet<sprite::Sprite>,
+    overlapping_sprites: HashSet<sprite::Sprite>,
 
     // sprites the character is contacting
-    pub contacting_sprites: HashSet<sprite::Sprite>,
+    contacting_sprites: HashSet<sprite::Sprite>,
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
@@ -776,13 +788,12 @@ impl Entity for Firebrand {
         //  Send status update to game state
         //
 
+        self.character_state.flight_time_remaining = self.flight_countdown;
+
         message_dispatcher.entity_to_global(
             self.entity_id,
             Event::FirebrandStatusChanged {
-                health: self.health_status(),
-                flight: self.flight_status(),
-                vials: self.num_vials(),
-                lives: self.num_lives_remaining(),
+                status: self.character_state,
             },
         );
     }
@@ -897,24 +908,6 @@ impl Entity for Firebrand {
 }
 
 impl Firebrand {
-    /// Returns tuple of (current_health, max_health)
-    pub fn health_status(&self) -> (u32, u32) {
-        (self.character_state.hit_points, HIT_POINTS)
-    }
-
-    /// Returns tuple of (flight time remaining, max flight time) in seconds,
-    pub fn flight_status(&self) -> (f32, f32) {
-        (self.flight_countdown, FLIGHT_DURATION)
-    }
-
-    pub fn num_vials(&self) -> u32 {
-        self.character_state.num_vials
-    }
-
-    pub fn num_lives_remaining(&self) -> u32 {
-        self.character_state.num_lives
-    }
-
     pub fn is_jumping(&self) -> bool {
         self.character_state.stance == Stance::InAir && self.jump_time_remaining > 0.0
     }
