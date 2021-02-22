@@ -29,6 +29,11 @@ void main() {
   vec2 position = (u_sprite_scale * a_position.xy) + u_model_position.xy;
   position = round(position * u_sprite_size_px) / u_sprite_size_px;
 
+  // compute half-pixel outset bleed to mitigate cracking, since we can't use indexed
+  // meshes because of non-continous tex coord assignment
+  vec2 outset = vec2(0.25 / u_framebuffer_size.x, 0.25 / u_framebuffer_size.y);
+  position += a_corner * outset;
+
   gl_Position = u_view_proj * vec4(position.x, position.y,
                                    a_position.z + u_model_position.z, 1.0);
 }
