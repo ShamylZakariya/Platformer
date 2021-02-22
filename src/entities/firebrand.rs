@@ -315,7 +315,7 @@ impl sprite::collision::Space {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct CharacterState {
     // The current position of the character
     pub position: Point2<f32>,

@@ -86,16 +86,23 @@ pub trait VertexBufferDescription {
 pub struct Vertex {
     pub position: Vector3<f32>,
     pub tex_coord: Vector2<f32>,
+    pub corner: Vector2<f32>, // represents whcih corner of the sprite quad it is, e.g., (-1,-1) is top left.
     pub color: Vector4<f32>,
 }
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    pub fn new(position: Vector3<f32>, tex_coord: Vector2<f32>, color: Vector4<f32>) -> Self {
+    pub fn new(
+        position: Vector3<f32>,
+        tex_coord: Vector2<f32>,
+        corner: Vector2<f32>,
+        color: Vector4<f32>,
+    ) -> Self {
         Self {
             position,
             tex_coord,
+            corner,
             color,
         }
     }
@@ -120,6 +127,11 @@ impl VertexBufferDescription for Vertex {
                 wgpu::VertexAttributeDescriptor {
                     offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
                     shader_location: 2,
+                    format: wgpu::VertexFormat::Float2,
+                },
+                wgpu::VertexAttributeDescriptor {
+                    offset: std::mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
+                    shader_location: 3,
                     format: wgpu::VertexFormat::Float4,
                 },
             ],
@@ -377,10 +389,10 @@ impl Mesh {
                 std::mem::swap(&mut tc_b, &mut tc_c);
             }
 
-            let sv_a = Vertex::new(p_a, tc_a, sprite.color);
-            let sv_b = Vertex::new(p_b, tc_b, sprite.color);
-            let sv_c = Vertex::new(p_c, tc_c, sprite.color);
-            let sv_d = Vertex::new(p_d, tc_d, sprite.color);
+            let sv_a = Vertex::new(p_a, tc_a, vec2(-1.0, -1.0), sprite.color);
+            let sv_b = Vertex::new(p_b, tc_b, vec2(1.0, -1.0), sprite.color);
+            let sv_c = Vertex::new(p_c, tc_c, vec2(1.0, 1.0), sprite.color);
+            let sv_d = Vertex::new(p_d, tc_d, vec2(-1.0, 1.0), sprite.color);
             let idx = vertices.len();
 
             vertices.push(sv_a);

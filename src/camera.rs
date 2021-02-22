@@ -114,7 +114,7 @@ impl Projection {
     }
 
     pub fn viewport_size(&self) -> Vector2<f32> {
-        vec2(self.scale - 2.0, self.scale / self.aspect)
+        vec2(self.scale, self.scale / self.aspect)
     }
 
     pub fn scale(&self) -> f32 {
@@ -135,7 +135,7 @@ impl Projection {
 #[derive(Debug, Copy, Clone)]
 pub struct UniformData {
     // use vec4 for 16-byte spacing requirement
-    view_position: Vector4<f32>,
+    position: Vector4<f32>,
     view_proj: Matrix4<f32>,
 }
 
@@ -145,13 +145,13 @@ unsafe impl bytemuck::Zeroable for UniformData {}
 impl UniformData {
     pub fn new() -> Self {
         Self {
-            view_position: Zero::zero(),
+            position: Zero::zero(),
             view_proj: Matrix4::identity(),
         }
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) -> &mut Self {
-        self.view_position = camera.position().to_homogeneous(); // converts to vec4
+        self.position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
         self
     }

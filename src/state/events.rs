@@ -1,6 +1,9 @@
 use cgmath::*;
 
-use crate::{entities::{self, util::HorizontalDir}, sprite, tileset};
+use crate::{
+    entities::{self, util::HorizontalDir},
+    sprite, tileset,
+};
 
 /// An Event payload for Message
 #[derive(Debug, Clone)]
