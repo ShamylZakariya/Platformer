@@ -11,6 +11,7 @@ layout(set = 0, binding = 1) uniform sampler s_diffuse;
 layout(set = 1, binding = 0) uniform CameraUniforms {
   vec3 u_position; // camera aposition world
   mat4 u_view_proj; // camera view * proj
+  vec2 u_framebuffer_size; // pixel size of framebuffer
 };
 
 layout(set = 2, binding = 0) uniform SpriteUniforms {

@@ -137,6 +137,7 @@ pub struct UniformData {
     // use vec4 for 16-byte spacing requirement
     position: Vector4<f32>,
     view_proj: Matrix4<f32>,
+    framebuffer_size: Vector2<f32>,
 }
 
 unsafe impl bytemuck::Pod for UniformData {}
@@ -147,12 +148,14 @@ impl UniformData {
         Self {
             position: Zero::zero(),
             view_proj: Matrix4::identity(),
+            framebuffer_size: Zero::zero(),
         }
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) -> &mut Self {
         self.position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
+        self.framebuffer_size = vec2(projection.width, projection.height);
         self
     }
 }
@@ -186,7 +189,7 @@ impl Uniforms {
                 },
                 count: None,
             }],
-            label: Some("Sprite Uniform Bind Group Layout"),
+            label: Some("Camera Uniform Bind Group Layout"),
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {

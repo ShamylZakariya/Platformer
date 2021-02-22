@@ -6,7 +6,8 @@ CURRENTLY:
 
         - steps:
             - DONE: add outset vector to sprite::rendering::Vertex
-            - projection width/height seem to actually be pixels? Need to test when in doubled pixels display
+            - DONE: Add framebuffer width/height to camera uniforms
+                - is projection width/height seem to actually pixels? Need to test when in doubled pixels display
             - outset each by 0.25 / width|height since clip space is -1 -> 1, and half pixel is 0.5 / 2 across clip
 
 
@@ -17,6 +18,7 @@ TODO:
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
 
 BUGS:
+    firebrand's death animation draws atop the GameUi (probably enemy deaths do too?)
 
 LOW PRIORITY:
     - make collision::Space take a "collider" struct instead of sprites, but make a convenience From<> impl to easy convert a sprite to a collider.
