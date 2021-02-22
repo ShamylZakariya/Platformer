@@ -482,6 +482,7 @@ impl GameState {
                 .map(|ec| ec.entity.position())
                 .collect::<Vec<_>>();
             let position = positions[self.firebrand_start_checkpoint as usize];
+            let position = point3(position.x, position.y, layers::stage::PLAYER);
 
             // create firebrand and immediately process addition request since update()
             // depends on firebrand's location.
