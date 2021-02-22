@@ -966,6 +966,14 @@ impl GameState {
         }
     }
 
+    pub fn try_get_firebrand(&self) -> Option<&EntityComponents> {
+        if let Some(e_id) = self.firebrand_entity_id {
+            self.entities.get(&e_id)
+        } else {
+            None
+        }
+    }
+
     pub fn get_firebrand(&self) -> &EntityComponents {
         self.entities
             .get(

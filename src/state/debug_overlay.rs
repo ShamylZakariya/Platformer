@@ -177,17 +177,27 @@ impl DebugOverlay {
     }
 
     fn create_ui_state_input(&self, game_state: &GameState) -> UiStateInput {
-        let firebrand = game_state.get_firebrand();
-        let position = firebrand.entity.position();
         let cc = &game_state.camera_controller;
+        if let Some(firebrand) = game_state.try_get_firebrand() {
+            let position = firebrand.entity.position();
 
-        UiStateInput {
-            camera_tracks_character: game_state.camera_tracks_character,
-            camera_position: cc.camera.position(),
-            zoom: cc.projection.scale(),
-            character_position: position.xy(),
-            draw_stage_collision_info: game_state.draw_stage_collision_info,
-            character_cycle: firebrand.entity.sprite_cycle().to_string(),
+            UiStateInput {
+                camera_tracks_character: game_state.camera_tracks_character,
+                camera_position: cc.camera.position(),
+                zoom: cc.projection.scale(),
+                character_position: position.xy(),
+                draw_stage_collision_info: game_state.draw_stage_collision_info,
+                character_cycle: firebrand.entity.sprite_cycle().to_string(),
+            }
+        } else {
+            UiStateInput {
+                camera_tracks_character: game_state.camera_tracks_character,
+                camera_position: cc.camera.position(),
+                zoom: cc.projection.scale(),
+                character_position: point2(0.0, 0.0),
+                draw_stage_collision_info: game_state.draw_stage_collision_info,
+                character_cycle: "<none>".to_owned(),
+            }
         }
     }
 
