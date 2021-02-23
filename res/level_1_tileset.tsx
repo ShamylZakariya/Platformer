@@ -189,4 +189,18 @@
    <property name="entity_class" value="BossFightTrigger"/>
   </properties>
  </tile>
+ <tile id="51">
+  <properties>
+   <property name="collision_shape" value="Square"/>
+   <property name="entity_class" value="PowerUp"/>
+   <property name="powerup_type" value="vial"/>
+  </properties>
+ </tile>
+ <tile id="52">
+  <properties>
+   <property name="collision_shape" value="Square"/>
+   <property name="entity_class" value="PowerUp"/>
+   <property name="powerup_type" value="heart"/>
+  </properties>
+ </tile>
 </tileset>

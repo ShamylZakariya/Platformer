@@ -1,4 +1,12 @@
 CURRENTLY:
+    PowerUps
+        - right now, it's modeled after FallingBridge since it receives a FirebrandContact message.
+        - NOT RECEIVINg SAID MESSAGE
+        - FallingBridge has mask of 13, but PowerUp collider mask is 9. Why? Where did it get set? Is it the ratchet flag?
+
+    So, looks like Firebrand explicitly looks for CONTACT_DAMAGE contact, etc. Maybe I need to scan for some generic CONTACTABLE flag, and then dispatch damage if also the CONTACT_DAMAGE flag is set, etc.
+    This is mostly present in Firebrand::process_contacts
+
 
 TODO:
     - We need the fade in, fade out animation. Best way to di it is via postprocessing shader.

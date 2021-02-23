@@ -10,6 +10,7 @@ pub mod fireball;
 pub mod firebrand;
 pub mod flying_fish;
 pub mod hoodie;
+pub mod power_up;
 pub mod rising_floor;
 pub mod spawn_point;
 pub mod ui_digit;
@@ -35,12 +36,13 @@ pub enum EntityClass {
     Firebrand,
     FirebrandDeath,
     Fireball,
+    FireSprite,
     FallingBridge,
     FlyingFish,
     Hoodie,
+    PowerUp,
     RisingFloor,
     SpawnPoint,
-    FireSprite,
 
     // Ui classes
     UiDigit,
@@ -103,6 +105,7 @@ pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entit
             Some(Box::new(flying_fish::FlyingFish::default()) as Box<dyn entity::Entity>)
         }
         "Hoodie" => Some(Box::new(hoodie::Hoodie::default()) as Box<dyn entity::Entity>),
+        "PowerUp" => Some(Box::new(power_up::PowerUp::default()) as Box<dyn entity::Entity>),
         "SpawnPoint" => {
             Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
         }

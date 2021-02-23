@@ -898,6 +898,22 @@
    <property name="role" value="root"/>
   </properties>
  </tile>
+ <tile id="144">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="vial"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
+ <tile id="145">
+  <properties>
+   <property name="collision_shape" value="square"/>
+   <property name="cycle" value="default"/>
+   <property name="name" value="heart"/>
+   <property name="role" value="root"/>
+  </properties>
+ </tile>
  <tile id="147">
   <properties>
    <property name="collision_shape" value="square"/>
