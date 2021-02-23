@@ -25,6 +25,11 @@ pub enum Event {
     /// Sent by a checkpoint - once - when firebrand passes it
     FirebrandPassedCheckpoint,
 
+    /// Sent by a PowerUp when Firebrand has contacted it
+    FirebrandContactedPowerUp {
+        powerup_type: entities::power_up::Type,
+    },
+
     /// Sent by Firebrand to State to signal request to shoot fireball.
     /// If State determines a fireball may be shot (there is some rate limiting)
     /// State will reply with DidShootFireball

@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::util::HorizontalDir;
+use super::{power_up, util::HorizontalDir};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -747,9 +747,11 @@ impl Entity for Firebrand {
         collision_space.test_rect_against_dynamic_sprites(
             &self.character_state.position.xy(),
             &vec2(1.0, 1.0),
-            CONTACT_DAMAGE,
+            COLLIDER | ENTITY,
             |sprite| {
-                self.process_potential_collision_with(sprite);
+                if sprite.entity_id != Some(self.entity_id) {
+                    self.process_potential_collision_with(sprite);
+                }
                 false
             },
         );
@@ -893,6 +895,9 @@ impl Entity for Firebrand {
                 damage,
             } => {
                 self.receive_injury(damage);
+            }
+            Event::FirebrandContactedPowerUp { powerup_type } => {
+                self.receive_powerup(powerup_type);
             }
             _ => {}
         }
@@ -1509,6 +1514,18 @@ impl Firebrand {
         );
 
         in_water
+    }
+
+    fn receive_powerup(&mut self, powerup_type: power_up::Type) {
+        match powerup_type {
+            super::power_up::Type::Vial => {
+                self.character_state.num_vials += 1;
+            }
+            super::power_up::Type::Heart => {
+                self.character_state.hit_points =
+                    (self.character_state.hit_points + 1).min(HIT_POINTS);
+            }
+        }
     }
 
     fn receive_injury(&mut self, damage: u32) {

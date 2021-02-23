@@ -79,7 +79,13 @@ impl EntityClass {
         use EntityClass::*;
         matches!(
             self,
-            BossFightTrigger | CheckPoint | ExitDoor | FallingBridge | RisingFloor | SpawnPoint
+            BossFightTrigger
+                | CheckPoint
+                | ExitDoor
+                | FallingBridge
+                | RisingFloor
+                | SpawnPoint
+                | PowerUp
         )
     }
 }

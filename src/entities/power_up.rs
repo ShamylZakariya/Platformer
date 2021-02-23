@@ -2,7 +2,14 @@ use std::time::Duration;
 
 use cgmath::*;
 
-use crate::{entity::{Entity, GameStatePeek}, event_dispatch::*, map, sprite::{self, collision, rendering}, state::{constants::sprite_masks, events::Event}, tileset};
+use crate::{
+    entity::{Entity, GameStatePeek},
+    event_dispatch::*,
+    map,
+    sprite::{self, collision, rendering},
+    state::events::Event,
+    tileset,
+};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -36,9 +43,11 @@ const FLICKER_PERIOD: f32 = 0.133 * 2.0;
 pub struct PowerUp {
     entity_id: u32,
     position: Point3<f32>,
-    collider: Option<sprite::Sprite>,
+    collider: sprite::Sprite,
     powerup_type: Option<Type>,
     time: f32,
+    needs_collider: bool,
+    is_collider_active: bool,
 }
 
 impl Default for PowerUp {
@@ -46,9 +55,11 @@ impl Default for PowerUp {
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
-            collider: None,
+            collider: sprite::Sprite::default(),
             powerup_type: None,
             time: 0.0,
+            needs_collider: true,
+            is_collider_active: false,
         }
     }
 }
@@ -64,13 +75,10 @@ impl Entity for PowerUp {
     ) {
         self.entity_id = entity_id;
         self.position = sprite.origin;
-        self.collider = Some(*sprite);
-        collision_space.add_dynamic_sprite(sprite);
-
-        // if let Some(c) = &mut self.collider {
-        //     c.mask = sprite_masks::COLLIDER | sprite_masks::ENTITY; // this should be a no-op?
-        //     collision_space.add_static_sprite(c);
-        // }
+        self.collider = *sprite;
+        self.collider.collision_shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_sprite(&self.collider);
+        self.is_collider_active = true;
 
         let type_name = tile
             .get_property("powerup_type")
@@ -83,12 +91,25 @@ impl Entity for PowerUp {
         &mut self,
         dt: Duration,
         _map: &map::Map,
-        _collision_space: &mut collision::Space,
-        _message_dispatcher: &mut Dispatcher,
+        collision_space: &mut collision::Space,
+        message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {
         let dt = dt.as_secs_f32();
         self.time += dt;
+
+        if !self.needs_collider && self.is_collider_active {
+            collision_space.remove_dynamic_sprite(&self.collider);
+            self.is_collider_active = false;
+
+            // broadcast that this powerup has been consumed
+            message_dispatcher.broadcast(Event::FirebrandContactedPowerUp {
+                powerup_type: self.powerup_type.unwrap(),
+            });
+        } else if self.needs_collider && !self.is_collider_active {
+            collision_space.add_dynamic_sprite(&self.collider);
+            self.is_collider_active = true;
+        }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -120,13 +141,17 @@ impl Entity for PowerUp {
         "default"
     }
 
+    fn should_draw(&self) -> bool {
+        self.needs_collider
+    }
+
     fn handle_message(&mut self, message: &Message) {
         match message.event {
             Event::FirebrandContact => {
-                println!("PowerUp::handle_message - Firebrand contact");
+                self.needs_collider = false;
             }
             Event::ResetState => {
-                println!("PowerUp::handle_message - ResetState");
+                self.needs_collider = true;
             }
             _ => {}
         }

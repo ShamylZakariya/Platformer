@@ -120,7 +120,7 @@ impl Entity for BossFish {
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
         self.collider = *sprite;
         self.collider.entity_id = Some(entity_id);
-        self.collider.mask = sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
+        self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
         self.collider.collision_shape = sprite::CollisionShape::Square;
     }
 
