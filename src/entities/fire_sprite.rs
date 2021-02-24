@@ -28,7 +28,7 @@ pub struct FireSprite {
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
     life: HitPointState,
-    march: MarchState,
+    march: Option<MarchState>,
 }
 
 impl Default for FireSprite {
@@ -41,7 +41,7 @@ impl Default for FireSprite {
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             life: HitPointState::new(HIT_POINTS),
-            march: MarchState::new(HorizontalDir::East, MOVEMENT_SPEED),
+            march: None,
         }
     }
 }
@@ -52,7 +52,7 @@ impl Entity for FireSprite {
         entity_id: u32,
         sprite: &sprite::Sprite,
         _tile: &tileset::Tile,
-        _map: &map::Map,
+        map: &map::Map,
         collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
@@ -69,6 +69,22 @@ impl Entity for FireSprite {
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
         self.collider.collision_shape = sprite::CollisionShape::Square;
         collision_space.add_dynamic_sprite(&self.collider);
+
+        let fixed_position = {
+            if let Some(properties) = map.object_group_properties_for_sprite(sprite, "Metadata") {
+                if properties.property("fixed_position") == Some("true") {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        };
+
+        if !fixed_position {
+            self.march = Some(MarchState::new(HorizontalDir::East, MOVEMENT_SPEED));
+        }
     }
 
     fn update(
@@ -96,9 +112,11 @@ impl Entity for FireSprite {
             // Perform basic march behavior
             //
 
-            let next_position = self.march.update(dt, position.xy(), collision_space);
-            self.position.x = next_position.x;
-            self.position.y = next_position.y;
+            if let Some(march) = &mut self.march {
+                let next_position = march.update(dt, position.xy(), collision_space);
+                self.position.x = next_position.x;
+                self.position.y = next_position.y;
+            }
 
             //
             //  Update the sprite for collision detection
