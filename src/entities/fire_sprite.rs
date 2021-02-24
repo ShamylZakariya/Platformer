@@ -72,11 +72,7 @@ impl Entity for FireSprite {
 
         let fixed_position = {
             if let Some(properties) = map.object_group_properties_for_sprite(sprite, "Metadata") {
-                if properties.property("fixed_position") == Some("true") {
-                    true
-                } else {
-                    false
-                }
+                properties.property("fixed_position") == Some("true")
             } else {
                 false
             }
