@@ -1,5 +1,5 @@
 CURRENTLY:
-    Need a FireSprite variant which doesn't move
+    Sometimes the first firebal shot at a Hoodie passes right through him...
 
 
 
