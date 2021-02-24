@@ -133,10 +133,8 @@ impl Entity for Fireball {
         self.position.x = next_position.x;
         self.position.y = next_position.y;
 
-        if let Mode::Firesprite = self.mode {
-            //
-            //  Update sprite animation cycle for Firesprite
-            //
+        //  Update sprite animation cycle for Firesprite
+        if matches!(self.mode, Mode::Firesprite) {
             self.animation_cycle_tick_countdown -= dt;
             if self.animation_cycle_tick_countdown <= 0.0 {
                 self.animation_cycle_tick_countdown += ANIMATION_CYCLE_DURATION;
