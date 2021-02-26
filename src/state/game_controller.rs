@@ -20,16 +20,20 @@ pub struct GameController {
 
 impl Default for GameController {
     fn default() -> Self {
-        Self {
-            current_checkpoint: 0,
-            lives_remaining: 3,
-            restart_game_countdown: None,
-            game_over_countdown: None,
-        }
+        Self::new(3, 0)
     }
 }
 
 impl GameController {
+    pub fn new(lives: u32, checkpoint: u32) -> Self {
+        Self {
+            current_checkpoint: checkpoint,
+            lives_remaining: lives,
+            restart_game_countdown: None,
+            game_over_countdown: None,
+        }
+    }
+
     pub fn update(
         &mut self,
         _window: &Window,

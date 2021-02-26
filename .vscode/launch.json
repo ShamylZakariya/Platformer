@@ -25,6 +25,27 @@
         {
             "type": "lldb",
             "request": "launch",
+            "name": "Debug 'Gargoyle's Quest (Checkpoint)",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=platformer",
+                    "--package=platformer"
+                ],
+                "filter": {
+                    "name": "platformer",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "-c",
+                "2"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
             "name": "Debug 'Gargoyle's Quest (w/ Overlay)",
             "cargo": {
                 "args": [

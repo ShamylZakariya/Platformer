@@ -121,9 +121,9 @@ pub struct GameState {
 
     // General game state
     time: f32,
-    boss_fight_start_time: Option<f32>,
-    boss_fight_arena_left_bounds: Option<f32>,
-    viewport_left_when_boss_encountered: Option<f32>,
+    boss_arena_entered_time: Option<f32>,
+    boss_arena_left_bounds: Option<f32>,
+    viewport_left_when_boss_arena_entered: Option<f32>,
     camera_shaker: Option<CameraShaker>,
     game_state_peek: GameStatePeek,
 }
@@ -190,16 +190,14 @@ impl GameState {
                     layers::stage::LEVEL
                 }
             });
-            let exit_sprites =
-                map.generate_sprites(exit_layer, |_, _| layers::stage::BACKGROUND + 2.0);
+            let exit_sprites = map.generate_sprites(exit_layer, |_, _| layers::stage::EXIT);
 
             let rising_floor_sprites =
                 map.generate_sprites(rising_floor_layer, |_, _| layers::stage::FOREGROUND);
             let exit_door_left_sprites =
-                map.generate_sprites(exit_door_left_layer, |_, _| layers::stage::BACKGROUND + 1.0);
-            let exit_door_right_sprites = map.generate_sprites(exit_door_right_layer, |_, _| {
-                layers::stage::BACKGROUND + 1.0
-            });
+                map.generate_sprites(exit_door_left_layer, |_, _| layers::stage::EXIT - 1.0);
+            let exit_door_right_sprites =
+                map.generate_sprites(exit_door_right_layer, |_, _| layers::stage::EXIT - 1.0);
 
             let rising_floor_entity = Box::new(entities::rising_floor::RisingFloor::new(
                 rising_floor_sprites,
@@ -231,10 +229,12 @@ impl GameState {
             stage_sprites.extend(level_sprites);
             stage_sprites.extend(exit_sprites);
 
-            let sm = rendering::Mesh::new(&stage_sprites, 0, &gpu.device, "Stage Sprite Mesh");
+            let stage_sprites_mesh =
+                rendering::Mesh::new(&stage_sprites, 0, &gpu.device, "Stage Sprite Mesh");
+
             (
                 stage_sprite_material.clone(),
-                rendering::Drawable::with(sm, stage_sprite_material),
+                rendering::Drawable::with(stage_sprites_mesh, stage_sprite_material),
                 collision_space,
                 entities,
                 vec![
@@ -368,6 +368,7 @@ impl GameState {
             stage_debug_draw_overlap_uniforms,
             stage_debug_draw_contact_uniforms,
             stage_sprite_drawable,
+
             map,
             collision_space,
             entity_tileset,
@@ -387,9 +388,9 @@ impl GameState {
             camera_tracks_character: true,
 
             time: 0.0,
-            boss_fight_start_time: None,
-            boss_fight_arena_left_bounds: None,
-            viewport_left_when_boss_encountered: None,
+            boss_arena_entered_time: None,
+            boss_arena_left_bounds: None,
+            viewport_left_when_boss_arena_entered: None,
             camera_shaker: None,
             game_state_peek: GameStatePeek::default(),
         };
@@ -481,7 +482,9 @@ impl GameState {
                 .iter()
                 .map(|ec| ec.entity.position())
                 .collect::<Vec<_>>();
-            let position = positions[self.firebrand_start_checkpoint as usize];
+            let checkpoint_idx =
+                (self.firebrand_start_checkpoint as usize).min(positions.len() - 1);
+            let position = positions[checkpoint_idx];
             let position = point3(position.x, position.y, layers::stage::PLAYER);
 
             // create firebrand and immediately process addition request since update()
@@ -778,8 +781,8 @@ impl GameState {
                     );
                 }
 
-                Event::BossEncountered { arena_left } => {
-                    self.on_boss_fight_started(message_dispatcher, *arena_left);
+                Event::BossArenaEncountered { arena_left } => {
+                    self.on_boss_arena_entered(message_dispatcher, *arena_left);
                 }
 
                 Event::BossDefeated => {
@@ -810,6 +813,19 @@ impl GameState {
                     self.game_state_peek.player_lives = status.num_lives;
                 }
 
+                Event::FirebrandPassedThroughExitDoor => {
+                    self.on_level_complete();
+                }
+
+                Event::QueryBossFightMayStart => {
+                    if self.boss_arena_entered_time.is_some() {
+                        let sender = message
+                            .sender_entity_id
+                            .expect("TryBossRaise must be sent by Boss entity");
+                        message_dispatcher.global_to_entity(sender, Event::BossFightMayStart);
+                    }
+                }
+
                 _ => {}
             }
         }
@@ -831,9 +847,9 @@ impl GameState {
 
         self.firebrand_entity_id = None;
         self.visible_entities.clear();
-        self.boss_fight_start_time = None;
-        self.boss_fight_arena_left_bounds = None;
-        self.viewport_left_when_boss_encountered = None;
+        self.boss_arena_entered_time = None;
+        self.boss_arena_left_bounds = None;
+        self.viewport_left_when_boss_arena_entered = None;
         self.camera_shaker = None;
 
         // For every entity which will be removed in reset, we need to remove collider.
@@ -944,16 +960,16 @@ impl GameState {
     fn current_map_bounds(&self) -> Bounds {
         let map_bounds = self.map.bounds();
 
-        if let Some(arena_left_bounds) = self.boss_fight_arena_left_bounds {
+        if let Some(arena_left_bounds) = self.boss_arena_left_bounds {
             let elapsed = self.time
                 - self
-                    .boss_fight_start_time
+                    .boss_arena_entered_time
                     .expect("Expect boss_fight_start_time to be set");
 
             let t = (elapsed / BOSS_FIGHT_START_TIME_ARENA_CONTRACTION_DURATION).min(1.0);
 
             let vpl = self
-                .viewport_left_when_boss_encountered
+                .viewport_left_when_boss_arena_entered
                 .expect("Expect viewport_left_when_boss_encountered to be set");
             let x = lerp(hermite(t), vpl, arena_left_bounds);
             let origin = point2(x, map_bounds.bottom());
@@ -1061,15 +1077,15 @@ impl GameState {
         }
     }
 
-    fn on_boss_fight_started(
+    fn on_boss_arena_entered(
         &mut self,
         _message_dispatcher: &mut event_dispatch::Dispatcher,
         arena_left_bounds: f32,
     ) {
         println!("\n\nBOSS FIGHT!!\n\n");
-        self.boss_fight_start_time = Some(self.time);
-        self.boss_fight_arena_left_bounds = Some(arena_left_bounds);
-        self.viewport_left_when_boss_encountered =
+        self.boss_arena_entered_time = Some(self.time);
+        self.boss_arena_left_bounds = Some(arena_left_bounds);
+        self.viewport_left_when_boss_arena_entered =
             Some(self.camera_controller.viewport_bounds(0.0).left());
     }
 
@@ -1106,5 +1122,9 @@ impl GameState {
             let e = entities::death_animation::DeathAnimation::new_firebrand_death(position, dir);
             self.request_add_entity(entity_id_vendor, Box::new(e));
         }
+    }
+
+    fn on_level_complete(&mut self) {
+        println!("GameState::on_level_complete");
     }
 }

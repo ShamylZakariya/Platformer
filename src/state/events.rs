@@ -85,9 +85,15 @@ pub enum Event {
     },
 
     /// Sent by boss to GameState when the boss fight starts
-    BossEncountered {
+    BossArenaEncountered {
         arena_left: f32,
     },
+
+    /// Sent by boss to game state to ask if it may rise and start fighting player
+    QueryBossFightMayStart,
+
+    /// Sent by GameState to boss to signal that it may now raise
+    BossFightMayStart,
 
     /// Sent by boss to GameState when defeated
     BossDefeated,
@@ -105,7 +111,7 @@ pub enum Event {
     ExitDoorOpened,
 
     // Sent when the player passes through the exit door
-    PlayerPassedThroughExitDoor,
+    FirebrandPassedThroughExitDoor,
 
     // Sent to signal to GameState that the camera should start shaking, using the offset pattern specified
     // Shaking will continue until GameState receives EndCameraShake.

@@ -50,12 +50,12 @@ impl Entity for BossFightTrigger {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
-        if game_state_peek.player_position.x > self.position.x
+        if game_state_peek.player_position.x > (self.position.x + 1.0)
             && !self.did_send_fight_started_message
         {
             message_dispatcher.entity_to_global(
                 self.entity_id,
-                Event::BossEncountered {
+                Event::BossArenaEncountered {
                     arena_left: self.position.x + 1.0,
                 },
             );

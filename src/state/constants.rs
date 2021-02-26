@@ -16,6 +16,7 @@ pub mod sprite_masks {
 
 pub mod layers {
     pub mod stage {
+        pub const EXIT: f32 = 95.0;
         pub const BACKGROUND: f32 = 90.0;
         pub const LEVEL: f32 = 80.0;
         pub const ENTITIES: f32 = 70.0;

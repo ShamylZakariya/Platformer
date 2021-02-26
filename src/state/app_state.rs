@@ -25,7 +25,8 @@ impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let mut entity_id_vendor = entity::IdVendor::default();
 
-        let game_controller = GameController::default();
+        let game_controller =
+            GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
         let game_state = GameState::new(
             &mut gpu,
             &options,

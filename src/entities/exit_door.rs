@@ -29,6 +29,7 @@ pub struct ExitDoor {
     mode: Mode,
     open_dir: HorizontalDir,
     should_send_exit_message: bool,
+    last_player_position: Option<Point2<f32>>,
 }
 
 impl ExitDoor {
@@ -42,6 +43,7 @@ impl ExitDoor {
             mode: Mode::Closed,
             open_dir,
             should_send_exit_message: ExitDoor::should_send_exit_message_for_dir(open_dir),
+            last_player_position: None,
         }
     }
 
@@ -88,16 +90,22 @@ impl Entity for ExitDoor {
                     }
                 }
             },
-            Mode::Open => {
-                if self.should_send_exit_message
-                    && game_state_peek.player_position.x
-                        > self.bounds.left() + self.bounds.width() * 0.5
-                {
-                    message_dispatcher.broadcast(Event::PlayerPassedThroughExitDoor);
-                    self.should_send_exit_message = false;
+            Mode::Open if self.should_send_exit_message => {
+                if let Some(last_player_position) = self.last_player_position {
+                    let threshold = self.bounds.left() + self.bounds.width() * 0.5;
+                    // only send exit message if player is moving to right, through door
+                    if game_state_peek.player_position.x > threshold
+                        && last_player_position.x < threshold
+                    {
+                        message_dispatcher.broadcast(Event::FirebrandPassedThroughExitDoor);
+                        self.should_send_exit_message = false;
+                    }
                 }
             }
+            _ => {}
         }
+
+        self.last_player_position = Some(game_state_peek.player_position);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {

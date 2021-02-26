@@ -12,7 +12,12 @@ use crate::{
     map,
     sprite::{self, collision, rendering},
     state::{
-        constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
+        constants::{
+            self,
+            layers::{self},
+            sprite_masks::*,
+            GRAVITY_VEL,
+        },
         events::Event,
     },
 };
@@ -406,6 +411,7 @@ pub struct Firebrand {
     frozen: bool,
     did_send_creation_message: bool,
     did_send_death_message: bool,
+    did_pass_through_exit_door: bool,
 }
 
 impl Firebrand {
@@ -444,6 +450,7 @@ impl Firebrand {
             frozen: false,
             did_send_creation_message: false,
             did_send_death_message: false,
+            did_pass_through_exit_door: false,
         }
     }
 }
@@ -811,6 +818,12 @@ impl Entity for Firebrand {
                 HorizontalDir::East => (1.0, 0.0),
             };
 
+            let z_offset = if self.did_pass_through_exit_door {
+                layers::stage::PLAYER - (layers::stage::BACKGROUND + 1.0)
+            } else {
+                layers::stage::PLAYER
+            };
+
             uniforms
                 .data
                 .set_color(vec4(1.0, 1.0, 1.0, 1.0))
@@ -820,7 +833,7 @@ impl Entity for Firebrand {
                         + self.character_state.position_offset.x
                         + xoffset,
                     self.character_state.position.y + self.character_state.position_offset.y,
-                    layers::stage::PLAYER,
+                    z_offset,
                 ));
         }
     }
@@ -898,6 +911,14 @@ impl Entity for Firebrand {
             }
             Event::FirebrandContactedPowerUp { powerup_type } => {
                 self.receive_powerup(powerup_type);
+            }
+            Event::FirebrandPassedThroughExitDoor => {
+                // we've passed through exit door, need to offset our z depth so we now pass beneath
+                // the level sprites and the door sprites, but above the black door background sprites
+                println!(
+                    "Firebrand[{}]::handle_message - FirebrandPassedThroughExitDoor",
+                    self.entity_id()
+                );
             }
             _ => {}
         }

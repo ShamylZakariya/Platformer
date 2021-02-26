@@ -47,6 +47,7 @@ pub struct BossFish {
     spawn_point_id: u32,
     collider: sprite::Sprite,
     position: Point3<f32>,
+    active: bool,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
     time: f32,
@@ -73,6 +74,7 @@ impl Default for BossFish {
             spawn_point_id: 0,
             collider: sprite::Sprite::default(),
             position: point3(0.0, 0.0, 0.0),
+            active: false, // waits for Event::QueryBossFightMayStart
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             time: 0.0,
@@ -147,6 +149,11 @@ impl Entity for BossFish {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
+        if !self.active {
+            message_dispatcher.entity_to_global(self.entity_id, Event::QueryBossFightMayStart);
+            return;
+        }
+
         let dt = dt.as_secs_f32();
         self.time += dt;
 
@@ -202,26 +209,30 @@ impl Entity for BossFish {
             HorizontalDir::West => (-1.0, 1.0),
         };
 
-        let alpha = if self.hit_points > 0 {
-            if let Some(injury_flash_countdown) = self.injury_flash_countdown {
-                let blink_phase =
-                    ((INJURY_FLASH_DURATION - injury_flash_countdown) / INJURY_BLINK_PERIOD) as i32;
+        let alpha = if self.active {
+            if self.hit_points > 0 {
+                if let Some(injury_flash_countdown) = self.injury_flash_countdown {
+                    let blink_phase = ((INJURY_FLASH_DURATION - injury_flash_countdown)
+                        / INJURY_BLINK_PERIOD) as i32;
+                    if blink_phase % 2 == 0 {
+                        1.0
+                    } else {
+                        0.0
+                    }
+                } else {
+                    1.0
+                }
+            } else {
+                let blink_phase = ((DEATH_ANIMATION_DURATION - self.death_animation_countdown)
+                    / INJURY_BLINK_PERIOD) as i32;
                 if blink_phase % 2 == 0 {
                     1.0
                 } else {
                     0.0
                 }
-            } else {
-                1.0
             }
         } else {
-            let blink_phase = ((DEATH_ANIMATION_DURATION - self.death_animation_countdown)
-                / INJURY_BLINK_PERIOD) as i32;
-            if blink_phase % 2 == 0 {
-                1.0
-            } else {
-                0.0
-            }
+            0.0
         };
 
         uniforms
@@ -245,6 +256,10 @@ impl Entity for BossFish {
 
     fn is_alive(&self) -> bool {
         self.alive
+    }
+
+    fn should_draw(&self) -> bool {
+        self.active
     }
 
     fn position(&self) -> Point3<f32> {
@@ -283,13 +298,22 @@ impl Entity for BossFish {
     }
 
     fn handle_message(&mut self, message: &Message) {
-        if let Event::HitByFireball {
-            direction: _,
-            damage,
-        } = message.event
-        {
-            self.hit_points = (self.hit_points - (damage as i32)).max(0);
-            self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
+        match message.event {
+            Event::HitByFireball {
+                direction: _,
+                damage,
+            } => {
+                self.hit_points = (self.hit_points - (damage as i32)).max(0);
+                self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
+            }
+            Event::BossFightMayStart => {
+                println!(
+                    "BossFish[{}]::handle_message - BossFightMayStart",
+                    self.entity_id()
+                );
+                self.active = true;
+            }
+            _ => {}
         }
     }
 }

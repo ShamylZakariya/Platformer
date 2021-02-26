@@ -33,6 +33,14 @@ pub struct Options {
     /// Play gargoyle's quest with original gameboy viewport
     #[structopt(short, long)]
     pub gameboy: bool,
+
+    /// Checkpoint to start gameplay at
+    #[structopt(short, long)]
+    pub checkpoint: Option<u32>,
+
+    /// Number of lives to give player
+    #[structopt(short, long, default_value = "3")]
+    pub lives: u32,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
