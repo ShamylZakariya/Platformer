@@ -9,7 +9,12 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Event {
     /// Sent when Firebrand is created and game has started
-    FirebrandCreated,
+    FirebrandCreated {
+        // true for the first time Firebrand is created, when level starts
+        is_first_time: bool,
+        // the checkpoint Firebrand was creATED AT
+        checkpoint: u32,
+    },
 
     /// Received by an Entity when contacted by Firebrand
     FirebrandContact,

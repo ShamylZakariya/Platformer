@@ -404,7 +404,6 @@ pub struct Firebrand {
     invulnerability_countdown: f32,
     last_shoot_time: f32,
     frozen: bool,
-    did_send_creation_message: bool,
     did_send_death_message: bool,
     did_pass_through_exit_door: bool,
 }
@@ -443,7 +442,6 @@ impl Firebrand {
             invulnerability_countdown: 0.0,
             last_shoot_time: 0.0,
             frozen: false,
-            did_send_creation_message: false,
             did_send_death_message: false,
             did_pass_through_exit_door: false,
         }
@@ -493,9 +491,6 @@ impl Entity for Firebrand {
                 self.did_send_death_message = true;
             }
             return;
-        } else if !self.did_send_creation_message {
-            message_dispatcher.broadcast(Event::FirebrandCreated);
-            self.did_send_creation_message = true;
         }
 
         let dt = dt.as_secs_f32();
@@ -909,6 +904,16 @@ impl Entity for Firebrand {
             }
             Event::FirebrandPassedThroughExitDoor => {
                 self.did_pass_through_exit_door = true;
+            }
+            Event::FirebrandCreated {
+                checkpoint: _,
+                is_first_time,
+            } => {
+                println!(
+                    "Firebrand[{}]::handle_message FirebrandCreated is_first_time: {}",
+                    self.entity_id(),
+                    is_first_time
+                );
             }
             _ => {}
         }
