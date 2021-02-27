@@ -8,7 +8,7 @@ use crate::{
     map,
     sprite::{self, collision, rendering},
     state::{
-        constants::{sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
+        constants::{layers, sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
         events::Event,
     },
     tileset,
@@ -110,7 +110,7 @@ impl Entity for BossFish {
             .entity_id
             .expect("Spawned entities expect to find a spawn point id from the sprite");
 
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.arena_extent = vec2(
             tile.float_property("arena_width"),
             tile.float_property("arena_height"),

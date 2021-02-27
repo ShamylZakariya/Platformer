@@ -20,7 +20,7 @@ pub mod layers {
         pub const BACKGROUND: f32 = 90.0;
         pub const LEVEL: f32 = 80.0;
         pub const ENTITIES: f32 = 70.0;
-        pub const PLAYER: f32 = 60.0;
+        pub const FIREBRAND: f32 = 60.0;
         pub const FOREGROUND: f32 = 50.0;
     }
 

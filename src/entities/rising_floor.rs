@@ -9,7 +9,7 @@ use crate::{
     geom::Bounds,
     map,
     sprite::{self, collision, rendering},
-    state::events::Event,
+    state::{constants::layers, events::Event},
 };
 
 const RISE_SPEED: f32 = 1.0 / 0.467;
@@ -39,7 +39,7 @@ impl RisingFloor {
 
         Self {
             entity_id: 0,
-            offset: point3(0.0, 0.0, -0.05),
+            offset: point3(0.0, 0.0, layers::stage::FOREGROUND - 1.0),
             stage_sprites,
             bounds,
             rising: false,

@@ -7,7 +7,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision},
-    state::events::Event,
+    state::{constants::layers, events::Event},
     tileset,
 };
 
@@ -43,7 +43,7 @@ impl Entity for SpawnPoint {
         _collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.sprite = Some(*sprite);
         self.tile = Some(tile.clone());
     }
@@ -92,15 +92,11 @@ impl Entity for SpawnPoint {
     }
 
     fn position(&self) -> Point3<f32> {
-        point3(self.position.x, self.position.y, -1.0)
+        self.position
     }
 
-    fn sprite_name(&self) -> &str {
-        ""
-    }
-
-    fn sprite_cycle(&self) -> &str {
-        ""
+    fn should_draw(&self) -> bool {
+        false
     }
 
     fn handle_message(&mut self, message: &Message) {

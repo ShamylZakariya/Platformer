@@ -6,6 +6,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
+    state::constants::layers,
     tileset,
 };
 
@@ -43,7 +44,7 @@ impl Entity for UiFlightBar {
         _collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
     }
 
     fn update(

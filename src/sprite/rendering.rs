@@ -636,8 +636,8 @@ impl EntityDrawable {
         let mut sprite_states = HashMap::new();
 
         for key in sprites.keys() {
-            let descs = sprites.get(key).unwrap();
-            let mesh = Mesh::new(descs, 0, device, key);
+            let sprites = sprites.get(key).unwrap();
+            let mesh = Mesh::new(sprites, 0, device, key);
             sprite_states.insert(key.to_string(), mesh);
         }
 

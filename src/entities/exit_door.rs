@@ -8,7 +8,7 @@ use crate::{
     geom::Bounds,
     map,
     sprite::{self, collision, find_bounds, rendering},
-    state::{constants::layers::stage::BACKGROUND, events::Event},
+    state::{constants::layers, events::Event},
 };
 
 use super::util::HorizontalDir;
@@ -37,7 +37,7 @@ impl ExitDoor {
         let bounds = find_bounds(&stage_sprites);
         Self {
             entity_id: 0,
-            offset: point3(0.0, 0.0, 0.0),
+            offset: point3(0.0, 0.0, layers::stage::BACKGROUND + 1.0),
             stage_sprites,
             bounds,
             mode: Mode::Closed,
@@ -129,11 +129,7 @@ impl Entity for ExitDoor {
     }
 
     fn position(&self) -> Point3<f32> {
-        point3(
-            self.bounds.origin.x + self.offset.x,
-            self.bounds.origin.y + self.offset.y,
-            BACKGROUND,
-        )
+        self.offset
     }
 
     fn stage_sprites(&self) -> Option<Vec<sprite::Sprite>> {

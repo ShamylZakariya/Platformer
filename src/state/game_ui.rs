@@ -148,7 +148,7 @@ impl GameUi {
             entities_layer,
             &mut collision_space,
             entity_id_vendor,
-            |_, _| layers::ui::FOREGROUND,
+            |_, _| 0.0,
         );
 
         // convert entities to a mapping of id -> EntityComponents

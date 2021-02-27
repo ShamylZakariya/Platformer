@@ -7,7 +7,10 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::{constants, events::Event},
+    state::{
+        constants::{self, layers},
+        events::Event,
+    },
     tileset,
 };
 
@@ -50,7 +53,7 @@ impl Entity for FallingBridge {
     ) {
         self.entity_id = entity_id;
         self.collider = Some(*sprite);
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::LEVEL);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
         collision_space.add_static_sprite(sprite);
     }

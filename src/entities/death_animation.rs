@@ -8,6 +8,7 @@ use crate::{
     geom::Bounds,
     map,
     sprite::{collision, rendering},
+    state::constants::layers,
 };
 
 use super::util::{CompassDir, HorizontalDir};
@@ -37,10 +38,10 @@ pub struct DeathAnimation {
 }
 
 impl DeathAnimation {
-    pub fn new_firebrand_death(position: Point3<f32>, direction: CompassDir) -> Self {
+    pub fn new_firebrand_death(position: Point2<f32>, direction: CompassDir) -> Self {
         Self {
             entity_id: 0,
-            position,
+            position: point3(position.x, position.y, layers::stage::FOREGROUND),
             direction,
             alive: true,
             time: 0.0,
@@ -49,10 +50,10 @@ impl DeathAnimation {
         }
     }
 
-    pub fn new_enemy_death(position: Point3<f32>, direction: HorizontalDir) -> Self {
+    pub fn new_enemy_death(position: Point2<f32>, direction: HorizontalDir) -> Self {
         Self {
             entity_id: 0,
-            position,
+            position: point3(position.x, position.y, layers::stage::FOREGROUND),
             direction: CompassDir::from(direction),
             alive: true,
             time: 0.0,

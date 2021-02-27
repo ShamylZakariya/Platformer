@@ -6,7 +6,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::constants::sprite_masks,
+    state::constants::{layers, sprite_masks},
     tileset,
 };
 
@@ -60,7 +60,7 @@ impl Entity for FireSprite {
             .entity_id
             .expect("Spawned entities expect to find a spawn point id from the sprite");
 
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask

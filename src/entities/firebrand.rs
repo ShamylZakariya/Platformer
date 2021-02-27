@@ -12,12 +12,7 @@ use crate::{
     map,
     sprite::{self, collision, rendering},
     state::{
-        constants::{
-            self,
-            layers::{self},
-            sprite_masks::*,
-            GRAVITY_VEL,
-        },
+        constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },
 };
@@ -415,12 +410,12 @@ pub struct Firebrand {
 }
 
 impl Firebrand {
-    pub fn new(position: Point3<f32>, num_lives_remaining: u32) -> Firebrand {
+    pub fn new(position: Point2<f32>, num_lives_remaining: u32) -> Firebrand {
         let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
         let collider = sprite::Sprite::unit(
             sprite::CollisionShape::Square,
             position.xy().cast().unwrap(),
-            position.z,
+            layers::stage::FIREBRAND,
             point2(0.0, 0.0),
             vec2(0.0, 0.0),
             vec4(1.0, 1.0, 1.0, 1.0),
@@ -818,11 +813,10 @@ impl Entity for Firebrand {
                 HorizontalDir::East => (1.0, 0.0),
             };
 
-            let z_offset = layers::stage::PLAYER - layers::stage::ENTITIES;
             let z_offset = if self.did_pass_through_exit_door {
-                z_offset - (layers::stage::BACKGROUND + 1.0)
+                layers::stage::EXIT - 1.0
             } else {
-                z_offset
+                layers::stage::FIREBRAND
             };
 
             uniforms
@@ -882,7 +876,7 @@ impl Entity for Firebrand {
         point3(
             self.character_state.position.x,
             self.character_state.position.y,
-            self.collider.unwrap().origin.z,
+            layers::stage::FIREBRAND,
         )
     }
 
@@ -914,12 +908,7 @@ impl Entity for Firebrand {
                 self.receive_powerup(powerup_type);
             }
             Event::FirebrandPassedThroughExitDoor => {
-                // we've passed through exit door, need to offset our z depth so we now pass beneath
-                // the level sprites and the door sprites, but above the black door background sprites
-                println!(
-                    "Firebrand[{}]::handle_message - FirebrandPassedThroughExitDoor",
-                    self.entity_id()
-                );
+                self.did_pass_through_exit_door = true;
             }
             _ => {}
         }

@@ -8,7 +8,7 @@ use crate::{
     geom::Bounds,
     map,
     sprite::{collision, rendering},
-    state::events::Event,
+    state::{constants::layers, events::Event},
 };
 
 use super::util::HorizontalDir;
@@ -42,7 +42,7 @@ pub struct Fireball {
 impl Fireball {
     pub fn new_fireball(
         sender_id: u32,
-        position: Point3<f32>,
+        position: Point2<f32>,
         direction: HorizontalDir,
         velocity: f32,
         damage: u32,
@@ -51,7 +51,7 @@ impl Fireball {
         Self {
             sender_id,
             entity_id: 0,
-            position,
+            position: point3(position.x, position.y, layers::stage::FIREBRAND + 1.0),
             velocity: dv * velocity,
             alive: true,
             map_origin: point2(0.0, 0.0),
@@ -64,7 +64,7 @@ impl Fireball {
     }
     pub fn new_firesprite(
         sender_id: u32,
-        position: Point3<f32>,
+        position: Point2<f32>,
         direction: Vector2<f32>,
         velocity: f32,
         damage: u32,
@@ -72,7 +72,7 @@ impl Fireball {
         Self {
             sender_id,
             entity_id: 0,
-            position,
+            position: point3(position.x, position.y, layers::stage::FIREBRAND + 1.0),
             velocity: direction * velocity,
             alive: true,
             map_origin: point2(0.0, 0.0),

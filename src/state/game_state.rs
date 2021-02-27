@@ -192,20 +192,21 @@ impl GameState {
             });
             let exit_sprites = map.generate_sprites(exit_layer, |_, _| layers::stage::EXIT);
 
-            let rising_floor_sprites =
-                map.generate_sprites(rising_floor_layer, |_, _| layers::stage::FOREGROUND);
-            let exit_door_left_sprites =
-                map.generate_sprites(exit_door_left_layer, |_, _| layers::stage::EXIT - 1.0);
-            let exit_door_right_sprites =
-                map.generate_sprites(exit_door_right_layer, |_, _| layers::stage::EXIT - 1.0);
+            // Collect sprites for RisingFloor and ExitDoor entities.
+            // The entities which draw these sprites will assign correct z depth at render time
+            let rising_floor_sprites = map.generate_sprites(rising_floor_layer, |_, _| 0.0);
+            let exit_door_left_sprites = map.generate_sprites(exit_door_left_layer, |_, _| 0.0);
+            let exit_door_right_sprites = map.generate_sprites(exit_door_right_layer, |_, _| 0.0);
 
             let rising_floor_entity = Box::new(entities::rising_floor::RisingFloor::new(
                 rising_floor_sprites,
             ));
+
             let exit_door_left_entity = Box::new(entities::exit_door::ExitDoor::new(
                 exit_door_left_sprites,
                 HorizontalDir::West,
             ));
+
             let exit_door_right_entity = Box::new(entities::exit_door::ExitDoor::new(
                 exit_door_right_sprites,
                 HorizontalDir::East,
@@ -217,7 +218,7 @@ impl GameState {
                 entity_layer,
                 &mut collision_space,
                 entity_id_vendor,
-                |_, _| layers::stage::ENTITIES,
+                |_, _| 0.0, // entities assign depth at render time
             );
 
             // generate animations
@@ -485,14 +486,13 @@ impl GameState {
             let checkpoint_idx =
                 (self.firebrand_start_checkpoint as usize).min(positions.len() - 1);
             let position = positions[checkpoint_idx];
-            let position = point3(position.x, position.y, layers::stage::PLAYER);
 
             // create firebrand and immediately process addition request since update()
             // depends on firebrand's location.
             self.firebrand_entity_id = Some(self.request_add_entity(
                 entity_id_vendor,
                 Box::new(entities::firebrand::Firebrand::new(
-                    position,
+                    position.xy(),
                     self.firebrand_start_lives_remaining,
                 )),
             ));
@@ -703,7 +703,7 @@ impl GameState {
                             entity_id_vendor,
                             Box::new(entities::fireball::Fireball::new_fireball(
                                 self.firebrand_entity_id.unwrap(),
-                                point3(origin.x, origin.y, layers::stage::FOREGROUND),
+                                origin.xy(),
                                 *direction,
                                 *velocity,
                                 *damage,
@@ -725,8 +725,7 @@ impl GameState {
                     self.request_add_entity(
                         entity_id_vendor,
                         Box::new(entities::death_animation::DeathAnimation::new_enemy_death(
-                            point3(position.x, position.y, layers::stage::FOREGROUND),
-                            *direction,
+                            *position, *direction,
                         )),
                     );
                 }
@@ -772,11 +771,7 @@ impl GameState {
                     self.request_add_entity(
                         entity_id_vendor,
                         Box::new(entities::fireball::Fireball::new_firesprite(
-                            sender_id,
-                            point3(position.x, position.y, layers::stage::FOREGROUND),
-                            *dir,
-                            *velocity,
-                            *damage,
+                            sender_id, *position, *dir, *velocity, *damage,
                         )),
                     );
                 }
@@ -1119,7 +1114,8 @@ impl GameState {
         // spawn eight DeathAnimations, one in each compass dir
         let position = self.get_firebrand().entity.position();
         for dir in CompassDir::iter() {
-            let e = entities::death_animation::DeathAnimation::new_firebrand_death(position, dir);
+            let e =
+                entities::death_animation::DeathAnimation::new_firebrand_death(position.xy(), dir);
             self.request_add_entity(entity_id_vendor, Box::new(e));
         }
     }

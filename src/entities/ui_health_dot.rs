@@ -7,7 +7,7 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, collision, rendering},
-    state::constants::sprite_masks,
+    state::constants::{layers, sprite_masks},
     tileset,
 };
 
@@ -43,7 +43,7 @@ impl Entity for UiHealthDot {
         collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.position = sprite.origin;
+        self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
 
         let mut sprite = *sprite;
         sprite.mask = sprite_masks::ui::HEALTH_DOT;
