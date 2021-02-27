@@ -818,10 +818,11 @@ impl Entity for Firebrand {
                 HorizontalDir::East => (1.0, 0.0),
             };
 
+            let z_offset = layers::stage::PLAYER - layers::stage::ENTITIES;
             let z_offset = if self.did_pass_through_exit_door {
-                layers::stage::PLAYER - (layers::stage::BACKGROUND + 1.0)
+                z_offset - (layers::stage::BACKGROUND + 1.0)
             } else {
-                layers::stage::PLAYER
+                z_offset
             };
 
             uniforms

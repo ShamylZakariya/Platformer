@@ -1,5 +1,10 @@
 CURRENTLY:
     - offsetting Firebrand's z-index to pass through the door doesn't work. Part of problem is that we encode a z-value to all entities at creation time when loading from map. THose Z values are encoded to the actual mesh. Suggest that entity meshes are made with z-value of 0, and use uniforms to offset to correct target depth
+        1: save point
+        2: Confirm expected depth from static level meshes
+        2: set z-function for all entity creation to return 0 - loko for all codepaths where entities are instantiated
+        3: Have all entities supply a z-depth in update_uniforms
+
 
 
 TODO:
