@@ -105,7 +105,9 @@ impl Entity for Fireball {
         let mask = crate::state::constants::sprite_masks::SHOOTABLE;
 
         let next_position = self.position.xy() + self.velocity * dt;
-        if let Some(sprite) = collision_space.test_point(next_position, mask) {
+        let collider_origin = point2(next_position.x - 0.25, next_position.y - 0.25);
+        let collider_extent = vec2(0.5, 0.5);
+        if let Some(sprite) = collision_space.test_rect(&collider_origin, &collider_extent, mask) {
             if let Some(target_entity_id) = sprite.entity_id {
                 if target_entity_id != self.sender_id {
                     //

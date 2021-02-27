@@ -137,19 +137,53 @@ impl Space {
     ) where
         C: FnMut(&Sprite) -> bool,
     {
-        let extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
+        let snapped_extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
         let a = point2(origin.x.floor() as i32, origin.y.floor() as i32);
-        let b = point2(a.x + extent.x, a.y);
-        let c = point2(a.x, a.y + extent.y);
-        let d = point2(a.x + extent.x, a.y + extent.y);
+        let b = point2(a.x + snapped_extent.x, a.y);
+        let c = point2(a.x, a.y + snapped_extent.y);
+        let d = point2(a.x + snapped_extent.x, a.y + snapped_extent.y);
 
         for p in [a, b, c, d].iter() {
             if let Some(sprite) = self.get_static_sprite_at(*p, mask) {
-                if callback(&sprite) {
-                    return;
+                if sprite.rect_intersection(origin, extent, 0.0, true) {
+                    if callback(&sprite) {
+                        return;
+                    }
                 }
             }
         }
+    }
+
+    /// Tests if a rect intersects with a dynamic or static collider.
+    /// Filters by mask, such that only sprites with matching mask bits will be matched.
+    /// In the case of overlapping sprites, dynamic sprites will be returned before static,
+    /// but otherwise there is no guarantee of which will be returned.
+    pub fn test_rect(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        mask: u32,
+    ) -> Option<&Sprite> {
+        for (_, sprite) in self.dynamic_sprites.iter() {
+            if sprite.mask & mask != 0 && sprite.rect_intersection(origin, extent, 0.0, true) {
+                return Some(sprite);
+            }
+        }
+        let snapped_extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
+        let a = point2(origin.x.floor() as i32, origin.y.floor() as i32);
+        let b = point2(a.x + snapped_extent.x, a.y);
+        let c = point2(a.x, a.y + snapped_extent.y);
+        let d = point2(a.x + snapped_extent.x, a.y + snapped_extent.y);
+
+        for p in [a, b, c, d].iter() {
+            if let Some(sprite) = self.get_static_sprite_at(*p, mask) {
+                if sprite.rect_intersection(origin, extent, 0.0, true) {
+                    return Some(sprite);
+                }
+            }
+        }
+
+        None
     }
 
     /// Tests if a point in the sprites' coordinate system intersects with a sprite.

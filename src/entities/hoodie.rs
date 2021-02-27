@@ -71,6 +71,7 @@ impl Entity for Hoodie {
         self.collider.entity_id = Some(entity_id);
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
         self.collider.collision_shape = sprite::CollisionShape::Square;
+        self.collider.extent.y = 1.5; // hoodie can be shot in the hat, too
         collision_space.add_dynamic_sprite(&self.collider);
     }
 

@@ -1,4 +1,7 @@
 CURRENTLY:
+    - Hoodie walks over the diagonal tiles at the falling bridge (checkpoint 1) and hangs in mid-air. March algo needs to match only on square collision shapes
+    - Sometimes the first firebal shot at a Hoodie passes right through him...
+        - I think this is because hoodie's hood extends about 1/2 sprite above his hitbox. We need to extend the hitbox
     - FIrebrand must walk in from left when starting at checkpoint 0 - can be done by placing firebrand 3 tiles to left and overriding input to make him walk right
     - Firebrand must walk to right after passing the exit door, with level fading out and ending after some distance
     - Firebrand must die when sinking in the boss fish water pit
@@ -10,9 +13,6 @@ TODO:
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
 
 BUGS:
-    Hoodie walks over the diagonal tiles at the falling bridge (checkpoint 1) and hangs in mid-air. March algo needs to match only on square collision shapes
-    Sometimes the first firebal shot at a Hoodie passes right through him...
-        - I think this is because hoodie's hood extends about 1/2 sprite above his hitbox. We need to extend the hitbox
 
 LOW PRIORITY:
     - make collision::Space take a "collider" struct instead of sprites, but make a convenience From<> impl to easy convert a sprite to a collider. Drop the static/dynamic difference, have a field on collider which says static or dynamic to optimize lookups, but have all intersection tests run against both.
