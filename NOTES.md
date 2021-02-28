@@ -1,8 +1,9 @@
 CURRENTLY:
     YAK SHAVING:
-        - map::generate is ugly, the way it assigns COLLIDER, etc. Should have a field is_collider, etc in the Tile and use that to do so.
         - make collision::Space take a "collider" struct instead of sprites, but make a convenience From<> impl to easy convert a sprite to a collider. Drop the static/dynamic difference, have a field on collider which says static or dynamic to optimize lookups, but have all intersection tests run against both.
         - Refactor geom.rs, I don't like that module's existence.
+            - move the line_line and other intersection tests into the collision module
+            - move Bounds and lerp, hermite, clamp into a util module
         - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms. Could make a Uniform<camera::UniformData> or something like that, will need trait constraints for btytemuck::Pod and Zeroable
 
 TODO:
