@@ -92,7 +92,7 @@ impl InputState {
 
     /// Reassign button state to the provided one - this is intended for
     /// situations where overriding user input is necessary.
-    pub fn set(&mut self, buttons:HashMap<VirtualKeyCode,ButtonState>) {
+    pub fn set(&mut self, buttons: HashMap<VirtualKeyCode, ButtonState>) {
         self.buttons = buttons;
     }
 }

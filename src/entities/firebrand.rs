@@ -1,4 +1,9 @@
-use std::{collections::{HashMap, HashSet}, f32::consts::PI, fmt::Display, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    f32::consts::PI,
+    fmt::Display,
+    time::Duration,
+};
 
 use cgmath::*;
 use sprite::CollisionShape;
@@ -147,13 +152,40 @@ impl FirebrandInputState {
         self.input_state.update();
     }
 
-
-    fn override_user_input(&mut self, left:bool, right: bool, jump: bool, fire: bool) -> bool {
+    fn override_user_input(&mut self, left: bool, right: bool, jump: bool, fire: bool) -> bool {
         let mut state = HashMap::new();
-        state.insert(VirtualKeyCode::W, if jump { ButtonState::Down} else { ButtonState::Up });
-        state.insert(VirtualKeyCode::A, if left { ButtonState::Down} else { ButtonState::Up });
-        state.insert(VirtualKeyCode::D, if right { ButtonState::Down} else { ButtonState::Up });
-        state.insert(VirtualKeyCode::Space, if fire { ButtonState::Down} else { ButtonState::Up });
+        state.insert(
+            VirtualKeyCode::W,
+            if jump {
+                ButtonState::Down
+            } else {
+                ButtonState::Up
+            },
+        );
+        state.insert(
+            VirtualKeyCode::A,
+            if left {
+                ButtonState::Down
+            } else {
+                ButtonState::Up
+            },
+        );
+        state.insert(
+            VirtualKeyCode::D,
+            if right {
+                ButtonState::Down
+            } else {
+                ButtonState::Up
+            },
+        );
+        state.insert(
+            VirtualKeyCode::Space,
+            if fire {
+                ButtonState::Down
+            } else {
+                ButtonState::Up
+            },
+        );
         self.input_state.set(state);
         left || right || jump || fire
     }
@@ -481,7 +513,8 @@ impl Entity for Firebrand {
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
         if self.did_pass_through_exit_door {
             // after walking through the exit door, Firebrand keeps walking to right... forever
-            self.input_state.override_user_input(false, true, false, false);
+            self.input_state
+                .override_user_input(false, true, false, false);
             // don't consume input, since we want to allow Esc, etc to quite game.
             false
         } else if self.input_state.process_keyboard(key, state) {
@@ -949,9 +982,7 @@ impl Entity for Firebrand {
             Event::FirebrandPassedThroughExitDoor => {
                 self.did_pass_through_exit_door = true;
             }
-            Event::FirebrandCreated {
-                checkpoint,
-            } => {
+            Event::FirebrandCreated { checkpoint } => {
                 if checkpoint == 0 {
                     self.frozen = true;
                     self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);

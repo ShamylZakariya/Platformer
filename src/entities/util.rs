@@ -1,6 +1,10 @@
 use std::{f32::consts::PI, time::Duration};
 
-use crate::{event_dispatch::*, state::constants::sprite_masks::COLLIDER};
+use crate::{
+    event_dispatch::*,
+    sprite::CollisionShape,
+    state::constants::sprite_masks::{COLLIDER, CONTACT_DAMAGE},
+};
 use crate::{sprite::collision, state::events::Event};
 use cgmath::*;
 use collision::Space;
@@ -328,11 +332,16 @@ impl MarchState {
                     }
                 }
                 // check if the platform falls away to right
-                if collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
-                    .is_none()
-                {
-                    should_reverse_direction = true
+                let to_right = collision_space
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
+                if let Some(to_right) = to_right {
+                    if to_right.collision_shape != CollisionShape::Square
+                        || to_right.mask & CONTACT_DAMAGE != 0
+                    {
+                        should_reverse_direction = true;
+                    }
+                } else {
+                    should_reverse_direction = true;
                 }
             }
             HorizontalDir::West => {
@@ -346,10 +355,15 @@ impl MarchState {
                     }
                 }
                 // check if the platform falls away to left
-                if collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER)
-                    .is_none()
-                {
+                let to_left = collision_space
+                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
+                if let Some(to_left) = to_left {
+                    if to_left.collision_shape != CollisionShape::Square
+                        || to_left.mask & CONTACT_DAMAGE != 0
+                    {
+                        should_reverse_direction = true;
+                    }
+                } else {
                     should_reverse_direction = true
                 }
             }
