@@ -213,7 +213,9 @@ impl GameState {
             ));
 
             // generate level entities
-            let mut collision_space = collision::Space::new(&level_sprites);
+            let level_colliders: Vec<collision::Collider> =
+                level_sprites.iter().map(|s| s.into()).collect();
+            let mut collision_space = collision::Space::new(&level_colliders);
             let entities = map.generate_entities(
                 entity_layer,
                 &mut collision_space,

@@ -92,8 +92,10 @@ const LEVEL_EXIT_WALK_OFF_DISTANCE: f32 = 4.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
-    move |_dist: f32, sprite: &sprite::Sprite| -> bool {
+fn create_collision_probe_test(
+    position: Point2<f32>,
+) -> impl Fn(f32, &collision::Collider) -> bool {
+    move |_dist: f32, sprite: &collision::Collider| -> bool {
         // ignore collision if the sprite is a ratched and position is below sprite
         !(position.y < sprite.top() && sprite.mask & RATCHET != 0)
     }
@@ -106,7 +108,7 @@ pub enum Stance {
     Standing,
     InAir,
     Flying,
-    WallHold(sprite::Sprite),
+    WallHold(collision::Collider),
     Injury,
 }
 
@@ -229,12 +231,12 @@ pub enum ProbeResult<'a> {
     None,
     OneHit {
         dist: f32,
-        sprite: &'a sprite::Sprite,
+        collider: &'a collision::Collider,
     },
     TwoHits {
         dist: f32,
-        sprite_0: &'a sprite::Sprite,
-        sprite_1: &'a sprite::Sprite,
+        collider_0: &'a collision::Collider,
+        collider_1: &'a collision::Collider,
     },
 }
 
@@ -243,7 +245,7 @@ impl sprite::collision::Space {
     /// Ignores any sprites which don't match the provided `mask`
     /// NOTE: Probe only tests for static sprites with Square collision shape, because, well,
     /// that's what's needed here and I'm not writing a game engine.
-    pub fn probe_static_sprites<F>(
+    pub fn probe_static_colliders<F>(
         &self,
         position: Point2<f32>,
         dir: ProbeDir,
@@ -252,7 +254,7 @@ impl sprite::collision::Space {
         test: F,
     ) -> ProbeResult
     where
-        F: Fn(f32, &sprite::Sprite) -> bool,
+        F: Fn(f32, &collision::Collider) -> bool,
     {
         let (offset, should_probe_offset) = match dir {
             ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
@@ -285,16 +287,16 @@ impl sprite::collision::Space {
             (None, None) => ProbeResult::None,
             (None, Some(s)) => ProbeResult::OneHit {
                 dist: dist.unwrap(),
-                sprite: s,
+                collider: s,
             },
             (Some(s), None) => ProbeResult::OneHit {
                 dist: dist.unwrap(),
-                sprite: s,
+                collider: s,
             },
             (Some(s0), Some(s1)) => ProbeResult::TwoHits {
                 dist: dist.unwrap(),
-                sprite_0: s0,
-                sprite_1: s1,
+                collider_0: s0,
+                collider_1: s1,
             },
         }
     }
@@ -305,16 +307,17 @@ impl sprite::collision::Space {
         dir: ProbeDir,
         max_steps: i32,
         mask: u32,
-    ) -> Option<(f32, &sprite::Sprite)> {
+    ) -> Option<(f32, &collision::Collider)> {
         let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
         let mut result = None;
         match dir {
             ProbeDir::Right => {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
-                    if let Some(s) = self.get_static_sprite_at(point2(x, position_snapped.y), mask)
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
                     {
-                        result = Some((s.origin.x - (position.x + 1.0), s));
+                        result = Some((c.bounds.origin.x - (position.x + 1.0), c));
                         break;
                     }
                 }
@@ -322,9 +325,10 @@ impl sprite::collision::Space {
             ProbeDir::Up => {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
-                    if let Some(s) = self.get_static_sprite_at(point2(position_snapped.x, y), mask)
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
                     {
-                        result = Some((s.origin.y - (position.y + 1.0), s));
+                        result = Some((c.bounds.origin.y - (position.y + 1.0), c));
                         break;
                     }
                 }
@@ -332,9 +336,10 @@ impl sprite::collision::Space {
             ProbeDir::Down => {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
-                    if let Some(s) = self.get_static_sprite_at(point2(position_snapped.x, y), mask)
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
                     {
-                        result = Some((position.y - s.top(), s));
+                        result = Some((position.y - c.top(), c));
                         break;
                     }
                 }
@@ -342,9 +347,10 @@ impl sprite::collision::Space {
             ProbeDir::Left => {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
-                    if let Some(s) = self.get_static_sprite_at(point2(x, position_snapped.y), mask)
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
                     {
-                        result = Some((position.x - s.right(), s));
+                        result = Some((position.x - c.right(), c));
                         break;
                     }
                 }
@@ -354,7 +360,7 @@ impl sprite::collision::Space {
         // we only accept collisions with square shapes - because slopes are special cases handled by
         // find_character_footing only (note, the game only has northeast, and northwest slopes)
         if let Some(result) = result {
-            if result.0 >= 0.0 && result.1.collision_shape == sprite::CollisionShape::Square {
+            if result.0 >= 0.0 && result.1.shape == sprite::CollisionShape::Square {
                 return Some(result);
             }
         }
@@ -428,7 +434,7 @@ impl CharacterState {
 
 pub struct Firebrand {
     entity_id: u32,
-    collider: Option<sprite::Sprite>,
+    collider: collision::Collider,
     pixels_per_unit: Vector2<f32>,
 
     time: f32,
@@ -436,11 +442,11 @@ pub struct Firebrand {
     input_state: FirebrandInputState,
     character_state: CharacterState,
 
-    // sprites the character is overlapping and might collide with
-    overlapping_sprites: HashSet<sprite::Sprite>,
+    // colliders the character is overlapping and might collide with
+    overlapping_colliders: HashSet<collision::Collider>,
 
-    // sprites the character is contacting
-    contacting_sprites: HashSet<sprite::Sprite>,
+    // colliders the character is contacting
+    contacting_colliders: HashSet<collision::Collider>,
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
@@ -462,25 +468,23 @@ pub struct Firebrand {
 impl Firebrand {
     pub fn new(position: Point2<f32>, num_lives_remaining: u32) -> Firebrand {
         let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
-        let collider = sprite::Sprite::unit(
+        let collider = collision::Collider::new(
+            Bounds::new(position.xy(), vec2(1.0, 1.0)),
             sprite::CollisionShape::Square,
-            position.xy().cast().unwrap(),
-            layers::stage::FIREBRAND,
-            point2(0.0, 0.0),
-            vec2(0.0, 0.0),
-            vec4(1.0, 1.0, 1.0, 1.0),
             mask,
+            None,
         );
+
         Self {
             entity_id: 0,
-            collider: Some(collider),
+            collider,
             pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
             input_state: FirebrandInputState::default(),
             character_state: CharacterState::new(position.xy(), num_lives_remaining),
-            overlapping_sprites: HashSet::new(),
-            contacting_sprites: HashSet::new(),
+            overlapping_colliders: HashSet::new(),
+            contacting_colliders: HashSet::new(),
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
             flight_countdown: FLIGHT_DURATION,
@@ -504,10 +508,8 @@ impl Entity for Firebrand {
     fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
         self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
-        if let Some(ref mut collider) = self.collider {
-            collider.entity_id = Some(entity_id);
-            collision_space.add_dynamic_sprite(collider);
-        }
+        self.collider.entity_id = Some(entity_id);
+        collision_space.add_dynamic_collider(&self.collider);
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -544,7 +546,7 @@ impl Entity for Firebrand {
 
         if !self.character_state.alive {
             if !self.did_send_death_message {
-                collision_space.remove_dynamic_sprite_with_entity_id(self.entity_id);
+                collision_space.remove_dynamic_collider_with_entity_id(self.entity_id);
                 message_dispatcher.broadcast(Event::FirebrandDied);
                 self.did_send_death_message = true;
             }
@@ -555,8 +557,8 @@ impl Entity for Firebrand {
         self.time += dt;
         self.step += 1;
 
-        self.overlapping_sprites.clear();
-        self.contacting_sprites.clear();
+        self.overlapping_colliders.clear();
+        self.contacting_colliders.clear();
 
         if let ButtonState::Pressed = self.input_state.fire() {
             if !self.frozen {
@@ -600,7 +602,7 @@ impl Entity for Firebrand {
                             WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
                         self.jump_time_remaining = JUMP_DURATION;
                         self.wallgrab_jump_dir =
-                            if surface.origin.x > self.character_state.position.x {
+                            if surface.bounds.origin.x > self.character_state.position.x {
                                 -1.0
                             } else {
                                 1.0
@@ -819,13 +821,13 @@ impl Entity for Firebrand {
         //  Test against dynamic sprites (e.g., enemies) in scene
         //
 
-        collision_space.test_rect_against_dynamic_sprites(
+        collision_space.test_rect_against_dynamic_colliders(
             &self.character_state.position.xy(),
             &vec2(1.0, 1.0),
             COLLIDER | ENTITY,
-            |sprite| {
-                if sprite.entity_id != Some(self.entity_id) {
-                    self.process_potential_collision_with(sprite);
+            |c| {
+                if c.entity_id != Some(self.entity_id) {
+                    self.process_potential_collision_with(c);
                 }
                 false
             },
@@ -835,18 +837,16 @@ impl Entity for Firebrand {
         //  Update our own collider in case other entities are probing for contacts
         //
 
-        if let Some(ref mut collider) = self.collider {
-            collider.origin.x = self.character_state.position.x;
-            collider.origin.y = self.character_state.position.y;
-            collision_space.update_dynamic_sprite(collider);
-        }
+        self.collider.bounds.origin.x = self.character_state.position.x;
+        self.collider.bounds.origin.y = self.character_state.position.y;
+        collision_space.update_dynamic_collider(&self.collider);
 
         //
         //  Remove any sprites in the contacting set from the overlapping set.
         //
 
-        for s in &self.contacting_sprites {
-            self.overlapping_sprites.remove(s);
+        for s in &self.contacting_colliders {
+            self.overlapping_colliders.remove(s);
         }
 
         //
@@ -914,9 +914,7 @@ impl Entity for Firebrand {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        if let Some(collider) = self.collider {
-            collision_space.remove_dynamic_sprite(&collider);
-        }
+        collision_space.remove_dynamic_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {
@@ -1001,11 +999,11 @@ impl Entity for Firebrand {
     }
 
     fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        Some(&self.overlapping_sprites)
+        None
     }
 
     fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        Some(&self.contacting_sprites)
+        None
     }
 }
 
@@ -1045,7 +1043,7 @@ impl Firebrand {
 
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
         let mut contact_damage = false;
-        for s in &self.contacting_sprites {
+        for s in &self.contacting_colliders {
             if s.mask & CONTACT_DAMAGE != 0 {
                 contact_damage = true;
             }
@@ -1153,7 +1151,7 @@ impl Firebrand {
         position: Point2<f32>,
         test_offset: Vector2<f32>,
         may_apply_correction: bool,
-    ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
+    ) -> (Point2<f32>, Option<&'a collision::Collider>) {
         let mut position = position;
         let mut tracking = None;
 
@@ -1166,13 +1164,13 @@ impl Firebrand {
         let below_center = point2(center.x, center.y - 1);
         let contacts_are_collision = !may_apply_correction;
 
-        let can_collide_width = |p: &Point2<f32>, s: &sprite::Sprite| -> bool {
+        let can_collide_width = |p: &Point2<f32>, c: &collision::Collider| -> bool {
             // if character is more than 75% up a ratchet block consider it a collision
-            !(s.mask & RATCHET != 0 && p.y < (s.top() - 0.25))
+            !(c.mask & RATCHET != 0 && p.y < (c.top() - 0.25))
         };
 
         let sprite_size_px = self.pixels_per_unit.x;
-        let inset_for_sprite = |s: &sprite::Sprite| -> f32 {
+        let inset_for_collider = |s: &collision::Collider| -> f32 {
             if s.mask & CONTACT_DAMAGE != 0 {
                 2.0 / sprite_size_px
             } else {
@@ -1181,29 +1179,29 @@ impl Firebrand {
         };
 
         for test_point in [below_center, center].iter() {
-            if let Some(s) = collision_space.get_sprite_at(*test_point, COLLIDER) {
-                if can_collide_width(&position, s) {
-                    match s.collision_shape {
+            if let Some(c) = collision_space.get_sprite_at(*test_point, COLLIDER) {
+                if can_collide_width(&position, c) {
+                    match c.shape {
                         CollisionShape::Square => {
-                            if s.unit_rect_intersection(
+                            if c.unit_rect_intersection(
                                 &position,
-                                inset_for_sprite(s),
+                                inset_for_collider(c),
                                 contacts_are_collision,
                             ) {
-                                self.process_potential_collision_with(s);
-                                tracking = Some(s);
+                                self.process_potential_collision_with(c);
+                                tracking = Some(c);
                                 if may_apply_correction {
-                                    position.y = s.origin.y + s.extent.y;
+                                    position.y = c.bounds.origin.y + c.bounds.extent.y;
                                 }
                             }
                         }
                         CollisionShape::NorthEast | CollisionShape::NorthWest => {
-                            if let Some(intersection) = s.line_intersection(
+                            if let Some(intersection) = c.line_intersection(
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
                             ) {
-                                self.process_potential_collision_with(s);
-                                tracking = Some(s);
+                                self.process_potential_collision_with(c);
+                                tracking = Some(c);
                                 if may_apply_correction {
                                     position.y = intersection.y;
                                 }
@@ -1211,7 +1209,7 @@ impl Firebrand {
                         }
                         _ => (),
                     }
-                    self.overlapping_sprites.insert(*s);
+                    self.overlapping_colliders.insert(*c);
                 }
             }
         }
@@ -1220,8 +1218,8 @@ impl Firebrand {
     }
 
     /// Moves character horizontally, based on the current left/right input state.
-    /// Returns tuple of updated position, and an optional sprite representing the wall surface the
-    /// character may have contacted. The character can collide with up to two sprites if on fractional
+    /// Returns tuple of updated position, and an optional collider representing the wall surface the
+    /// character may have contacted. The character can collide with up to two colliders if on fractional
     /// y coord, so this returns the one closer to the character's y position)
     fn apply_lateral_movement<'a>(
         &mut self,
@@ -1229,7 +1227,7 @@ impl Firebrand {
         position: Point2<f32>,
         dt: f32,
         map_bounds: &Bounds,
-    ) -> (Point2<f32>, Option<&'a sprite::Sprite>) {
+    ) -> (Point2<f32>, Option<&'a collision::Collider>) {
         // this is a no-op while wallholding or frozen
         if self.is_wallholding() || self.frozen {
             return (position, None);
@@ -1264,14 +1262,14 @@ impl Firebrand {
             delta_x = self.injury_kickback_vel * dt;
         }
 
-        let mut contacted: Option<&sprite::Sprite> = None;
+        let mut contacted: Option<&collision::Collider> = None;
 
         //
         // Check if moving left or right would cause a collision, and adjust distance accordingly
         //
 
         if delta_x > 0.0 {
-            match collision_space.probe_static_sprites(
+            match collision_space.probe_static_colliders(
                 position,
                 ProbeDir::Right,
                 COLLISION_PROBE_STEPS,
@@ -1279,34 +1277,34 @@ impl Firebrand {
                 probe_test,
             ) {
                 ProbeResult::None => {}
-                ProbeResult::OneHit { dist, sprite } => {
+                ProbeResult::OneHit { dist, collider } => {
                     if dist < delta_x {
                         delta_x = dist;
-                        contacted = Some(sprite);
-                        self.process_potential_collision_with(&sprite);
+                        contacted = Some(collider);
+                        self.process_potential_collision_with(&collider);
                     }
                 }
                 ProbeResult::TwoHits {
                     dist,
-                    sprite_0,
-                    sprite_1,
+                    collider_0,
+                    collider_1,
                 } => {
                     if dist < delta_x {
                         delta_x = dist;
-                        let dist_0 = (sprite_0.origin.y - position.y).abs();
-                        let dist_1 = (sprite_1.origin.y - position.y).abs();
+                        let dist_0 = (collider_0.bounds.origin.y - position.y).abs();
+                        let dist_1 = (collider_1.bounds.origin.y - position.y).abs();
                         contacted = if dist_0 < dist_1 {
-                            Some(sprite_0)
+                            Some(collider_0)
                         } else {
-                            Some(sprite_1)
+                            Some(collider_1)
                         };
-                        self.process_potential_collision_with(&sprite_0);
-                        self.process_potential_collision_with(&sprite_1);
+                        self.process_potential_collision_with(&collider_0);
+                        self.process_potential_collision_with(&collider_1);
                     }
                 }
             }
         } else if delta_x < 0.0 {
-            match collision_space.probe_static_sprites(
+            match collision_space.probe_static_colliders(
                 position,
                 ProbeDir::Left,
                 COLLISION_PROBE_STEPS,
@@ -1314,29 +1312,29 @@ impl Firebrand {
                 probe_test,
             ) {
                 ProbeResult::None => {}
-                ProbeResult::OneHit { dist, sprite } => {
+                ProbeResult::OneHit { dist, collider } => {
                     if dist < -delta_x {
                         delta_x = -dist;
-                        contacted = Some(sprite);
-                        self.process_potential_collision_with(&sprite);
+                        contacted = Some(collider);
+                        self.process_potential_collision_with(&collider);
                     }
                 }
                 ProbeResult::TwoHits {
                     dist,
-                    sprite_0,
-                    sprite_1,
+                    collider_0,
+                    collider_1,
                 } => {
                     if dist < -delta_x {
                         delta_x = -dist;
-                        let dist_0 = (sprite_0.origin.y - position.y).abs();
-                        let dist_1 = (sprite_1.origin.y - position.y).abs();
+                        let dist_0 = (collider_0.bounds.origin.y - position.y).abs();
+                        let dist_1 = (collider_1.bounds.origin.y - position.y).abs();
                         contacted = if dist_0 < dist_1 {
-                            Some(sprite_0)
+                            Some(collider_0)
                         } else {
-                            Some(sprite_1)
+                            Some(collider_1)
                         };
-                        self.process_potential_collision_with(&sprite_0);
-                        self.process_potential_collision_with(&sprite_1);
+                        self.process_potential_collision_with(&collider_0);
+                        self.process_potential_collision_with(&collider_1);
                     }
                 }
             }
@@ -1350,9 +1348,12 @@ impl Firebrand {
         if let Some(c) = contacted {
             if c.mask & CONTACT_DAMAGE != 0
                 || (collision_space
-                    .get_static_sprite_at(point2(c.origin.x as i32, c.origin.y as i32 + 1), mask)
+                    .get_static_collider_at(
+                        point2(c.bounds.origin.x as i32, c.bounds.origin.y as i32 + 1),
+                        mask,
+                    )
                     .is_none()
-                    && position.y > c.origin.y + (c.extent.y * 0.5))
+                    && position.y > c.bounds.origin.y + (c.bounds.extent.y * 0.5))
             {
                 contacted = None;
             }
@@ -1435,7 +1436,7 @@ impl Firebrand {
         if delta.y > 0.0 {
             let mask = COLLIDER;
             let probe_test = create_collision_probe_test(position);
-            match collision_space.probe_static_sprites(
+            match collision_space.probe_static_colliders(
                 position,
                 ProbeDir::Up,
                 COLLISION_PROBE_STEPS,
@@ -1443,7 +1444,10 @@ impl Firebrand {
                 probe_test,
             ) {
                 ProbeResult::None => {}
-                ProbeResult::OneHit { dist, sprite } => {
+                ProbeResult::OneHit {
+                    dist,
+                    collider: sprite,
+                } => {
                     if dist < delta.y {
                         delta.y = dist;
                         self.jump_time_remaining = 0.0;
@@ -1452,8 +1456,8 @@ impl Firebrand {
                 }
                 ProbeResult::TwoHits {
                     dist,
-                    sprite_0,
-                    sprite_1,
+                    collider_0: sprite_0,
+                    collider_1: sprite_1,
                 } => {
                     if dist < delta.y {
                         delta.y = dist;
@@ -1470,11 +1474,11 @@ impl Firebrand {
 
     /// If the sprite contacts our player's bounds, inserts into contacting_sprites, otherwise
     /// inserts into overlapping_sprites (which are useful for debugging potential contacts)
-    fn process_potential_collision_with(&mut self, sprite: &sprite::Sprite) {
-        if sprite.unit_rect_intersection(&self.position().xy(), 0.0, true) {
-            self.contacting_sprites.insert(*sprite);
+    fn process_potential_collision_with(&mut self, collider: &collision::Collider) {
+        if collider.unit_rect_intersection(&self.position().xy(), 0.0, true) {
+            self.contacting_colliders.insert(*collider);
         } else {
-            self.overlapping_sprites.insert(*sprite);
+            self.overlapping_colliders.insert(*collider);
         }
     }
 
@@ -1605,7 +1609,7 @@ impl Firebrand {
 
     fn is_in_water(&self, collision_space: &collision::Space, position: Point2<f32>) -> bool {
         let mut in_water = false;
-        collision_space.test_rect_against_static_sprites(
+        collision_space.test_rect_against_static_colliders(
             &position,
             &vec2(1.0, 1.0),
             WATER,

@@ -24,7 +24,7 @@ const PLAYER_CLOSENESS_THRESHOLD: f32 = (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2
 pub struct Bat {
     entity_id: u32,
     spawn_point_id: u32,
-    collider: sprite::Sprite,
+    collider: collision::Collider,
     sprite_size_px: Vector2<f32>,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
@@ -38,7 +38,7 @@ impl Default for Bat {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            collider: sprite::Sprite::default(),
+            collider: collision::Collider::default(),
             sprite_size_px: vec2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
@@ -66,13 +66,12 @@ impl Entity for Bat {
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
-        // Make copy of sprite for ourselves, we'll use it for collision testing
-        // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.collider = *sprite;
+        // Create collider
+        self.collider = sprite.into();
         self.collider.entity_id = Some(entity_id);
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.collision_shape = sprite::CollisionShape::Square;
-        collision_space.add_dynamic_sprite(&self.collider);
+        self.collider.shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_collider(&self.collider);
     }
 
     fn update(
@@ -115,9 +114,9 @@ impl Entity for Bat {
             //  Update the sprite for collision detection
             //
 
-            self.collider.origin.x = self.position.x;
-            self.collider.origin.y = self.position.y;
-            collision_space.update_dynamic_sprite(&self.collider);
+            self.collider.bounds.origin.x = self.position.x;
+            self.collider.bounds.origin.y = self.position.y;
+            collision_space.update_dynamic_collider(&self.collider);
 
             //
             //  Update sprite animation cycle
@@ -136,7 +135,7 @@ impl Entity for Bat {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_sprite(&self.collider);
+        collision_space.remove_dynamic_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

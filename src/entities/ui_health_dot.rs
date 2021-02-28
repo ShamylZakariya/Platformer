@@ -13,7 +13,7 @@ use crate::{
 
 pub struct UiHealthDot {
     entity_id: u32,
-    sprite: Option<sprite::Sprite>,
+    collider: collision::Collider,
     position: Point3<f32>,
     index: Option<i32>,
     visible: bool, // is the dot visible
@@ -24,7 +24,7 @@ impl Default for UiHealthDot {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            sprite: None,
+            collider: collision::Collider::default(),
             position: point3(0.0, 0.0, 0.0),
             index: None,
             visible: false,
@@ -45,11 +45,10 @@ impl Entity for UiHealthDot {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
 
-        let mut sprite = *sprite;
-        sprite.mask = sprite_masks::ui::HEALTH_DOT;
-        self.sprite = Some(sprite);
+        self.collider = sprite.into();
+        self.collider.mask = sprite_masks::ui::HEALTH_DOT;
 
-        collision_space.add_static_sprite(&self.sprite.unwrap());
+        collision_space.add_static_collider(&self.collider);
     }
 
     fn update(
@@ -60,11 +59,13 @@ impl Entity for UiHealthDot {
         _message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
+        if self.index.is_none() {
+            self.index = Some(self.determine_index(collision_space));
+        }
+
         if let Some(index) = self.index {
             self.visible = index < game_state_peek.player_health.1 as i32;
             self.filled = index < game_state_peek.player_health.0 as i32;
-        } else {
-            self.index = self.determine_index(collision_space);
         }
     }
 
@@ -111,24 +112,20 @@ impl UiHealthDot {
     /// point 0, the next for health point 1, and so on. So, instead, we need to figure it out on our own.
     /// Here we walk left, looking for other heath dots in the collision space, until we come up empty. The
     /// length of that walk determines our index. Yeesh.
-    fn determine_index(&self, collision_space: &collision::Space) -> Option<i32> {
-        if let Some(sprite) = self.sprite {
-            let position: Point2<i32> = sprite.origin.xy().cast().unwrap();
-            let mut offset: i32 = 1;
-            loop {
-                let test_position = point2(position.x - offset, position.y);
-                if collision_space
-                    .get_static_sprite_at(test_position, sprite_masks::ui::HEALTH_DOT)
-                    .is_some()
-                {
-                    offset += 1;
-                } else {
-                    break;
-                }
+    fn determine_index(&self, collision_space: &collision::Space) -> i32 {
+        let position: Point2<i32> = self.collider.bounds.origin.xy().cast().unwrap();
+        let mut offset: i32 = 1;
+        loop {
+            let test_position = point2(position.x - offset, position.y);
+            if collision_space
+                .get_static_collider_at(test_position, sprite_masks::ui::HEALTH_DOT)
+                .is_some()
+            {
+                offset += 1;
+            } else {
+                break;
             }
-            Some(offset - 1)
-        } else {
-            None
         }
+        offset - 1
     }
 }

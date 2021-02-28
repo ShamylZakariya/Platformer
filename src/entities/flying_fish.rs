@@ -26,7 +26,7 @@ const HIT_POINTS: i32 = 1;
 pub struct FlyingFish {
     entity_id: u32,
     spawn_point_id: u32,
-    collider: sprite::Sprite,
+    collider: collision::Collider,
     centroid: Point2<f32>,
     position: Point3<f32>,
     time_in_phase: f32,
@@ -43,7 +43,7 @@ impl Default for FlyingFish {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            collider: sprite::Sprite::default(),
+            collider: collision::Collider::default(),
             centroid: point2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             time_in_phase: 0.0,
@@ -78,13 +78,12 @@ impl Entity for FlyingFish {
         // offset phase such that neighbor fish don't jump in same dir
         self.phase = self.position.x as i32 % 2;
 
-        // Make copy of sprite for ourselves, we'll use it for collision testing
-        // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.collider = *sprite;
+        // Create a collider
+        self.collider = sprite.into();
         self.collider.entity_id = Some(entity_id);
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.collision_shape = sprite::CollisionShape::Square;
-        collision_space.add_dynamic_sprite(&self.collider);
+        self.collider.shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_collider(&self.collider);
     }
 
     fn update(
@@ -143,9 +142,9 @@ impl Entity for FlyingFish {
         //  Update the sprite for collision detection
         //
 
-        self.collider.origin.x = self.position.x;
-        self.collider.origin.y = self.position.y;
-        collision_space.update_dynamic_sprite(&self.collider);
+        self.collider.bounds.origin.x = self.position.x;
+        self.collider.bounds.origin.y = self.position.y;
+        collision_space.update_dynamic_collider(&self.collider);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -160,7 +159,7 @@ impl Entity for FlyingFish {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_sprite(&self.collider);
+        collision_space.remove_dynamic_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

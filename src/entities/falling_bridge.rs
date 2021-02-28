@@ -2,23 +2,13 @@ use std::time::Duration;
 
 use cgmath::*;
 
-use crate::{
-    entity::{Entity, GameStatePeek},
-    event_dispatch::*,
-    map,
-    sprite::{self, collision, rendering},
-    state::{
-        constants::{self, layers},
-        events::Event,
-    },
-    tileset,
-};
+use crate::{entity::{Entity, GameStatePeek}, event_dispatch::*, map, sprite::{self, CollisionShape, collision, rendering}, state::{constants::{self, layers, sprite_masks::{COLLIDER, RATCHET}}, events::Event}, tileset};
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
 pub struct FallingBridge {
     entity_id: u32,
-    collider: Option<sprite::Sprite>,
+    collider: collision::Collider,
     position: Point3<f32>,
     offset: Vector3<f32>,
     time_remaining: Option<f32>,
@@ -31,7 +21,7 @@ impl Default for FallingBridge {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            collider: None,
+            collider: collision::Collider::default(),
             position: point3(0.0, 0.0, 0.0),
             offset: vec3(0.0, 0.0, 0.0),
             time_remaining: None,
@@ -52,10 +42,13 @@ impl Entity for FallingBridge {
         collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
-        self.collider = Some(*sprite);
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::LEVEL);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
-        collision_space.add_static_sprite(sprite);
+
+        self.collider = sprite.into();
+        self.collider.shape = CollisionShape::Square;
+        self.collider.mask |= COLLIDER | RATCHET;
+        collision_space.add_static_collider(&self.collider);
     }
 
     fn update(
@@ -68,10 +61,6 @@ impl Entity for FallingBridge {
     ) {
         let dt = dt.as_secs_f32();
 
-        let collider = self
-            .collider
-            .expect("Should have a sprite associated with FallingBridge instance");
-
         if self.is_falling && self.should_draw() {
             self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
             self.offset.y += self.vertical_velocity * dt;
@@ -82,12 +71,12 @@ impl Entity for FallingBridge {
                 self.is_falling = true;
                 self.time_remaining = None;
 
-                collision_space.remove_static_sprite(&collider);
+                collision_space.remove_static_collider(&self.collider);
             } else {
                 self.time_remaining = Some(time_remaining);
             }
-        } else if !collision_space.has_static_sprite(&collider) {
-            collision_space.add_static_sprite(&collider);
+        } else if !collision_space.has_static_collider(&self.collider) {
+            collision_space.add_static_collider(&self.collider);
         }
     }
 

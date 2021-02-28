@@ -43,7 +43,7 @@ const FLICKER_PERIOD: f32 = 0.133 * 2.0;
 pub struct PowerUp {
     entity_id: u32,
     position: Point3<f32>,
-    collider: sprite::Sprite,
+    collider: collision::Collider,
     powerup_type: Option<Type>,
     time: f32,
     needs_collider: bool,
@@ -55,7 +55,7 @@ impl Default for PowerUp {
         Self {
             entity_id: 0,
             position: point3(0.0, 0.0, 0.0),
-            collider: sprite::Sprite::default(),
+            collider: collision::Collider::default(),
             powerup_type: None,
             time: 0.0,
             needs_collider: true,
@@ -75,9 +75,9 @@ impl Entity for PowerUp {
     ) {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
-        self.collider = *sprite;
-        self.collider.collision_shape = sprite::CollisionShape::Square;
-        collision_space.add_dynamic_sprite(&self.collider);
+        self.collider = sprite.into();
+        self.collider.shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_collider(&self.collider);
         self.is_collider_active = true;
 
         let type_name = tile
@@ -99,7 +99,7 @@ impl Entity for PowerUp {
         self.time += dt;
 
         if !self.needs_collider && self.is_collider_active {
-            collision_space.remove_dynamic_sprite(&self.collider);
+            collision_space.remove_dynamic_collider(&self.collider);
             self.is_collider_active = false;
 
             // broadcast that this powerup has been consumed
@@ -107,7 +107,7 @@ impl Entity for PowerUp {
                 powerup_type: self.powerup_type.unwrap(),
             });
         } else if self.needs_collider && !self.is_collider_active {
-            collision_space.add_dynamic_sprite(&self.collider);
+            collision_space.add_dynamic_collider(&self.collider);
             self.is_collider_active = true;
         }
     }

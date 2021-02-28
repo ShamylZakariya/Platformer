@@ -21,7 +21,7 @@ pub struct RisingFloor {
     bounds: Bounds,
     rising: bool,
     sent_started_rising_message: bool,
-    collider: sprite::Sprite,
+    collider: collision::Collider,
     pixels_per_unit: f32,
 }
 
@@ -29,13 +29,12 @@ impl RisingFloor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
         let bounds = find_bounds(&stage_sprites);
 
-        let collider = sprite::core::Sprite {
-            collision_shape: sprite::CollisionShape::Square,
-            origin: point3(bounds.origin.x, bounds.origin.y, 0.0),
-            extent: bounds.extent,
-            mask: crate::state::constants::sprite_masks::COLLIDER,
-            ..Default::default()
-        };
+        let collider = collision::Collider::new(
+            bounds,
+            sprite::CollisionShape::Square,
+            crate::state::constants::sprite_masks::COLLIDER,
+            None,
+        );
 
         Self {
             entity_id: 0,
@@ -57,7 +56,7 @@ impl Entity for RisingFloor {
         self.collider.entity_id = Some(entity_id);
 
         self.update_collider();
-        collision_space.add_dynamic_sprite(&self.collider);
+        collision_space.add_dynamic_collider(&self.collider);
 
         self.pixels_per_unit = map.tileset.get_sprite_size().x as f32;
     }
@@ -88,7 +87,7 @@ impl Entity for RisingFloor {
             }
         }
         self.update_collider();
-        collision_space.update_dynamic_sprite(&self.collider);
+        collision_space.update_dynamic_collider(&self.collider);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -130,8 +129,8 @@ impl Entity for RisingFloor {
 
 impl RisingFloor {
     fn update_collider(&mut self) {
-        self.collider.origin.x = self.bounds.origin.x + self.offset.x;
-        self.collider.origin.y = self.bounds.origin.y + self.offset.y;
+        self.collider.bounds.origin.x = self.bounds.origin.x + self.offset.x;
+        self.collider.bounds.origin.y = self.bounds.origin.y + self.offset.y;
     }
 
     fn camera_shake_pattern(&self) -> Vec<(Vector2<f32>, f32)> {

@@ -235,7 +235,7 @@ impl HitPointState {
             self.alive = false;
 
             // remove self from collision space
-            collision_space.remove_dynamic_sprite_with_entity_id(entity_id);
+            collision_space.remove_dynamic_collider_with_entity_id(entity_id);
 
             // send death message to spawn point
             message_dispatcher.entity_to_entity(
@@ -324,7 +324,7 @@ impl MarchState {
             HorizontalDir::East => {
                 // check for obstacle to right
                 if let Some(sprite_to_right) = collision_space
-                    .get_static_sprite_at(snapped_next_position + vec2(1, 0), COLLIDER)
+                    .get_static_collider_at(snapped_next_position + vec2(1, 0), COLLIDER)
                 {
                     if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -333,9 +333,9 @@ impl MarchState {
                 }
                 // check if the platform falls away to right
                 let to_right = collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
+                    .get_static_collider_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
                 if let Some(to_right) = to_right {
-                    if to_right.collision_shape != CollisionShape::Square
+                    if to_right.shape != CollisionShape::Square
                         || to_right.mask & CONTACT_DAMAGE != 0
                     {
                         should_reverse_direction = true;
@@ -347,7 +347,7 @@ impl MarchState {
             HorizontalDir::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
-                    collision_space.get_static_sprite_at(snapped_next_position, COLLIDER)
+                    collision_space.get_static_collider_at(snapped_next_position, COLLIDER)
                 {
                     if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -356,10 +356,9 @@ impl MarchState {
                 }
                 // check if the platform falls away to left
                 let to_left = collision_space
-                    .get_static_sprite_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
+                    .get_static_collider_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
                 if let Some(to_left) = to_left {
-                    if to_left.collision_shape != CollisionShape::Square
-                        || to_left.mask & CONTACT_DAMAGE != 0
+                    if to_left.shape != CollisionShape::Square || to_left.mask & CONTACT_DAMAGE != 0
                     {
                         should_reverse_direction = true;
                     }

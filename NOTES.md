@@ -1,6 +1,19 @@
 CURRENTLY:
     YAK SHAVING:
         - make collision::Space take a "collider" struct instead of sprites, but make a convenience From<> impl to easy convert a sprite to a collider. Drop the static/dynamic difference, have a field on collider which says static or dynamic to optimize lookups, but have all intersection tests run against both.
+            STEPS:
+                - Create Collider struct
+                    - needs From for Sprite for easy creation
+                - Update collision::Space to use Collider struct
+                - Update all the shit that passes sprites to Space
+                - move sprite/collision.rs to ./collision.rs
+                - move firebrand's probe() methods to collision
+                - make a is_dynamic:bool field on Collider, and have Space sort things out.
+
+            NOTES:
+                - this breaks the nice overlapping_sprites visualization, but whatever
+
+
         - Refactor geom.rs, I don't like that module's existence.
             - move the line_line and other intersection tests into the collision module
             - move Bounds and lerp, hermite, clamp into a util module

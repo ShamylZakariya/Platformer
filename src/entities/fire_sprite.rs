@@ -23,7 +23,7 @@ const HIT_POINTS: i32 = 2;
 pub struct FireSprite {
     entity_id: u32,
     spawn_point_id: u32,
-    collider: sprite::Sprite,
+    collider: collision::Collider,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
@@ -36,7 +36,7 @@ impl Default for FireSprite {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            collider: sprite::Sprite::default(),
+            collider: collision::Collider::default(),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
@@ -64,11 +64,11 @@ impl Entity for FireSprite {
 
         // Make copy of sprite for ourselves, we'll use it for collision testing
         // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.collider = *sprite;
+        self.collider = sprite.into();
         self.collider.entity_id = Some(entity_id);
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.collision_shape = sprite::CollisionShape::Square;
-        collision_space.add_dynamic_sprite(&self.collider);
+        self.collider.shape = sprite::CollisionShape::Square;
+        collision_space.add_dynamic_collider(&self.collider);
 
         let fixed_position = {
             if let Some(properties) = map.object_group_properties_for_sprite(sprite, "Metadata") {
@@ -118,9 +118,9 @@ impl Entity for FireSprite {
             //  Update the sprite for collision detection
             //
 
-            self.collider.origin.x = self.position.x;
-            self.collider.origin.y = self.position.y;
-            collision_space.update_dynamic_sprite(&self.collider);
+            self.collider.bounds.origin.x = self.position.x;
+            self.collider.bounds.origin.y = self.position.y;
+            collision_space.update_dynamic_collider(&self.collider);
 
             //
             //  Update sprite animation cycle
@@ -147,7 +147,7 @@ impl Entity for FireSprite {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_sprite(&self.collider);
+        collision_space.remove_dynamic_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {
