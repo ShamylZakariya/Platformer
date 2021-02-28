@@ -3,10 +3,10 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
+    collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    map,
-    sprite::{self, collision},
+    map, sprite,
     state::{constants::layers, events::Event},
     tileset,
 };

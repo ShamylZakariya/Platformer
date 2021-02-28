@@ -20,9 +20,10 @@ pub mod util;
 
 use anyhow::Result;
 
+use crate::collision;
 use crate::entity;
 use crate::map;
-use crate::sprite::{self, collision};
+use crate::sprite;
 use crate::tileset;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

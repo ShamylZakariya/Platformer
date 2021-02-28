@@ -11,6 +11,7 @@ use winit::{
 };
 
 mod camera;
+mod collision;
 mod entities;
 mod entity;
 mod event_dispatch;

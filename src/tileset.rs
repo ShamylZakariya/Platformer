@@ -1,4 +1,4 @@
-use crate::{sprite::collision, util::Bounds};
+use crate::{collision, util::Bounds};
 use anyhow::{Context, Result};
 use cgmath::*;
 use std::collections::HashMap;

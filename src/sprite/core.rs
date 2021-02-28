@@ -4,7 +4,7 @@ use std::hash::Hash;
 
 use crate::util::*;
 
-use super::collision::Shape;
+use crate::collision::Shape;
 
 /// Sprite represents a sprite in CPU terms, e.g., sprite is for collision detection,
 /// positioning, representing a level or entity in memory. For rendering, See sprite::rendering::Drawable

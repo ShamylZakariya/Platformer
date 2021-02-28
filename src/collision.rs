@@ -552,6 +552,158 @@ impl Space {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+#[derive(Clone, Copy, Debug)]
+pub enum ProbeDir {
+    Up,
+    Right,
+    Down,
+    Left,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum ProbeResult<'a> {
+    None,
+    OneHit {
+        dist: f32,
+        collider: &'a Collider,
+    },
+    TwoHits {
+        dist: f32,
+        collider_0: &'a Collider,
+        collider_1: &'a Collider,
+    },
+}
+
+impl Space {
+    /// Probes `max_steps` in the collision space from `position` in `dir`, returning a ProbeResult
+    /// Ignores any colliders which don't match the provided `mask`
+    /// NOTE: Probe only tests for static sprites with Square collision shape, because, well,
+    /// that's what's needed here and I'm not writing a damned game engine, I'm writing a damned Gargoyle's Quest engine.
+    pub fn probe_static_colliders<F>(
+        &self,
+        position: Point2<f32>,
+        dir: ProbeDir,
+        max_steps: i32,
+        mask: u32,
+        test: F,
+    ) -> ProbeResult
+    where
+        F: Fn(f32, &Collider) -> bool,
+    {
+        let (offset, should_probe_offset) = match dir {
+            ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
+            ProbeDir::Right | ProbeDir::Left => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
+        };
+
+        let mut dist = None;
+        let mut sprite_0 = None;
+        let mut sprite_1 = None;
+        if let Some(r) = self._probe_line(position, dir, max_steps, mask) {
+            if test(r.0, &r.1) {
+                dist = Some(r.0);
+                sprite_0 = Some(r.1);
+            }
+        }
+
+        if should_probe_offset {
+            if let Some(r) = self._probe_line(position + offset, dir, max_steps, mask) {
+                if test(r.0, &r.1) {
+                    dist = match dist {
+                        Some(d) => Some(d.min(r.0)),
+                        None => Some(r.0),
+                    };
+                    sprite_1 = Some(r.1);
+                }
+            }
+        }
+
+        match (sprite_0, sprite_1) {
+            (None, None) => ProbeResult::None,
+            (None, Some(s)) => ProbeResult::OneHit {
+                dist: dist.unwrap(),
+                collider: s,
+            },
+            (Some(s), None) => ProbeResult::OneHit {
+                dist: dist.unwrap(),
+                collider: s,
+            },
+            (Some(s0), Some(s1)) => ProbeResult::TwoHits {
+                dist: dist.unwrap(),
+                collider_0: s0,
+                collider_1: s1,
+            },
+        }
+    }
+
+    fn _probe_line(
+        &self,
+        position: Point2<f32>,
+        dir: ProbeDir,
+        max_steps: i32,
+        mask: u32,
+    ) -> Option<(f32, &Collider)> {
+        let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
+        let mut result = None;
+        match dir {
+            ProbeDir::Right => {
+                for i in 0..max_steps {
+                    let x = position_snapped.x + i;
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
+                    {
+                        result = Some((c.bounds.origin.x - (position.x + 1.0), c));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::Up => {
+                for i in 0..max_steps {
+                    let y = position_snapped.y + i;
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
+                    {
+                        result = Some((c.bounds.origin.y - (position.y + 1.0), c));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::Down => {
+                for i in 0..max_steps {
+                    let y = position_snapped.y - i;
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
+                    {
+                        result = Some((position.y - c.top(), c));
+                        break;
+                    }
+                }
+            }
+            ProbeDir::Left => {
+                for i in 0..max_steps {
+                    let x = position_snapped.x - i;
+                    if let Some(c) =
+                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
+                    {
+                        result = Some((position.x - c.right(), c));
+                        break;
+                    }
+                }
+            }
+        };
+
+        // we only accept collisions with square shapes - because slopes are special cases handled by
+        // find_character_footing only (note, the game only has northeast, and northwest slopes)
+        if let Some(result) = result {
+            if result.0 >= 0.0 && result.1.shape == Shape::Square {
+                return Some(result);
+            }
+        }
+
+        None
+    }
+}
+
 #[cfg(test)]
 mod space_tests {
     use super::*;

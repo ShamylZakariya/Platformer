@@ -8,8 +8,8 @@ use winit::{
 
 use crate::{camera, sprite::rendering, state::gpu_state};
 use crate::{
+    collision,
     entity::{self, EntityComponents},
-    sprite::collision,
     texture,
 };
 use crate::{event_dispatch, Options};

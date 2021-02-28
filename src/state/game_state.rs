@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    camera,
+    camera, collision,
     entities::{
         self,
         util::{CompassDir, HorizontalDir},
@@ -20,8 +20,8 @@ use crate::{
     },
     entity::{self, EntityComponents, GameStatePeek},
     event_dispatch, map,
+    sprite::rendering,
     sprite::rendering::Uniforms as SpriteUniforms,
-    sprite::{collision, rendering},
     texture, tileset,
     util::{hermite, lerp, Bounds},
     Options,

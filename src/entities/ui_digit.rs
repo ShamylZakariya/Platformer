@@ -3,10 +3,11 @@ use core::panic;
 use std::time::Duration;
 
 use crate::{
+    collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{self, rendering},
     state::constants::layers,
     tileset,
 };

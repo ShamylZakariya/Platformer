@@ -3,10 +3,11 @@ use rand::{prelude::*, Rng};
 use std::{f32::consts::PI, time::Duration};
 
 use crate::{
+    collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
     tileset,
 };

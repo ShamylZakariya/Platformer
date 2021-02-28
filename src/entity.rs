@@ -3,10 +3,14 @@ use std::{collections::HashSet, fmt::Debug, time::Duration};
 use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
-use crate::map;
-use crate::sprite::{self, collision, rendering};
-use crate::tileset;
-use crate::{event_dispatch::*, util::Bounds};
+use crate::{
+    collision,
+    event_dispatch::*,
+    map,
+    sprite::{self, rendering},
+    tileset,
+    util::*,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

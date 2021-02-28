@@ -4,10 +4,11 @@ use cgmath::*;
 use sprite::find_bounds;
 
 use crate::{
+    collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{self, rendering},
     state::{constants::layers, events::Event},
     util::Bounds,
 };

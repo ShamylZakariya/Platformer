@@ -1,10 +1,10 @@
 use std::{f32::consts::PI, time::Duration};
 
+use crate::{collision, state::events::Event};
 use crate::{
     event_dispatch::*,
     state::constants::sprite_masks::{COLLIDER, CONTACT_DAMAGE},
 };
-use crate::{sprite::collision, state::events::Event};
 use cgmath::*;
 use collision::Space;
 

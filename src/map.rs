@@ -6,11 +6,9 @@ use std::{collections::HashMap, io::BufReader};
 use std::{fs::File, time::Duration};
 use xml::reader::{EventReader, XmlEvent};
 
-use crate::entity;
-use crate::sprite::{self, collision};
-use crate::state::constants::sprite_masks::*;
-use crate::tileset;
-use crate::{entities, util::Bounds};
+use crate::{
+    collision, entities, entity, sprite, state::constants::sprite_masks::*, tileset, util::*,
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

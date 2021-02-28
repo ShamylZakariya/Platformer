@@ -1,4 +1,3 @@
-pub mod collision;
 pub mod core;
 pub mod rendering;
 

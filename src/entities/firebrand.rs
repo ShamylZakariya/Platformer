@@ -9,11 +9,12 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
+    collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     input::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{self, rendering},
     state::{
         constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
@@ -213,158 +214,6 @@ impl FirebrandInputState {
         self.input_state
             .get_button_state(VirtualKeyCode::Space)
             .unwrap()
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-#[derive(Clone, Copy, Debug)]
-pub enum ProbeDir {
-    Up,
-    Right,
-    Down,
-    Left,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ProbeResult<'a> {
-    None,
-    OneHit {
-        dist: f32,
-        collider: &'a collision::Collider,
-    },
-    TwoHits {
-        dist: f32,
-        collider_0: &'a collision::Collider,
-        collider_1: &'a collision::Collider,
-    },
-}
-
-impl sprite::collision::Space {
-    /// Probes `max_steps` in the collision space from `position` in `dir`, returning a ProbeResult
-    /// Ignores any sprites which don't match the provided `mask`
-    /// NOTE: Probe only tests for static sprites with Square collision shape, because, well,
-    /// that's what's needed here and I'm not writing a game engine.
-    pub fn probe_static_colliders<F>(
-        &self,
-        position: Point2<f32>,
-        dir: ProbeDir,
-        max_steps: i32,
-        mask: u32,
-        test: F,
-    ) -> ProbeResult
-    where
-        F: Fn(f32, &collision::Collider) -> bool,
-    {
-        let (offset, should_probe_offset) = match dir {
-            ProbeDir::Up | ProbeDir::Down => (vec2(1.0, 0.0), position.x.fract().abs() > 0.0),
-            ProbeDir::Right | ProbeDir::Left => (vec2(0.0, 1.0), position.y.fract().abs() > 0.0),
-        };
-
-        let mut dist = None;
-        let mut sprite_0 = None;
-        let mut sprite_1 = None;
-        if let Some(r) = self._probe_line(position, dir, max_steps, mask) {
-            if test(r.0, &r.1) {
-                dist = Some(r.0);
-                sprite_0 = Some(r.1);
-            }
-        }
-
-        if should_probe_offset {
-            if let Some(r) = self._probe_line(position + offset, dir, max_steps, mask) {
-                if test(r.0, &r.1) {
-                    dist = match dist {
-                        Some(d) => Some(d.min(r.0)),
-                        None => Some(r.0),
-                    };
-                    sprite_1 = Some(r.1);
-                }
-            }
-        }
-
-        match (sprite_0, sprite_1) {
-            (None, None) => ProbeResult::None,
-            (None, Some(s)) => ProbeResult::OneHit {
-                dist: dist.unwrap(),
-                collider: s,
-            },
-            (Some(s), None) => ProbeResult::OneHit {
-                dist: dist.unwrap(),
-                collider: s,
-            },
-            (Some(s0), Some(s1)) => ProbeResult::TwoHits {
-                dist: dist.unwrap(),
-                collider_0: s0,
-                collider_1: s1,
-            },
-        }
-    }
-
-    fn _probe_line(
-        &self,
-        position: Point2<f32>,
-        dir: ProbeDir,
-        max_steps: i32,
-        mask: u32,
-    ) -> Option<(f32, &collision::Collider)> {
-        let position_snapped = point2(position.x.floor() as i32, position.y.floor() as i32);
-        let mut result = None;
-        match dir {
-            ProbeDir::Right => {
-                for i in 0..max_steps {
-                    let x = position_snapped.x + i;
-                    if let Some(c) =
-                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
-                    {
-                        result = Some((c.bounds.origin.x - (position.x + 1.0), c));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Up => {
-                for i in 0..max_steps {
-                    let y = position_snapped.y + i;
-                    if let Some(c) =
-                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
-                    {
-                        result = Some((c.bounds.origin.y - (position.y + 1.0), c));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Down => {
-                for i in 0..max_steps {
-                    let y = position_snapped.y - i;
-                    if let Some(c) =
-                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
-                    {
-                        result = Some((position.y - c.top(), c));
-                        break;
-                    }
-                }
-            }
-            ProbeDir::Left => {
-                for i in 0..max_steps {
-                    let x = position_snapped.x - i;
-                    if let Some(c) =
-                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
-                    {
-                        result = Some((position.x - c.right(), c));
-                        break;
-                    }
-                }
-            }
-        };
-
-        // we only accept collisions with square shapes - because slopes are special cases handled by
-        // find_character_footing only (note, the game only has northeast, and northwest slopes)
-        if let Some(result) = result {
-            if result.0 >= 0.0 && result.1.shape == collision::Shape::Square {
-                return Some(result);
-            }
-        }
-
-        None
     }
 }
 
@@ -1194,8 +1043,7 @@ impl Firebrand {
                                 }
                             }
                         }
-                        collision::Shape::NorthEast
-                        | collision::Shape::NorthWest => {
+                        collision::Shape::NorthEast | collision::Shape::NorthWest => {
                             if let Some(intersection) = c.line_intersection(
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
@@ -1271,20 +1119,20 @@ impl Firebrand {
         if delta_x > 0.0 {
             match collision_space.probe_static_colliders(
                 position,
-                ProbeDir::Right,
+                collision::ProbeDir::Right,
                 COLLISION_PROBE_STEPS,
                 mask,
                 probe_test,
             ) {
-                ProbeResult::None => {}
-                ProbeResult::OneHit { dist, collider } => {
+                collision::ProbeResult::None => {}
+                collision::ProbeResult::OneHit { dist, collider } => {
                     if dist < delta_x {
                         delta_x = dist;
                         contacted = Some(collider);
                         self.process_potential_collision_with(&collider);
                     }
                 }
-                ProbeResult::TwoHits {
+                collision::ProbeResult::TwoHits {
                     dist,
                     collider_0,
                     collider_1,
@@ -1306,20 +1154,20 @@ impl Firebrand {
         } else if delta_x < 0.0 {
             match collision_space.probe_static_colliders(
                 position,
-                ProbeDir::Left,
+                collision::ProbeDir::Left,
                 COLLISION_PROBE_STEPS,
                 mask,
                 probe_test,
             ) {
-                ProbeResult::None => {}
-                ProbeResult::OneHit { dist, collider } => {
+                collision::ProbeResult::None => {}
+                collision::ProbeResult::OneHit { dist, collider } => {
                     if dist < -delta_x {
                         delta_x = -dist;
                         contacted = Some(collider);
                         self.process_potential_collision_with(&collider);
                     }
                 }
-                ProbeResult::TwoHits {
+                collision::ProbeResult::TwoHits {
                     dist,
                     collider_0,
                     collider_1,
@@ -1438,13 +1286,13 @@ impl Firebrand {
             let probe_test = create_collision_probe_test(position);
             match collision_space.probe_static_colliders(
                 position,
-                ProbeDir::Up,
+                collision::ProbeDir::Up,
                 COLLISION_PROBE_STEPS,
                 mask,
                 probe_test,
             ) {
-                ProbeResult::None => {}
-                ProbeResult::OneHit {
+                collision::ProbeResult::None => {}
+                collision::ProbeResult::OneHit {
                     dist,
                     collider: sprite,
                 } => {
@@ -1454,7 +1302,7 @@ impl Firebrand {
                         self.process_potential_collision_with(&sprite);
                     }
                 }
-                ProbeResult::TwoHits {
+                collision::ProbeResult::TwoHits {
                     dist,
                     collider_0: sprite_0,
                     collider_1: sprite_1,
