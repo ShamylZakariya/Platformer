@@ -1,5 +1,5 @@
 CURRENTLY:
-    - Firebrand must die when sinking in the boss fish water pit
+    - Water sprites have no collision shape, which makes sense I suppose?
 
 TODO:
     - We need the fade in, fade out animation. Best way to do it is via postprocessing shader.

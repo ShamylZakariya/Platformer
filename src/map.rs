@@ -691,12 +691,14 @@ impl Map {
                         .unwrap();
                     let tex_coord_bounds = self.tileset.get_tex_coords_for_tile(tile);
                     let mut mask = 0;
+                    let mut collision_shape = tile.shape();
 
                     if tile.has_property("collision_shape") {
                         mask |= COLLIDER;
                     }
                     if tile.boolean_property("water") {
                         mask |= WATER;
+                        collision_shape = CollisionShape::Square;
                     }
                     if tile.boolean_property("ratchet") {
                         mask |= RATCHET;
@@ -712,7 +714,7 @@ impl Map {
                     }
 
                     let mut sd = Sprite::unit(
-                        tile.shape(),
+                        collision_shape,
                         point2(x as i32, (layer.height - y) as i32),
                         0.0,
                         tex_coord_bounds.origin,

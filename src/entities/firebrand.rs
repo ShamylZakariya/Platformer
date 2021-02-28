@@ -787,6 +787,14 @@ impl Entity for Firebrand {
         self.in_water = self.is_in_water(collision_space, self.character_state.position);
 
         //
+        //  If character has fallen to bottom of level instadeath
+        //
+
+        if self.character_state.position.y <= 1.0 {
+            self.receive_injury(self.character_state.hit_points_max);
+        }
+
+        //
         //  Update character cycle and animation, and facing dir
         //
 
