@@ -1,4 +1,4 @@
-use std::{collections::HashSet, f32::consts::PI, fmt::Display, time::Duration};
+use std::{collections::{HashMap, HashSet}, f32::consts::PI, fmt::Display, time::Duration};
 
 use cgmath::*;
 use sprite::CollisionShape;
@@ -83,6 +83,7 @@ const FIREBALL_PROJECTILE_DAMAGE: u32 = 1;
 // and have that provide a walk-on distance for the stage. That's if different stage
 // designs require a different walk-on distance.
 const LEVEL_ENTRY_WALK_ON_DISTANCE: f32 = 3.5;
+const LEVEL_EXIT_WALK_OFF_DISTANCE: f32 = 4.0;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -144,6 +145,17 @@ impl FirebrandInputState {
 
     fn update(&mut self) {
         self.input_state.update();
+    }
+
+
+    fn override_user_input(&mut self, left:bool, right: bool, jump: bool, fire: bool) -> bool {
+        let mut state = HashMap::new();
+        state.insert(VirtualKeyCode::W, if jump { ButtonState::Down} else { ButtonState::Up });
+        state.insert(VirtualKeyCode::A, if left { ButtonState::Down} else { ButtonState::Up });
+        state.insert(VirtualKeyCode::D, if right { ButtonState::Down} else { ButtonState::Up });
+        state.insert(VirtualKeyCode::Space, if fire { ButtonState::Down} else { ButtonState::Up });
+        self.input_state.set(state);
+        left || right || jump || fire
     }
 
     fn jump(&self) -> &ButtonState {
@@ -467,7 +479,12 @@ impl Entity for Firebrand {
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
-        if self.input_state.process_keyboard(key, state) {
+        if self.did_pass_through_exit_door {
+            // after walking through the exit door, Firebrand keeps walking to right... forever
+            self.input_state.override_user_input(false, true, false, false);
+            // don't consume input, since we want to allow Esc, etc to quite game.
+            false
+        } else if self.input_state.process_keyboard(key, state) {
             true
         } else {
             match (key, state) {
@@ -936,8 +953,8 @@ impl Entity for Firebrand {
                 checkpoint,
             } => {
                 if checkpoint == 0 {
-                    self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
                     self.frozen = true;
+                    self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
                 }
             }
             _ => {}
@@ -1448,7 +1465,6 @@ impl Firebrand {
                 } else if self.input_state.move_left().is_active()
                     || self.input_state.move_right().is_active()
                     || self.walk_on_distance_remaining.is_some()
-                // character is walking in from off stage
                 {
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     match frame {

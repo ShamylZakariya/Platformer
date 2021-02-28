@@ -93,9 +93,12 @@ impl Entity for ExitDoor {
             Mode::Open if self.should_send_exit_message => {
                 if let Some(last_player_position) = self.last_player_position {
                     let threshold = self.bounds.left() + self.bounds.width() * 0.5;
-                    // only send exit message if player is moving to right, through door
-                    if game_state_peek.player_position.x > threshold
-                        && last_player_position.x < threshold
+
+                    // only send exit message if player crosses threshold, going left or right
+                    if (game_state_peek.player_position.x > threshold
+                        && last_player_position.x < threshold)
+                        || (game_state_peek.player_position.x < threshold
+                            && last_player_position.x > threshold)
                     {
                         message_dispatcher.broadcast(Event::FirebrandPassedThroughExitDoor);
                         self.should_send_exit_message = false;

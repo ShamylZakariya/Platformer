@@ -1,6 +1,4 @@
 CURRENTLY:
-    - Does the original game have FB walk on for rebirths?
-    - Firebrand must walk to right after passing the exit door, with level fading out and ending after some distance
     - Firebrand must die when sinking in the boss fish water pit
 
 TODO:

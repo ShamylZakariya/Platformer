@@ -89,6 +89,12 @@ impl InputState {
                 .insert(key, button_state.transition(button_state.is_active()));
         }
     }
+
+    /// Reassign button state to the provided one - this is intended for
+    /// situations where overriding user input is necessary.
+    pub fn set(&mut self, buttons:HashMap<VirtualKeyCode,ButtonState>) {
+        self.buttons = buttons;
+    }
 }
 
 /// Helper function to process positive/negative button presses - e.g., left/right
