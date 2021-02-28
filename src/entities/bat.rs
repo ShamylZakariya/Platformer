@@ -5,7 +5,11 @@ use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
-    sprite::{self, collision, rendering},
+    sprite::{
+        self,
+        collision::{self, Shape},
+        rendering,
+    },
     state::constants::{layers, sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
     tileset,
 };
@@ -70,7 +74,7 @@ impl Entity for Bat {
         self.collider = sprite.into();
         self.collider.entity_id = Some(entity_id);
         self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.shape = sprite::CollisionShape::Square;
+        self.collider.shape = Shape::Square;
         collision_space.add_dynamic_collider(&self.collider);
     }
 

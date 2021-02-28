@@ -2,7 +2,20 @@ use std::time::Duration;
 
 use cgmath::*;
 
-use crate::{entity::{Entity, GameStatePeek}, event_dispatch::*, map, sprite::{self, CollisionShape, collision, rendering}, state::{constants::{self, layers, sprite_masks::{COLLIDER, RATCHET}}, events::Event}, tileset};
+use crate::{
+    entity::{Entity, GameStatePeek},
+    event_dispatch::*,
+    map,
+    sprite::{self, collision, rendering},
+    state::{
+        constants::{
+            self, layers,
+            sprite_masks::{COLLIDER, RATCHET},
+        },
+        events::Event,
+    },
+    tileset,
+};
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
@@ -46,7 +59,7 @@ impl Entity for FallingBridge {
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
         self.collider = sprite.into();
-        self.collider.shape = CollisionShape::Square;
+        self.collider.shape = collision::Shape::Square;
         self.collider.mask |= COLLIDER | RATCHET;
         collision_space.add_static_collider(&self.collider);
     }

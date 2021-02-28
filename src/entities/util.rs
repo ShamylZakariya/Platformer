@@ -2,7 +2,6 @@ use std::{f32::consts::PI, time::Duration};
 
 use crate::{
     event_dispatch::*,
-    sprite::CollisionShape,
     state::constants::sprite_masks::{COLLIDER, CONTACT_DAMAGE},
 };
 use crate::{sprite::collision, state::events::Event};
@@ -335,7 +334,7 @@ impl MarchState {
                 let to_right = collision_space
                     .get_static_collider_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
                 if let Some(to_right) = to_right {
-                    if to_right.shape != CollisionShape::Square
+                    if to_right.shape != collision::Shape::Square
                         || to_right.mask & CONTACT_DAMAGE != 0
                     {
                         should_reverse_direction = true;
@@ -358,7 +357,8 @@ impl MarchState {
                 let to_left = collision_space
                     .get_static_collider_at(snapped_next_position_center + vec2(0, -1), COLLIDER);
                 if let Some(to_left) = to_left {
-                    if to_left.shape != CollisionShape::Square || to_left.mask & CONTACT_DAMAGE != 0
+                    if to_left.shape != collision::Shape::Square
+                        || to_left.mask & CONTACT_DAMAGE != 0
                     {
                         should_reverse_direction = true;
                     }

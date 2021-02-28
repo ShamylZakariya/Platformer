@@ -6,7 +6,7 @@ use std::{collections::HashMap, time::Duration};
 use crate::sprite::core::*;
 use crate::texture;
 use crate::tileset;
-use crate::{camera, geom::Bounds};
+use crate::{camera, util::Bounds};
 use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------

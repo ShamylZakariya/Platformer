@@ -19,12 +19,12 @@ use crate::{
         EntityClass,
     },
     entity::{self, EntityComponents, GameStatePeek},
-    event_dispatch,
-    geom::{hermite, lerp, Bounds},
-    map,
+    event_dispatch, map,
     sprite::rendering::Uniforms as SpriteUniforms,
     sprite::{collision, rendering},
-    texture, tileset, Options,
+    texture, tileset,
+    util::{hermite, lerp, Bounds},
+    Options,
 };
 
 use super::{
@@ -937,7 +937,7 @@ impl GameState {
         let previously_visible_entities = std::mem::take(&mut self.visible_entities);
         for e in self.entities.values() {
             let bounds = e.entity.bounds();
-            if crate::geom::intersection::rect_rect_intersects(viewport, bounds) {
+            if crate::util::intersection::rect_rect_intersects(viewport, bounds) {
                 self.visible_entities.insert(e.id());
             }
         }

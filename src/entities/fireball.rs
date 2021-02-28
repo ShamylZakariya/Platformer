@@ -5,10 +5,10 @@ use cgmath::*;
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    geom::Bounds,
     map,
     sprite::{collision, rendering},
     state::{constants::layers, events::Event},
+    util::Bounds,
 };
 
 use super::util::HorizontalDir;

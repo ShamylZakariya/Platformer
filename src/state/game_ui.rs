@@ -13,7 +13,7 @@ use crate::{
     texture,
 };
 use crate::{event_dispatch, Options};
-use crate::{geom::lerp, map};
+use crate::{map, util::lerp};
 
 use super::{
     constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},

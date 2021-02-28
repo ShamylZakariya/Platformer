@@ -10,7 +10,7 @@ use crate::entity;
 use crate::sprite::{self, collision};
 use crate::state::constants::sprite_masks::*;
 use crate::tileset;
-use crate::{entities, geom::Bounds};
+use crate::{entities, util::Bounds};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

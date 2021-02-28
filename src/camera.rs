@@ -5,8 +5,8 @@ use winit::dpi::LogicalPosition;
 use winit::event::*;
 
 use crate::{
-    geom::Bounds,
     state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
+    util::Bounds,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------

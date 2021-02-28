@@ -1,4 +1,4 @@
-use crate::{geom::Bounds, sprite};
+use crate::{sprite::collision, util::Bounds};
 use anyhow::{Context, Result};
 use cgmath::*;
 use std::collections::HashMap;
@@ -21,21 +21,21 @@ impl Tile {
         }
     }
 
-    pub fn shape(&self) -> sprite::CollisionShape {
-        use sprite::CollisionShape;
+    pub fn shape(&self) -> collision::Shape {
+        use collision::Shape;
 
         let collision_shape = self.properties.get("collision_shape");
         if let Some(collision_shape) = collision_shape {
             match collision_shape.as_str() {
-                "square" => CollisionShape::Square,
-                "triangle_ne" => CollisionShape::NorthEast,
-                "triangle_se" => CollisionShape::SouthEast,
-                "triangle_sw" => CollisionShape::SouthWest,
-                "triangle_nw" => CollisionShape::NorthWest,
-                _ => CollisionShape::None,
+                "square" => Shape::Square,
+                "triangle_ne" => Shape::NorthEast,
+                "triangle_se" => Shape::SouthEast,
+                "triangle_sw" => Shape::SouthWest,
+                "triangle_nw" => Shape::NorthWest,
+                _ => Shape::None,
             }
         } else {
-            CollisionShape::None
+            Shape::None
         }
     }
 

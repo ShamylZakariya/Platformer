@@ -6,13 +6,11 @@ use std::{
 };
 
 use cgmath::*;
-use sprite::CollisionShape;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    geom::{clamp, lerp, Bounds},
     input::*,
     map,
     sprite::{self, collision, rendering},
@@ -20,6 +18,7 @@ use crate::{
         constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
         events::Event,
     },
+    util::{clamp, lerp, Bounds},
 };
 
 use super::{power_up, util::HorizontalDir};
@@ -360,7 +359,7 @@ impl sprite::collision::Space {
         // we only accept collisions with square shapes - because slopes are special cases handled by
         // find_character_footing only (note, the game only has northeast, and northwest slopes)
         if let Some(result) = result {
-            if result.0 >= 0.0 && result.1.shape == sprite::CollisionShape::Square {
+            if result.0 >= 0.0 && result.1.shape == collision::Shape::Square {
                 return Some(result);
             }
         }
@@ -470,7 +469,7 @@ impl Firebrand {
         let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
         let collider = collision::Collider::new(
             Bounds::new(position.xy(), vec2(1.0, 1.0)),
-            sprite::CollisionShape::Square,
+            collision::Shape::Square,
             mask,
             None,
         );
@@ -1182,7 +1181,7 @@ impl Firebrand {
             if let Some(c) = collision_space.get_sprite_at(*test_point, COLLIDER) {
                 if can_collide_width(&position, c) {
                     match c.shape {
-                        CollisionShape::Square => {
+                        collision::Shape::Square => {
                             if c.unit_rect_intersection(
                                 &position,
                                 inset_for_collider(c),
@@ -1195,7 +1194,8 @@ impl Firebrand {
                                 }
                             }
                         }
-                        CollisionShape::NorthEast | CollisionShape::NorthWest => {
+                        collision::Shape::NorthEast
+                        | collision::Shape::NorthWest => {
                             if let Some(intersection) = c.line_intersection(
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),

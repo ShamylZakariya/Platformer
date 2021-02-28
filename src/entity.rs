@@ -6,7 +6,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 use crate::map;
 use crate::sprite::{self, collision, rendering};
 use crate::tileset;
-use crate::{event_dispatch::*, geom::Bounds};
+use crate::{event_dispatch::*, util::Bounds};
 
 // ---------------------------------------------------------------------------------------------------------------------
 

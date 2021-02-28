@@ -2,35 +2,63 @@ use cgmath::*;
 use std::hash::Hash;
 use std::{collections::HashMap, unimplemented};
 
-use crate::{
-    geom::{self, Bounds},
-    sprite::core::*,
-};
+use crate::{sprite::core::*, util::*};
 
-fn rel_eq(a: f32, b: f32) -> bool {
-    (a - b).abs() < f32::EPSILON
+/// Represents the shape of a Collider, where Square represents simple square; the remainder
+/// are triangles, with the surface normal facing in the specified direction. E.g., NorthEast would be a triangle
+/// with the edge normal facing up and to the right.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Shape {
+    None,
+    Square,
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest,
 }
 
-/// Simple cross product for 2D vectors; cgmath doesn't define this because cross product
-/// doesn't make sense generally for 2D.
-fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
-    a.x * b.y - a.y * b.x
-}
-
-fn hash_point2<H: std::hash::Hasher>(point: &Point2<f32>, state: &mut H) {
-    ((point.x * 1000.0) as i32).hash(state);
-    ((point.y * 1000.0) as i32).hash(state);
-}
-
-fn hash_vec2<H: std::hash::Hasher>(v: &Vector2<f32>, state: &mut H) {
-    ((v.x * 1000.0) as i32).hash(state);
-    ((v.y * 1000.0) as i32).hash(state);
+impl Shape {
+    pub fn flipped_horizontally(&self) -> Self {
+        match self {
+            Shape::None => Shape::None,
+            Shape::Square => Shape::Square,
+            Shape::NorthEast => Shape::NorthWest,
+            Shape::SouthEast => Shape::SouthWest,
+            Shape::SouthWest => Shape::SouthEast,
+            Shape::NorthWest => Shape::NorthEast,
+        }
+    }
+    pub fn flipped_vertically(&self) -> Self {
+        match self {
+            Shape::None => Shape::None,
+            Shape::Square => Shape::Square,
+            Shape::NorthEast => Shape::SouthEast,
+            Shape::SouthEast => Shape::NorthEast,
+            Shape::SouthWest => Shape::NorthWest,
+            Shape::NorthWest => Shape::SouthWest,
+        }
+    }
+    pub fn flipped_diagonally(&self) -> Self {
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/#tile-flipping
+        // Under section "Tile Flipping" diagonal flip is defined as x/y axis swap.
+        // On paper, this transform was worked out for triangles. Since this is a
+        // mirroring along the +x/+y diagonal axis, it only affects NorthWest and SouthEast
+        // triangles, which are not symmetrical across the flip axis.
+        match self {
+            Shape::None => Shape::None,
+            Shape::Square => Shape::Square,
+            Shape::NorthEast => Shape::NorthEast,
+            Shape::SouthEast => Shape::NorthWest,
+            Shape::SouthWest => Shape::SouthWest,
+            Shape::NorthWest => Shape::SouthEast,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Collider {
     pub bounds: Bounds,
-    pub shape: CollisionShape,
+    pub shape: Shape,
     pub mask: u32,
     pub entity_id: Option<u32>,
 }
@@ -39,7 +67,7 @@ impl Default for Collider {
     fn default() -> Self {
         Self {
             bounds: Bounds::default(),
-            shape: CollisionShape::None,
+            shape: Shape::None,
             mask: 0,
             entity_id: None,
         }
@@ -91,7 +119,7 @@ impl Hash for Collider {
 }
 
 impl Collider {
-    pub fn new(bounds: Bounds, shape: CollisionShape, mask: u32, entity_id: Option<u32>) -> Self {
+    pub fn new(bounds: Bounds, shape: Shape, mask: u32, entity_id: Option<u32>) -> Self {
         Self {
             bounds,
             shape,
@@ -108,11 +136,11 @@ impl Collider {
         {
             let p = vec2(point.x, point.y);
             return match self.shape {
-                CollisionShape::None => false,
+                Shape::None => false,
 
-                CollisionShape::Square => true,
+                Shape::Square => true,
 
-                CollisionShape::NorthEast => {
+                Shape::NorthEast => {
                     let a = vec2(
                         self.bounds.origin.x,
                         self.bounds.origin.y + self.bounds.extent.y,
@@ -126,7 +154,7 @@ impl Collider {
                     cross(&ba, &pa) <= 0.0
                 }
 
-                CollisionShape::SouthEast => {
+                Shape::SouthEast => {
                     let a = vec2(self.bounds.origin.x, self.bounds.origin.y);
                     let b = vec2(
                         self.bounds.origin.x + self.bounds.extent.x,
@@ -137,7 +165,7 @@ impl Collider {
                     cross(&ba, &pa) >= 0.0
                 }
 
-                CollisionShape::SouthWest => {
+                Shape::SouthWest => {
                     let a = vec2(
                         self.bounds.origin.x,
                         self.bounds.origin.y + self.bounds.extent.y,
@@ -152,7 +180,7 @@ impl Collider {
                     cross(&ba, &pa) >= 0.0
                 }
 
-                CollisionShape::NorthWest => {
+                Shape::NorthWest => {
                     let a = vec2(self.bounds.origin.x, self.bounds.origin.y);
                     let b = vec2(
                         self.bounds.origin.x + self.bounds.extent.x,
@@ -173,8 +201,8 @@ impl Collider {
     /// segment intersects, otherwise, returns None
     pub fn line_intersection(&self, a: &Point2<f32>, b: &Point2<f32>) -> Option<Point2<f32>> {
         match self.shape {
-            CollisionShape::None => None,
-            CollisionShape::Square => geom::intersection::line_convex_poly_closest(
+            Shape::None => None,
+            Shape::Square => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
@@ -193,7 +221,7 @@ impl Collider {
                     ),
                 ],
             ),
-            CollisionShape::NorthEast => geom::intersection::line_convex_poly_closest(
+            Shape::NorthEast => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
@@ -208,7 +236,7 @@ impl Collider {
                     ),
                 ],
             ),
-            CollisionShape::SouthEast => geom::intersection::line_convex_poly_closest(
+            Shape::SouthEast => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
@@ -223,7 +251,7 @@ impl Collider {
                     ),
                 ],
             ),
-            CollisionShape::SouthWest => geom::intersection::line_convex_poly_closest(
+            Shape::SouthWest => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
@@ -241,7 +269,7 @@ impl Collider {
                     ),
                 ],
             ),
-            CollisionShape::NorthWest => geom::intersection::line_convex_poly_closest(
+            Shape::NorthWest => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
@@ -292,7 +320,7 @@ impl Collider {
             // TODO: Implement colliders for corner blocks? GGQ doesn't need them,
             // but it seems like I'd want to flesh that out for a real 2d engine.
             // So for now, we treat any non-none shape as rectangular.
-            !matches!(self.shape, CollisionShape::None)
+            !matches!(self.shape, Shape::None)
         } else {
             false
         }
@@ -532,14 +560,14 @@ mod space_tests {
     fn new_produces_expected_storage() {
         let unit_0 = Collider::new(
             Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
-            CollisionShape::Square,
+            Shape::Square,
             0,
             None,
         );
 
         let unit_1 = Collider::new(
             Bounds::new(point2(11.0, -33.0), vec2(1.0, 1.0)),
-            CollisionShape::Square,
+            Shape::Square,
             0,
             None,
         );
@@ -575,42 +603,42 @@ mod space_tests {
 
         let sb1 = Collider::new(
             Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
-            CollisionShape::Square,
+            Shape::Square,
             square_mask,
             None,
         );
 
         let sb2 = Collider::new(
             Bounds::new(point2(-1.0, -1.0), vec2(1.0, 1.0)),
-            CollisionShape::Square,
+            Shape::Square,
             square_mask,
             None,
         );
 
         let tr0 = Collider::new(
             Bounds::new(point2(0.0, 4.0), vec2(1.0, 1.0)),
-            CollisionShape::NorthEast,
+            Shape::NorthEast,
             triangle_mask,
             None,
         );
 
         let tr1 = Collider::new(
             Bounds::new(point2(-1.0, 4.0), vec2(1.0, 1.0)),
-            CollisionShape::NorthWest,
+            Shape::NorthWest,
             triangle_mask,
             None,
         );
 
         let tr2 = Collider::new(
             Bounds::new(point2(-1.0, 3.0), vec2(1.0, 1.0)),
-            CollisionShape::SouthWest,
+            Shape::SouthWest,
             triangle_mask,
             None,
         );
 
         let tr3 = Collider::new(
             Bounds::new(point2(0.0, 3.0), vec2(1.0, 1.0)),
-            CollisionShape::SouthEast,
+            Shape::SouthEast,
             triangle_mask,
             None,
         );
@@ -634,4 +662,297 @@ mod space_tests {
             .is_none());
         assert!(hit_tester.test_point(point2(0.5, 0.5), all_mask).is_some());
     }
+
+    fn test_points(
+        collider: &Collider,
+    ) -> (
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+        Point2<f32>,
+    ) {
+        (
+            // inside
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.25,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.25,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.75,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.75,
+            ),
+            // outside
+            point2(
+                collider.bounds.origin.x - collider.bounds.extent.x * 0.25,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
+                collider.bounds.origin.y - collider.bounds.extent.y * 0.25,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 1.25,
+                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+            ),
+            point2(
+                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
+                collider.bounds.origin.y + collider.bounds.extent.y * 1.25,
+            ),
+        )
+    }
+
+    fn test_containment(mut collider: Collider) {
+        let (p0, p1, p2, p3, p4, p5, p6, p7) = test_points(&collider);
+
+        collider.shape = Shape::None;
+        assert!(!collider.contains(&p0));
+        assert!(!collider.contains(&p1));
+        assert!(!collider.contains(&p2));
+        assert!(!collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+
+        collider.shape = Shape::Square;
+        assert!(collider.contains(&p0));
+        assert!(collider.contains(&p1));
+        assert!(collider.contains(&p2));
+        assert!(collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+
+        collider.shape = Shape::NorthEast;
+        assert!(collider.contains(&p0));
+        assert!(collider.contains(&p1));
+        assert!(!collider.contains(&p2));
+        assert!(!collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+
+        collider.shape = Shape::SouthEast;
+        assert!(collider.contains(&p0));
+        assert!(!collider.contains(&p1));
+        assert!(!collider.contains(&p2));
+        assert!(collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+
+        collider.shape = Shape::SouthWest;
+        assert!(!collider.contains(&p0));
+        assert!(!collider.contains(&p1));
+        assert!(collider.contains(&p2));
+        assert!(collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+
+        collider.shape = Shape::NorthWest;
+        assert!(!collider.contains(&p0));
+        assert!(collider.contains(&p1));
+        assert!(collider.contains(&p2));
+        assert!(!collider.contains(&p3));
+        assert!(!collider.contains(&p4));
+        assert!(!collider.contains(&p5));
+        assert!(!collider.contains(&p6));
+        assert!(!collider.contains(&p7));
+    }
+
+    #[test]
+    fn contains_works() {
+        let mut collider = Collider::new(
+            Bounds::new(point2(0.0, 0.0), vec2(0.0, 0.0)),
+            Shape::Square,
+            0,
+            None,
+        );
+
+        test_containment(collider);
+
+        // tall, NE quadrant
+        collider.bounds.origin.x = 10.0;
+        collider.bounds.origin.y = 5.0;
+        collider.bounds.extent.y = 50.0;
+        collider.bounds.extent.x = 1.0;
+        test_containment(collider);
+
+        // wide, NE quad
+        collider.bounds.origin.x = 10.0;
+        collider.bounds.origin.y = 5.0;
+        collider.bounds.extent.y = 1.0;
+        collider.bounds.extent.x = 50.0;
+        test_containment(collider);
+
+        // tall, SE quadrant
+        collider.bounds.origin.x = 10.0;
+        collider.bounds.origin.y = -70.0;
+        collider.bounds.extent.y = 50.0;
+        collider.bounds.extent.x = 1.0;
+        test_containment(collider);
+
+        // wide, SE quad
+        collider.bounds.origin.x = 10.0;
+        collider.bounds.origin.y = -10.0;
+        collider.bounds.extent.y = 1.0;
+        collider.bounds.extent.x = 50.0;
+        test_containment(collider);
+
+        // tall, SW quadrant
+        collider.bounds.origin.x = -100.0;
+        collider.bounds.origin.y = -500.0;
+        collider.bounds.extent.y = 50.0;
+        collider.bounds.extent.x = 1.0;
+        test_containment(collider);
+
+        // wide, SW quad
+        collider.bounds.origin.x = -100.0;
+        collider.bounds.origin.y = -500.0;
+        collider.bounds.extent.y = 1.0;
+        collider.bounds.extent.x = 50.0;
+        test_containment(collider);
+
+        // tall, NW quadrant
+        collider.bounds.origin.x = -100.0;
+        collider.bounds.origin.y = 500.0;
+        collider.bounds.extent.y = 50.0;
+        collider.bounds.extent.x = 1.0;
+        test_containment(collider);
+
+        // wide, NW quad
+        collider.bounds.origin.x = -100.0;
+        collider.bounds.origin.y = 500.0;
+        collider.bounds.extent.y = 1.0;
+        collider.bounds.extent.x = 50.0;
+        test_containment(collider);
+    }
+
+    #[test]
+    fn line_intersection_with_square_works() {
+        let collider = Collider::new(
+            Bounds::new(point2(0.0, 0.0), vec2(0.0, 0.0)),
+            Shape::Square,
+            0,
+            None,
+        );
+
+        assert_eq!(
+            collider.line_intersection(&point2(-0.5, 0.5), &point2(0.5, 0.5)),
+            Some(point2(0.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, 0.5)),
+            Some(point2(0.5, 1.0))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(1.5, 0.5), &point2(0.5, 0.5)),
+            Some(point2(1.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 0.5)),
+            Some(point2(0.5, 0.0))
+        );
+    }
+
+    #[test]
+    fn line_intersection_with_slopes_works() {
+        let mut collider = Collider::new(
+            Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
+            Shape::NorthEast,
+            0,
+            None,
+        );
+
+        assert_eq!(
+            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.0))
+        );
+
+        collider.shape = Shape::SouthEast;
+        assert_eq!(
+            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 1.0))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.5))
+        );
+
+        collider.shape = Shape::SouthWest;
+        assert_eq!(
+            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 1.0))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(1.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.5))
+        );
+
+        collider.shape = Shape::NorthWest;
+        assert_eq!(
+            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            Some(point2(0.5, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            Some(point2(1.0, 0.5))
+        );
+        assert_eq!(
+            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            Some(point2(0.5, 0.0))
+        );
+    }
+
+    #[test]
+    fn rect_intersection_works() {}
 }

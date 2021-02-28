@@ -1,4 +1,16 @@
+use std::hash::Hash;
+
 use cgmath::*;
+
+pub fn rel_eq(a: f32, b: f32) -> bool {
+    (a - b).abs() < f32::EPSILON
+}
+
+/// Simple cross product for 2D vectors; cgmath doesn't define this because cross product
+/// doesn't make sense generally for 2D.
+pub fn cross(a: &Vector2<f32>, b: &Vector2<f32>) -> f32 {
+    a.x * b.y - a.y * b.x
+}
 
 pub fn lerp(t: f32, a: f32, b: f32) -> f32 {
     a + t * (b - a)
@@ -17,6 +29,35 @@ pub fn clamp(v: f32, min: f32, max: f32) -> f32 {
     } else {
         v
     }
+}
+
+pub fn hash_point2<H: std::hash::Hasher>(point: &Point2<f32>, state: &mut H) {
+    ((point.x * 1000.0) as i32).hash(state);
+    ((point.y * 1000.0) as i32).hash(state);
+}
+
+pub fn hash_point3<H: std::hash::Hasher>(point: &Point3<f32>, state: &mut H) {
+    ((point.x * 1000.0) as i32).hash(state);
+    ((point.y * 1000.0) as i32).hash(state);
+    ((point.z * 1000.0) as i32).hash(state);
+}
+
+pub fn hash_vec2<H: std::hash::Hasher>(v: &Vector2<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+}
+
+pub fn hash_vec3<H: std::hash::Hasher>(v: &Vector3<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+    ((v.z * 1000.0) as i32).hash(state);
+}
+
+pub fn hash_vec4<H: std::hash::Hasher>(v: &Vector4<f32>, state: &mut H) {
+    ((v.x * 1000.0) as i32).hash(state);
+    ((v.y * 1000.0) as i32).hash(state);
+    ((v.z * 1000.0) as i32).hash(state);
+    ((v.w * 1000.0) as i32).hash(state);
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -6,10 +6,10 @@ use sprite::find_bounds;
 use crate::{
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
-    geom::Bounds,
     map,
     sprite::{self, collision, rendering},
     state::{constants::layers, events::Event},
+    util::Bounds,
 };
 
 const RISE_SPEED: f32 = 1.0 / 0.467;
@@ -31,7 +31,7 @@ impl RisingFloor {
 
         let collider = collision::Collider::new(
             bounds,
-            sprite::CollisionShape::Square,
+            collision::Shape::Square,
             crate::state::constants::sprite_masks::COLLIDER,
             None,
         );

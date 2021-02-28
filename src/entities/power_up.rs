@@ -76,7 +76,7 @@ impl Entity for PowerUp {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.collider = sprite.into();
-        self.collider.shape = sprite::CollisionShape::Square;
+        self.collider.shape = collision::Shape::Square;
         collision_space.add_dynamic_collider(&self.collider);
         self.is_collider_active = true;
 
