@@ -105,7 +105,6 @@ pub struct GameState {
     firebrand_entity_id: Option<u32>,
     firebrand_start_checkpoint: u32,
     firebrand_start_lives_remaining: u32,
-    firebrand_creation_count: u32,
     visible_entities: HashSet<u32>,
     entities_to_add: Vec<EntityAdditionRequest>,
 
@@ -379,7 +378,6 @@ impl GameState {
             firebrand_entity_id: None,
             firebrand_start_checkpoint: start_checkpoint,
             firebrand_start_lives_remaining: lives_remaining,
-            firebrand_creation_count: 0,
             visible_entities: HashSet::new(),
             entities_to_add: Vec::new(),
             flipbook_animations,
@@ -504,10 +502,7 @@ impl GameState {
 
             message_dispatcher.broadcast(Event::FirebrandCreated {
                 checkpoint: self.firebrand_start_checkpoint,
-                is_first_time: self.firebrand_creation_count == 0,
             });
-
-            self.firebrand_creation_count += 1;
         }
 
         self.time += dt.as_secs_f32();

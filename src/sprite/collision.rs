@@ -145,10 +145,8 @@ impl Space {
 
         for p in [a, b, c, d].iter() {
             if let Some(sprite) = self.get_static_sprite_at(*p, mask) {
-                if sprite.rect_intersection(origin, extent, 0.0, true) {
-                    if callback(&sprite) {
-                        return;
-                    }
+                if sprite.rect_intersection(origin, extent, 0.0, true) && callback(&sprite) {
+                    return;
                 }
             }
         }

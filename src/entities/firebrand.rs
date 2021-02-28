@@ -78,6 +78,12 @@ const HIT_POINTS: u32 = 2;
 const CONTACT_DAMAGE_HIT_POINTS: u32 = 1;
 const FIREBALL_PROJECTILE_DAMAGE: u32 = 1;
 
+// When first entering the level, Firebrand walks in by this distance
+// A possible improvement to this would be to pass the checkpoint's tile's metadata
+// and have that provide a walk-on distance for the stage. That's if different stage
+// designs require a different walk-on distance.
+const LEVEL_ENTRY_WALK_ON_DISTANCE: f32 = 3.5;
+
 // ---------------------------------------------------------------------------------------------------------------------
 
 fn create_collision_probe_test(position: Point2<f32>) -> impl Fn(f32, &sprite::Sprite) -> bool {
@@ -406,6 +412,7 @@ pub struct Firebrand {
     frozen: bool,
     did_send_death_message: bool,
     did_pass_through_exit_door: bool,
+    walk_on_distance_remaining: Option<f32>,
 }
 
 impl Firebrand {
@@ -444,6 +451,7 @@ impl Firebrand {
             frozen: false,
             did_send_death_message: false,
             did_pass_through_exit_door: false,
+            walk_on_distance_remaining: None,
         }
     }
 }
@@ -735,6 +743,18 @@ impl Entity for Firebrand {
         if !self.frozen {
             self.character_state.cycle = self.update_character_cycle(dt);
             self.character_state.facing = self.character_facing();
+        } else if self.walk_on_distance_remaining.is_some() {
+            self.character_state.stance = Stance::Standing;
+            self.character_state.cycle = self.update_character_cycle(dt);
+
+            let distance_remaining = self.walk_on_distance_remaining.unwrap();
+            let distance_remaining = distance_remaining - WALK_SPEED * dt;
+            if distance_remaining <= 0.0 {
+                self.walk_on_distance_remaining = None;
+                self.frozen = false;
+            } else {
+                self.walk_on_distance_remaining = Some(distance_remaining);
+            }
         }
 
         //
@@ -814,6 +834,12 @@ impl Entity for Firebrand {
                 layers::stage::FIREBRAND
             };
 
+            let walk_on_offset = if let Some(r) = self.walk_on_distance_remaining {
+                -r
+            } else {
+                0.0
+            };
+
             uniforms
                 .data
                 .set_color(vec4(1.0, 1.0, 1.0, 1.0))
@@ -821,7 +847,8 @@ impl Entity for Firebrand {
                 .set_model_position(point3(
                     self.character_state.position.x
                         + self.character_state.position_offset.x
-                        + xoffset,
+                        + xoffset
+                        + walk_on_offset,
                     self.character_state.position.y + self.character_state.position_offset.y,
                     z_offset,
                 ));
@@ -906,14 +933,12 @@ impl Entity for Firebrand {
                 self.did_pass_through_exit_door = true;
             }
             Event::FirebrandCreated {
-                checkpoint: _,
-                is_first_time,
+                checkpoint,
             } => {
-                println!(
-                    "Firebrand[{}]::handle_message FirebrandCreated is_first_time: {}",
-                    self.entity_id(),
-                    is_first_time
-                );
+                if checkpoint == 0 {
+                    self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
+                    self.frozen = true;
+                }
             }
             _ => {}
         }
@@ -1422,6 +1447,8 @@ impl Firebrand {
                     CYCLE_SHOOT
                 } else if self.input_state.move_left().is_active()
                     || self.input_state.move_right().is_active()
+                    || self.walk_on_distance_remaining.is_some()
+                // character is walking in from off stage
                 {
                     let frame = ((elapsed / WALK_CYCLE_DURATION).floor() as i32) % 4;
                     match frame {
