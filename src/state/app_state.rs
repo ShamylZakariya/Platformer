@@ -67,7 +67,10 @@ impl AppState {
     }
 
     pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {
-        if self.game_state.input(window, event) {
+        if self
+            .game_state
+            .input(window, event, self.game_ui.is_paused())
+        {
             true
         } else {
             self.game_ui.input(window, event)

@@ -415,7 +415,7 @@ impl GameState {
             .resize(new_size.width, new_size.height);
     }
 
-    pub fn input(&mut self, _window: &Window, event: &WindowEvent) -> bool {
+    pub fn input(&mut self, _window: &Window, event: &WindowEvent, is_paused: bool) -> bool {
         match event {
             WindowEvent::KeyboardInput {
                 input:
@@ -427,9 +427,11 @@ impl GameState {
                 ..
             } => {
                 let mut consumed = false;
-                for e in self.entities.values_mut() {
-                    if e.entity.process_keyboard(*key, *state) {
-                        consumed = true;
+                if !is_paused {
+                    for e in self.entities.values_mut() {
+                        if e.entity.process_keyboard(*key, *state) {
+                            consumed = true;
+                        }
                     }
                 }
                 consumed || self.camera_controller.process_keyboard(*key, *state)

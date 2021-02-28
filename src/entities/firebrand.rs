@@ -1497,21 +1497,25 @@ impl Firebrand {
     }
 
     fn character_facing(&self) -> HorizontalDir {
-        match self.character_state.stance {
-            Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
-                if self.input_state.move_left().is_active() {
-                    HorizontalDir::West
-                } else if self.input_state.move_right().is_active() {
-                    HorizontalDir::East
-                } else {
-                    self.character_state.facing
+        if self.frozen {
+            self.character_state.facing
+        } else {
+            match self.character_state.stance {
+                Stance::Standing | Stance::InAir | Stance::Flying | Stance::Injury => {
+                    if self.input_state.move_left().is_active() {
+                        HorizontalDir::West
+                    } else if self.input_state.move_right().is_active() {
+                        HorizontalDir::East
+                    } else {
+                        self.character_state.facing
+                    }
                 }
-            }
-            Stance::WallHold(attached_to) => {
-                if attached_to.left() > self.character_state.position.x {
-                    HorizontalDir::West
-                } else {
-                    HorizontalDir::East
+                Stance::WallHold(attached_to) => {
+                    if attached_to.left() > self.character_state.position.x {
+                        HorizontalDir::West
+                    } else {
+                        HorizontalDir::East
+                    }
                 }
             }
         }
