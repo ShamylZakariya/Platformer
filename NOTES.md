@@ -8,8 +8,10 @@ CURRENTLY:
                 - DONE move sprite/collision.rs to ./collision.rs
                 - DONE move firebrand's probe() methods to collision
                 - make a is_dynamic:bool field on Collider, and have Space sort things out.
-                    - first we need to make a GROUND mask bit, and set it for the level
-                    - then we need to drop collider? It's too general
+                    - DONE first we need to make a GROUND mask bit, and set it for the level
+                    - DONE then we need to drop collider? It's too general
+                    - drop static/dynamic specific collision tests for a single set of tests which test against both
+                    - add field enum STATIC/DYNAMIC to Collider and have the add collider method do the right thing
 
             NOTES:
                 - this breaks the nice overlapping_sprites visualization, but whatever
