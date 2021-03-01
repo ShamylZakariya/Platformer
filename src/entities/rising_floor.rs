@@ -33,7 +33,7 @@ impl RisingFloor {
         let collider = collision::Collider::new(
             bounds,
             collision::Shape::Square,
-            crate::state::constants::sprite_masks::COLLIDER,
+            crate::state::constants::sprite_masks::GROUND,
             None,
         );
 

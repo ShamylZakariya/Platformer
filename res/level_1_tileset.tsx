@@ -3,22 +3,22 @@
  <image source="level_1_tileset.png" width="135" height="135"/>
  <tile id="0">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="1">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="2">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
@@ -32,15 +32,15 @@
  </tile>
  <tile id="4">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="triangle_nw"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="5">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="triangle_ne"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
@@ -49,6 +49,7 @@
    <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
    <property name="contact_damage" value="true"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
@@ -57,51 +58,52 @@
    <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
    <property name="contact_damage" value="true"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="8">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="9">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="ratchet" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="10">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="ratchet" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="11">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="ratchet" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="12">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
  <tile id="13">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>
@@ -114,8 +116,8 @@
  </tile>
  <tile id="35">
   <properties>
-   <property name="collider" value="true"/>
    <property name="collision_shape" value="square"/>
+   <property name="ground" value="true"/>
    <property name="shootable" value="true"/>
   </properties>
  </tile>

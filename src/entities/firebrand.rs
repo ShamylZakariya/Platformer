@@ -672,7 +672,7 @@ impl Entity for Firebrand {
         collision_space.test_rect_against_dynamic_colliders(
             &self.character_state.position.xy(),
             &vec2(1.0, 1.0),
-            COLLIDER | ENTITY,
+            ENTITY,
             |c| {
                 if c.entity_id != Some(self.entity_id) {
                     self.process_potential_collision_with(c);
@@ -1027,7 +1027,7 @@ impl Firebrand {
         };
 
         for test_point in [below_center, center].iter() {
-            if let Some(c) = collision_space.get_sprite_at(*test_point, COLLIDER) {
+            if let Some(c) = collision_space.get_sprite_at(*test_point, GROUND) {
                 if can_collide_width(&position, c) {
                     match c.shape {
                         collision::Shape::Square => {
@@ -1081,7 +1081,7 @@ impl Firebrand {
             return (position, None);
         }
 
-        let mask = COLLIDER;
+        let mask = GROUND;
         let probe_test = create_collision_probe_test(position);
 
         let mut delta_x =
@@ -1282,7 +1282,7 @@ impl Firebrand {
         //
 
         if delta.y > 0.0 {
-            let mask = COLLIDER;
+            let mask = GROUND;
             let probe_test = create_collision_probe_test(position);
             match collision_space.probe_static_colliders(
                 position,

@@ -8,9 +8,12 @@ CURRENTLY:
                 - DONE move sprite/collision.rs to ./collision.rs
                 - DONE move firebrand's probe() methods to collision
                 - make a is_dynamic:bool field on Collider, and have Space sort things out.
+                    - first we need to make a GROUND mask bit, and set it for the level
+                    - then we need to drop collider? It's too general
 
             NOTES:
                 - this breaks the nice overlapping_sprites visualization, but whatever
+                    - could handle this by creating sprites from Colliders using some default color/texcoord mapping
 
 
         - Refactor geom.rs, I don't like that module's existence.

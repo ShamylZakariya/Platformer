@@ -690,8 +690,8 @@ impl Map {
                     let tex_coord_bounds = self.tileset.get_tex_coords_for_tile(tile);
                     let mut mask = 0;
 
-                    if tile.boolean_property("collider") {
-                        mask |= COLLIDER;
+                    if tile.boolean_property("ground") {
+                        mask |= GROUND;
                     }
                     if tile.boolean_property("water") {
                         mask |= WATER;

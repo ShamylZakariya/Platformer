@@ -2,7 +2,7 @@
 // Units are seconds & tiles-per-second unless otherwise specified.
 
 pub mod sprite_masks {
-    pub const COLLIDER: u32 = 1 << 0;
+    pub const GROUND: u32 = 1 << 0;
     pub const WATER: u32 = 1 << 1;
     pub const RATCHET: u32 = 1 << 2;
     pub const ENTITY: u32 = 1 << 3;

@@ -11,7 +11,7 @@ use crate::{
     state::{
         constants::{
             self, layers,
-            sprite_masks::{COLLIDER, RATCHET},
+            sprite_masks::{GROUND, RATCHET},
         },
         events::Event,
     },
@@ -61,7 +61,7 @@ impl Entity for FallingBridge {
 
         self.collider = sprite.into();
         self.collider.shape = collision::Shape::Square;
-        self.collider.mask |= COLLIDER | RATCHET;
+        self.collider.mask |= GROUND | RATCHET;
         collision_space.add_static_collider(&self.collider);
     }
 
