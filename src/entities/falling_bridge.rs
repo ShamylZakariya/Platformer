@@ -89,7 +89,7 @@ impl Entity for FallingBridge {
             } else {
                 self.time_remaining = Some(time_remaining);
             }
-        } else if !collision_space.has_static_collider(&self.collider) {
+        } else if !collision_space.has_collider(&self.collider) {
             collision_space.add_static_collider(&self.collider);
         }
     }

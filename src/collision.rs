@@ -389,20 +389,7 @@ impl Space {
         }
     }
 
-    pub fn get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
-        self.static_unit_colliders
-            .get(&(point))
-            .filter(|s| s.mask & mask != 0)
-    }
-
-    pub fn has_static_collider(&self, collider: &Collider) -> bool {
-        let coord = point2(
-            collider.bounds.origin.x.floor() as i32,
-            collider.bounds.origin.y.floor() as i32,
-        );
-
-        self.static_unit_colliders.contains_key(&coord)
-    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn add_static_collider(&mut self, collider: &Collider) {
         let coord = point2(
@@ -418,10 +405,6 @@ impl Space {
             collider.bounds.origin.y.floor() as i32,
         );
         self.static_unit_colliders.remove(&coord);
-    }
-
-    pub fn remove_static_collider_at(&mut self, point: Point2<i32>) {
-        self.static_unit_colliders.remove(&(point));
     }
 
     pub fn add_dynamic_collider(&mut self, collider: &Collider) {
@@ -446,8 +429,43 @@ impl Space {
         self.add_dynamic_collider(collider);
     }
 
-    /// Tests the specified rect against just the dynamic colliders in this Space
-    pub fn test_rect_against_dynamic_colliders<C>(
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    pub fn get_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
+        let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
+        for s in self.dynamic_colliders.values() {
+            if s.mask & mask != 0 && s.contains(&point_f) {
+                return Some(s);
+            }
+        }
+
+        self.static_unit_colliders
+            .get(&(point))
+            .filter(|s| s.mask & mask != 0)
+    }
+
+    pub fn has_collider(&self, collider: &Collider) -> bool {
+        let coord = point2(
+            collider.bounds.origin.x.floor() as i32,
+            collider.bounds.origin.y.floor() as i32,
+        );
+
+        if self.static_unit_colliders.contains_key(&coord) {
+            return true;
+        }
+
+        if let Some(id) = collider.entity_id {
+            return self.dynamic_colliders.contains_key(&id);
+        }
+
+        false
+    }
+
+    /// Tests the specified rect against colliders, invoking the specified callback for each contact/overlap.
+    /// Filters by mask, such that only sprites with matching mask bits will be matched.
+    /// In the case of overlapping sprites, dynamic sprites will be passed to the callback before static.
+    /// The callback should return true to end the search, false to continue.
+    pub fn test_rect<C>(
         &self,
         origin: &Point2<f32>,
         extent: &Vector2<f32>,
@@ -461,20 +479,7 @@ impl Space {
                 return;
             }
         }
-    }
 
-    /// Tests the specified rect against just the static colliders in this Space calling the callback for each
-    /// match, while the callback returns false. On returning true, the search will finish, signalling that the
-    /// callback is "done"
-    pub fn test_rect_against_static_colliders<C>(
-        &self,
-        origin: &Point2<f32>,
-        extent: &Vector2<f32>,
-        mask: u32,
-        mut callback: C,
-    ) where
-        C: FnMut(&Collider) -> bool,
-    {
         let snapped_extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
         let a = point2(origin.x.floor() as i32, origin.y.floor() as i32);
         let b = point2(a.x + snapped_extent.x, a.y);
@@ -482,7 +487,7 @@ impl Space {
         let d = point2(a.x + snapped_extent.x, a.y + snapped_extent.y);
 
         for p in [a, b, c, d].iter() {
-            if let Some(c) = self.get_static_collider_at(*p, mask) {
+            if let Some(c) = self.get_collider_at(*p, mask) {
                 if c.rect_intersection(origin, extent, 0.0, true) && callback(c) {
                     return;
                 }
@@ -490,11 +495,11 @@ impl Space {
         }
     }
 
-    /// Tests if a rect intersects with a dynamic or static collider.
+    /// Tests if a rect intersects with a dynamic or static collider, returning first hit.
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, dynamic sprites will be returned before static,
     /// but otherwise there is no guarantee of which will be returned.
-    pub fn test_rect(
+    pub fn test_rect_first(
         &self,
         origin: &Point2<f32>,
         extent: &Vector2<f32>,
@@ -512,7 +517,7 @@ impl Space {
         let d = point2(a.x + snapped_extent.x, a.y + snapped_extent.y);
 
         for p in [a, b, c, d].iter() {
-            if let Some(c) = self.get_static_collider_at(*p, mask) {
+            if let Some(c) = self.get_collider_at(*p, mask) {
                 if c.rect_intersection(origin, extent, 0.0, true) {
                     return Some(c);
                 }
@@ -522,11 +527,11 @@ impl Space {
         None
     }
 
-    /// Tests if a point in the sprites' coordinate system intersects with a sprite.
+    /// Tests if a point in the sprites' coordinate system intersects with a collider, returning first hit.
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, dynamic sprites will be returned before static,
     /// but otherwise there is no guarantee of which will be returned.
-    pub fn test_point(&self, point: Point2<f32>, mask: u32) -> Option<&Collider> {
+    pub fn test_point_first(&self, point: Point2<f32>, mask: u32) -> Option<&Collider> {
         for s in self.dynamic_colliders.values() {
             if s.mask & mask != 0 && s.contains(&point) {
                 return Some(s);
@@ -536,19 +541,6 @@ impl Space {
         self.static_unit_colliders
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
-    }
-
-    pub fn get_sprite_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
-        for s in self.dynamic_colliders.values() {
-            if s.mask & mask != 0 && s.contains(&point2(point.x as f32 + 0.5, point.y as f32 + 0.5))
-            {
-                return Some(s);
-            }
-        }
-
-        self.static_unit_colliders
-            .get(&(point))
-            .filter(|s| s.mask & mask != 0)
     }
 }
 
@@ -580,7 +572,7 @@ impl Space {
     /// Ignores any colliders which don't match the provided `mask`
     /// NOTE: Probe only tests for static sprites with Square collision shape, because, well,
     /// that's what's needed here and I'm not writing a damned game engine, I'm writing a damned Gargoyle's Quest engine.
-    pub fn probe_static_colliders<F>(
+    pub fn probe<F>(
         &self,
         position: Point2<f32>,
         dir: ProbeDir,
@@ -636,6 +628,12 @@ impl Space {
         }
     }
 
+    fn _get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
+        self.static_unit_colliders
+            .get(&(point))
+            .filter(|s| s.mask & mask != 0)
+    }
+
     fn _probe_line(
         &self,
         position: Point2<f32>,
@@ -650,7 +648,7 @@ impl Space {
                 for i in 0..max_steps {
                     let x = position_snapped.x + i;
                     if let Some(c) =
-                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
+                        self._get_static_collider_at(point2(x, position_snapped.y), mask)
                     {
                         result = Some((c.bounds.origin.x - (position.x + 1.0), c));
                         break;
@@ -661,7 +659,7 @@ impl Space {
                 for i in 0..max_steps {
                     let y = position_snapped.y + i;
                     if let Some(c) =
-                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
+                        self._get_static_collider_at(point2(position_snapped.x, y), mask)
                     {
                         result = Some((c.bounds.origin.y - (position.y + 1.0), c));
                         break;
@@ -672,7 +670,7 @@ impl Space {
                 for i in 0..max_steps {
                     let y = position_snapped.y - i;
                     if let Some(c) =
-                        self.get_static_collider_at(point2(position_snapped.x, y), mask)
+                        self._get_static_collider_at(point2(position_snapped.x, y), mask)
                     {
                         result = Some((position.y - c.top(), c));
                         break;
@@ -683,7 +681,7 @@ impl Space {
                 for i in 0..max_steps {
                     let x = position_snapped.x - i;
                     if let Some(c) =
-                        self.get_static_collider_at(point2(x, position_snapped.y), mask)
+                        self._get_static_collider_at(point2(x, position_snapped.y), mask)
                     {
                         result = Some((position.x - c.right(), c));
                         break;
@@ -798,21 +796,25 @@ mod space_tests {
         let hit_tester = Space::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test_point(point2(0.1, 4.1), triangle_mask) == Some(&tr0));
-        assert!(hit_tester.test_point(point2(-0.1, 4.1), triangle_mask) == Some(&tr1));
-        assert!(hit_tester.test_point(point2(-0.1, 3.9), triangle_mask) == Some(&tr2));
-        assert!(hit_tester.test_point(point2(0.1, 3.9), triangle_mask) == Some(&tr3));
+        assert!(hit_tester.test_point_first(point2(0.1, 4.1), triangle_mask) == Some(&tr0));
+        assert!(hit_tester.test_point_first(point2(-0.1, 4.1), triangle_mask) == Some(&tr1));
+        assert!(hit_tester.test_point_first(point2(-0.1, 3.9), triangle_mask) == Some(&tr2));
+        assert!(hit_tester.test_point_first(point2(0.1, 3.9), triangle_mask) == Some(&tr3));
         assert!(hit_tester
-            .test_point(point2(0.1, 4.1), square_mask)
+            .test_point_first(point2(0.1, 4.1), square_mask)
             .is_none());
-        assert!(hit_tester.test_point(point2(0.1, 3.9), all_mask).is_some());
+        assert!(hit_tester
+            .test_point_first(point2(0.1, 3.9), all_mask)
+            .is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test_point(point2(0.5, 0.5), square_mask) == Some(&sb1));
+        assert!(hit_tester.test_point_first(point2(0.5, 0.5), square_mask) == Some(&sb1));
         assert!(hit_tester
-            .test_point(point2(0.5, 0.5), triangle_mask)
+            .test_point_first(point2(0.5, 0.5), triangle_mask)
             .is_none());
-        assert!(hit_tester.test_point(point2(0.5, 0.5), all_mask).is_some());
+        assert!(hit_tester
+            .test_point_first(point2(0.5, 0.5), all_mask)
+            .is_some());
     }
 
     fn test_points(

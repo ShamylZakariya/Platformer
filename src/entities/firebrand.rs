@@ -669,7 +669,7 @@ impl Entity for Firebrand {
         //  Test against dynamic sprites (e.g., enemies) in scene
         //
 
-        collision_space.test_rect_against_dynamic_colliders(
+        collision_space.test_rect(
             &self.character_state.position.xy(),
             &vec2(1.0, 1.0),
             ENTITY,
@@ -1027,7 +1027,7 @@ impl Firebrand {
         };
 
         for test_point in [below_center, center].iter() {
-            if let Some(c) = collision_space.get_sprite_at(*test_point, GROUND) {
+            if let Some(c) = collision_space.get_collider_at(*test_point, GROUND) {
                 if can_collide_width(&position, c) {
                     match c.shape {
                         collision::Shape::Square => {
@@ -1117,7 +1117,7 @@ impl Firebrand {
         //
 
         if delta_x > 0.0 {
-            match collision_space.probe_static_colliders(
+            match collision_space.probe(
                 position,
                 collision::ProbeDir::Right,
                 COLLISION_PROBE_STEPS,
@@ -1152,7 +1152,7 @@ impl Firebrand {
                 }
             }
         } else if delta_x < 0.0 {
-            match collision_space.probe_static_colliders(
+            match collision_space.probe(
                 position,
                 collision::ProbeDir::Left,
                 COLLISION_PROBE_STEPS,
@@ -1196,7 +1196,7 @@ impl Firebrand {
         if let Some(c) = contacted {
             if c.mask & CONTACT_DAMAGE != 0
                 || (collision_space
-                    .get_static_collider_at(
+                    .get_collider_at(
                         point2(c.bounds.origin.x as i32, c.bounds.origin.y as i32 + 1),
                         mask,
                     )
@@ -1284,7 +1284,7 @@ impl Firebrand {
         if delta.y > 0.0 {
             let mask = GROUND;
             let probe_test = create_collision_probe_test(position);
-            match collision_space.probe_static_colliders(
+            match collision_space.probe(
                 position,
                 collision::ProbeDir::Up,
                 COLLISION_PROBE_STEPS,
@@ -1457,15 +1457,10 @@ impl Firebrand {
 
     fn is_in_water(&self, collision_space: &collision::Space, position: Point2<f32>) -> bool {
         let mut in_water = false;
-        collision_space.test_rect_against_static_colliders(
-            &position,
-            &vec2(1.0, 1.0),
-            WATER,
-            |_sprite| {
-                in_water = true;
-                true
-            },
-        );
+        collision_space.test_rect(&position, &vec2(1.0, 1.0), WATER, |_sprite| {
+            in_water = true;
+            true
+        });
 
         in_water
     }

@@ -119,7 +119,7 @@ impl UiHealthDot {
         loop {
             let test_position = point2(position.x - offset, position.y);
             if collision_space
-                .get_static_collider_at(test_position, sprite_masks::ui::HEALTH_DOT)
+                .get_collider_at(test_position, sprite_masks::ui::HEALTH_DOT)
                 .is_some()
             {
                 offset += 1;

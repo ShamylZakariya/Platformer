@@ -16,6 +16,7 @@ use super::util::HorizontalDir;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+const FIREBALL_DIAMETER: f32 = 0.25;
 const ANIMATION_CYCLE_DURATION: f32 = 0.133;
 const CYCLE_DEFAULT: &str = "default";
 
@@ -106,9 +107,14 @@ impl Entity for Fireball {
         let mask = crate::state::constants::sprite_masks::SHOOTABLE;
 
         let next_position = self.position.xy() + self.velocity * dt;
-        let collider_origin = point2(next_position.x - 0.25, next_position.y - 0.25);
-        let collider_extent = vec2(0.5, 0.5);
-        if let Some(sprite) = collision_space.test_rect(&collider_origin, &collider_extent, mask) {
+        let collider_origin = point2(
+            next_position.x - FIREBALL_DIAMETER / 2.0,
+            next_position.y - FIREBALL_DIAMETER / 2.0,
+        );
+        let collider_extent = vec2(FIREBALL_DIAMETER, FIREBALL_DIAMETER);
+        if let Some(sprite) =
+            collision_space.test_rect_first(&collider_origin, &collider_extent, mask)
+        {
             if let Some(target_entity_id) = sprite.entity_id {
                 if target_entity_id != self.sender_id {
                     //

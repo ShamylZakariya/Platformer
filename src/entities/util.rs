@@ -322,8 +322,8 @@ impl MarchState {
         match self.current_movement_dir {
             HorizontalDir::East => {
                 // check for obstacle to right
-                if let Some(sprite_to_right) = collision_space
-                    .get_static_collider_at(snapped_next_position + vec2(1, 0), GROUND)
+                if let Some(sprite_to_right) =
+                    collision_space.get_collider_at(snapped_next_position + vec2(1, 0), GROUND)
                 {
                     if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -332,7 +332,7 @@ impl MarchState {
                 }
                 // check if the platform falls away to right
                 let to_right = collision_space
-                    .get_static_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
+                    .get_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
                 if let Some(to_right) = to_right {
                     if to_right.shape != collision::Shape::Square
                         || to_right.mask & CONTACT_DAMAGE != 0
@@ -346,7 +346,7 @@ impl MarchState {
             HorizontalDir::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
-                    collision_space.get_static_collider_at(snapped_next_position, GROUND)
+                    collision_space.get_collider_at(snapped_next_position, GROUND)
                 {
                     if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
                     {
@@ -355,7 +355,7 @@ impl MarchState {
                 }
                 // check if the platform falls away to left
                 let to_left = collision_space
-                    .get_static_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
+                    .get_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
                 if let Some(to_left) = to_left {
                     if to_left.shape != collision::Shape::Square
                         || to_left.mask & CONTACT_DAMAGE != 0
