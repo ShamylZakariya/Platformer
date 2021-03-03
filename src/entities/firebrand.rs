@@ -315,17 +315,9 @@ pub struct Firebrand {
 
 impl Firebrand {
     pub fn new(position: Point2<f32>, num_lives_remaining: u32) -> Firebrand {
-        let mask = constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE;
-        let collider = collision::Collider::new(
-            Bounds::new(position.xy(), vec2(1.0, 1.0)),
-            collision::Shape::Square,
-            mask,
-            None,
-        );
-
         Self {
             entity_id: 0,
-            collider,
+            collider: collision::Collider::default(),
             pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
@@ -356,8 +348,14 @@ impl Entity for Firebrand {
     fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
         self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
-        self.collider.entity_id = Some(entity_id);
-        collision_space.add_dynamic_collider(&self.collider);
+
+        self.collider = collision::Collider::new_dynamic(
+            Bounds::new(self.character_state.position.xy(), vec2(1.0, 1.0)),
+            entity_id,
+            collision::Shape::Square,
+            constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE,
+        );
+        collision_space.add_collider(&self.collider);
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -394,7 +392,7 @@ impl Entity for Firebrand {
 
         if !self.character_state.alive {
             if !self.did_send_death_message {
-                collision_space.remove_dynamic_collider_with_entity_id(self.entity_id);
+                collision_space.remove_collider(&self.collider);
                 message_dispatcher.broadcast(Event::FirebrandDied);
                 self.did_send_death_message = true;
             }
@@ -449,12 +447,12 @@ impl Entity for Firebrand {
                         self.wallgrab_jump_lateral_motion_countdown =
                             WALLGRAB_JUMP_LATERAL_MOTION_DURATION;
                         self.jump_time_remaining = JUMP_DURATION;
-                        self.wallgrab_jump_dir =
-                            if surface.bounds.origin.x > self.character_state.position.x {
-                                -1.0
-                            } else {
-                                1.0
-                            };
+                        self.wallgrab_jump_dir = if surface.left() > self.character_state.position.x
+                        {
+                            -1.0
+                        } else {
+                            1.0
+                        };
                         self.set_stance(Stance::InAir);
                     }
 
@@ -674,7 +672,7 @@ impl Entity for Firebrand {
             &vec2(1.0, 1.0),
             ENTITY,
             |c| {
-                if c.entity_id != Some(self.entity_id) {
+                if *c != self.collider {
                     self.process_potential_collision_with(c);
                 }
                 false
@@ -685,9 +683,8 @@ impl Entity for Firebrand {
         //  Update our own collider in case other entities are probing for contacts
         //
 
-        self.collider.bounds.origin.x = self.character_state.position.x;
-        self.collider.bounds.origin.y = self.character_state.position.y;
-        collision_space.update_dynamic_collider(&self.collider);
+        self.collider.set_origin(self.character_state.position.xy());
+        collision_space.update_collider(&self.collider);
 
         //
         //  Remove any sprites in the contacting set from the overlapping set.
@@ -762,7 +759,7 @@ impl Entity for Firebrand {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_collider(&self.collider);
+        collision_space.remove_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {
@@ -891,11 +888,11 @@ impl Firebrand {
 
     fn process_contacts(&mut self, message_dispatcher: &mut Dispatcher) {
         let mut contact_damage = false;
-        for s in &self.contacting_colliders {
-            if s.mask & CONTACT_DAMAGE != 0 {
+        for c in &self.contacting_colliders {
+            if c.mask & CONTACT_DAMAGE != 0 {
                 contact_damage = true;
             }
-            if let Some(entity_id) = s.entity_id {
+            if let Some(entity_id) = c.entity_id() {
                 message_dispatcher.entity_to_entity(
                     self.entity_id(),
                     entity_id,
@@ -1039,7 +1036,7 @@ impl Firebrand {
                                 self.process_potential_collision_with(c);
                                 tracking = Some(c);
                                 if may_apply_correction {
-                                    position.y = c.bounds.origin.y + c.bounds.extent.y;
+                                    position.y = c.top();
                                 }
                             }
                         }
@@ -1139,8 +1136,8 @@ impl Firebrand {
                 } => {
                     if dist < delta_x {
                         delta_x = dist;
-                        let dist_0 = (collider_0.bounds.origin.y - position.y).abs();
-                        let dist_1 = (collider_1.bounds.origin.y - position.y).abs();
+                        let dist_0 = (collider_0.bottom() - position.y).abs();
+                        let dist_1 = (collider_1.bottom() - position.y).abs();
                         contacted = if dist_0 < dist_1 {
                             Some(collider_0)
                         } else {
@@ -1174,8 +1171,8 @@ impl Firebrand {
                 } => {
                     if dist < -delta_x {
                         delta_x = -dist;
-                        let dist_0 = (collider_0.bounds.origin.y - position.y).abs();
-                        let dist_1 = (collider_1.bounds.origin.y - position.y).abs();
+                        let dist_0 = (collider_0.bottom() - position.y).abs();
+                        let dist_1 = (collider_1.bottom() - position.y).abs();
                         contacted = if dist_0 < dist_1 {
                             Some(collider_0)
                         } else {
@@ -1196,12 +1193,9 @@ impl Firebrand {
         if let Some(c) = contacted {
             if c.mask & CONTACT_DAMAGE != 0
                 || (collision_space
-                    .get_collider_at(
-                        point2(c.bounds.origin.x as i32, c.bounds.origin.y as i32 + 1),
-                        mask,
-                    )
+                    .get_collider_at(point2(c.left() as i32, c.bottom() as i32 + 1), mask)
                     .is_none()
-                    && position.y > c.bounds.origin.y + (c.bounds.extent.y * 0.5))
+                    && position.y > c.bottom() + (c.height() * 0.5))
             {
                 contacted = None;
             }

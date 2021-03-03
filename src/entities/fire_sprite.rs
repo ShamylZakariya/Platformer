@@ -63,13 +63,14 @@ impl Entity for FireSprite {
 
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
 
-        // Make copy of sprite for ourselves, we'll use it for collision testing
-        // Note: The map sprite is our spawn point, so we need to overwrite the entity_id and mask
-        self.collider = sprite.into();
-        self.collider.entity_id = Some(entity_id);
-        self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.shape = collision::Shape::Square;
-        collision_space.add_dynamic_collider(&self.collider);
+        // Make collider
+        self.collider = collision::Collider::new_dynamic(
+            sprite.bounds(),
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+        );
+        collision_space.add_collider(&self.collider);
 
         let fixed_position = {
             if let Some(properties) = map.object_group_properties_for_sprite(sprite, "Metadata") {
@@ -119,9 +120,8 @@ impl Entity for FireSprite {
             //  Update the sprite for collision detection
             //
 
-            self.collider.bounds.origin.x = self.position.x;
-            self.collider.bounds.origin.y = self.position.y;
-            collision_space.update_dynamic_collider(&self.collider);
+            self.collider.set_origin(self.position.xy());
+            collision_space.update_collider(&self.collider);
 
             //
             //  Update sprite animation cycle
@@ -148,7 +148,7 @@ impl Entity for FireSprite {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_collider(&self.collider);
+        collision_space.remove_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

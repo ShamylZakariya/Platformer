@@ -213,8 +213,10 @@ impl GameState {
             ));
 
             // generate level entities
-            let level_colliders: Vec<collision::Collider> =
-                level_sprites.iter().map(|s| s.into()).collect();
+            let level_colliders: Vec<collision::Collider> = level_sprites
+                .iter()
+                .map(|s| collision::Collider::from_static_sprite(s))
+                .collect();
             let mut collision_space = collision::Space::new(&level_colliders);
             let entities = map.generate_entities(
                 entity_layer,
@@ -535,6 +537,7 @@ impl GameState {
                 }
 
                 if !e.entity.is_alive() {
+                    e.entity.remove_collider(&mut self.collision_space);
                     expired_count += 1;
                 }
             }

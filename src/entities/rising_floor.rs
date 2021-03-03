@@ -9,7 +9,10 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, rendering},
-    state::{constants::layers, events::Event},
+    state::{
+        constants::{layers, sprite_masks},
+        events::Event,
+    },
     util::Bounds,
 };
 
@@ -29,14 +32,6 @@ pub struct RisingFloor {
 impl RisingFloor {
     pub fn new(stage_sprites: Vec<sprite::Sprite>) -> Self {
         let bounds = find_bounds(&stage_sprites);
-
-        let collider = collision::Collider::new(
-            bounds,
-            collision::Shape::Square,
-            crate::state::constants::sprite_masks::GROUND,
-            None,
-        );
-
         Self {
             entity_id: 0,
             offset: point3(0.0, 0.0, layers::stage::FOREGROUND - 1.0),
@@ -44,7 +39,7 @@ impl RisingFloor {
             bounds,
             rising: false,
             sent_started_rising_message: false,
-            collider,
+            collider: collision::Collider::default(),
             pixels_per_unit: 0.0,
         }
     }
@@ -54,10 +49,16 @@ impl Entity for RisingFloor {
     fn init(&mut self, entity_id: u32, map: &map::Map, collision_space: &mut collision::Space) {
         self.entity_id = entity_id;
         self.offset.y = -self.bounds.extent.y;
-        self.collider.entity_id = Some(entity_id);
+
+        self.collider = collision::Collider::new_dynamic(
+            self.bounds,
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::GROUND,
+        );
 
         self.update_collider();
-        collision_space.add_dynamic_collider(&self.collider);
+        collision_space.add_collider(&self.collider);
 
         self.pixels_per_unit = map.tileset.get_sprite_size().x as f32;
     }
@@ -88,7 +89,7 @@ impl Entity for RisingFloor {
             }
         }
         self.update_collider();
-        collision_space.update_dynamic_collider(&self.collider);
+        collision_space.update_collider(&self.collider);
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -130,8 +131,10 @@ impl Entity for RisingFloor {
 
 impl RisingFloor {
     fn update_collider(&mut self) {
-        self.collider.bounds.origin.x = self.bounds.origin.x + self.offset.x;
-        self.collider.bounds.origin.y = self.bounds.origin.y + self.offset.y;
+        self.collider.set_origin(point2(
+            self.bounds.origin.x + self.offset.x,
+            self.bounds.origin.y + self.offset.y,
+        ));
     }
 
     fn camera_shake_pattern(&self) -> Vec<(Vector2<f32>, f32)> {

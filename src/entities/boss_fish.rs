@@ -120,10 +120,13 @@ impl Entity for BossFish {
         self.water_height = tile.float_property("water_height");
 
         // Create collider
-        self.collider = sprite.into();
-        self.collider.entity_id = Some(entity_id);
-        self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.shape = collision::Shape::Square;
+        // Create collider
+        self.collider = collision::Collider::new_dynamic(
+            sprite.bounds(),
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+        );
     }
 
     fn process_keyboard(
@@ -175,7 +178,7 @@ impl Entity for BossFish {
                 self.animation_cycle_tick += 1;
             }
         } else {
-            collision_space.remove_dynamic_collider(&self.collider);
+            collision_space.remove_collider(&self.collider);
 
             if !self.sent_defeated_message {
                 message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
@@ -243,7 +246,7 @@ impl Entity for BossFish {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_collider(&self.collider);
+        collision_space.remove_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {
@@ -447,10 +450,10 @@ impl BossFish {
 
     fn update_sprite(&mut self, collision_space: &mut collision::Space) {
         // sprite is 3x3 with root centered at bottom
-        self.collider.bounds.origin.x = self.position.x - 0.5;
-        self.collider.bounds.origin.y = self.position.y;
-        self.collider.bounds.extent = SPRITE_SIZE;
-        collision_space.update_dynamic_collider(&self.collider);
+        self.collider
+            .set_origin(self.position.xy() - vec2(0.5, 0.0));
+        self.collider.set_extent(SPRITE_SIZE);
+        collision_space.update_collider(&self.collider);
     }
 
     fn submersion_depth(&self) -> f32 {

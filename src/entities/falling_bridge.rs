@@ -9,10 +9,7 @@ use crate::{
     map,
     sprite::{self, rendering},
     state::{
-        constants::{
-            self, layers,
-            sprite_masks::{GROUND, RATCHET},
-        },
+        constants::{self, layers, sprite_masks},
         events::Event,
     },
     tileset,
@@ -59,10 +56,14 @@ impl Entity for FallingBridge {
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::LEVEL);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
-        self.collider = sprite.into();
-        self.collider.shape = collision::Shape::Square;
-        self.collider.mask |= GROUND | RATCHET;
-        collision_space.add_static_collider(&self.collider);
+        // we need to use a dynamic collider so we can assign an entity id
+        self.collider = collision::Collider::new_dynamic(
+            sprite.bounds(),
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY | sprite_masks::GROUND | sprite_masks::RATCHET,
+        );
+        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -85,12 +86,12 @@ impl Entity for FallingBridge {
                 self.is_falling = true;
                 self.time_remaining = None;
 
-                collision_space.remove_static_collider(&self.collider);
+                collision_space.remove_collider(&self.collider);
             } else {
                 self.time_remaining = Some(time_remaining);
             }
         } else if !collision_space.has_collider(&self.collider) {
-            collision_space.add_static_collider(&self.collider);
+            collision_space.add_collider(&self.collider);
         }
     }
 

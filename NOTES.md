@@ -1,17 +1,12 @@
 CURRENTLY:
     YAK SHAVING:
-        - make collision::Space take a "collider" struct instead of sprites, but make a convenience From<> impl to easy convert a sprite to a collider. Drop the static/dynamic difference, have a field on collider which says static or dynamic to optimize lookups, but have all intersection tests run against both.
-            STEPS:
-                - DONE Create Collider struct
-                - DONE Update collision::Space to use Collider struct
-                - DONE Update all the shit that passes sprites to Space
-                - DONE move sprite/collision.rs to ./collision.rs
-                - DONE move firebrand's probe() methods to collision
-                - make a is_dynamic:bool field on Collider, and have Space sort things out.
-                    - DONE first we need to make a GROUND mask bit, and set it for the level
-                    - DONE then we need to drop collider? It's too general
-                    - drop static/dynamic specific collision tests for a single set of tests which test against both
-                    - add field enum STATIC/DYNAMIC to Collider and have the add collider method do the right thing
+        - New Collider
+        Do we ever use entity_id on static colliders? Might use it for FallingBridge and/or PowerUp
+
+        I don't like holding on to a collider object. I think API should look like this:
+        self.collider_id = collision_space.add(Collider::new_static(...))
+
+        collision_space.move(self.collider_id, point2(...))
 
             NOTES:
                 - this breaks the nice overlapping_sprites visualization, but whatever

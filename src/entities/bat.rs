@@ -68,11 +68,13 @@ impl Entity for Bat {
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
         // Create collider
-        self.collider = sprite.into();
-        self.collider.entity_id = Some(entity_id);
-        self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.shape = collision::Shape::Square;
-        collision_space.add_dynamic_collider(&self.collider);
+        self.collider = collision::Collider::new_dynamic(
+            sprite.bounds(),
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+        );
+        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -115,9 +117,8 @@ impl Entity for Bat {
             //  Update the sprite for collision detection
             //
 
-            self.collider.bounds.origin.x = self.position.x;
-            self.collider.bounds.origin.y = self.position.y;
-            collision_space.update_dynamic_collider(&self.collider);
+            self.collider.set_origin(self.position.xy());
+            collision_space.update_collider(&self.collider);
 
             //
             //  Update sprite animation cycle
@@ -136,7 +137,7 @@ impl Entity for Bat {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_collider(&self.collider);
+        collision_space.remove_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

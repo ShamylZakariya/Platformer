@@ -148,6 +148,10 @@ impl Sprite {
         self.origin.y + self.extent.y
     }
 
+    pub fn bounds(&self) -> Bounds {
+        Bounds::new(self.origin.xy(), self.extent)
+    }
+
     // returns a copy of self, flipped horizontally. This only affects shape and texture coordinates
     pub fn flipped_horizontally(&self) -> Self {
         Self {

@@ -9,6 +9,7 @@ use crate::{
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
     tileset,
+    util::Bounds,
 };
 
 use super::util::{HitPointState, HorizontalDir, MarchState};
@@ -66,13 +67,14 @@ impl Entity for Hoodie {
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
-        // Create a collider
-        self.collider = sprite.into();
-        self.collider.entity_id = Some(entity_id);
-        self.collider.mask |= sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE;
-        self.collider.shape = collision::Shape::Square;
-        self.collider.bounds.extent.y = 1.25; // hoodie can be shot in the hat, too
-        collision_space.add_dynamic_collider(&self.collider);
+        // Make collider
+        self.collider = collision::Collider::new_dynamic(
+            Bounds::new(sprite.bounds().origin, vec2(1.0, 1.25)), // hoodie can be shot in hat
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+        );
+        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -107,9 +109,8 @@ impl Entity for Hoodie {
             //  Update the sprite for collision detection
             //
 
-            self.collider.bounds.origin.x = self.position.x;
-            self.collider.bounds.origin.y = self.position.y;
-            collision_space.update_dynamic_collider(&self.collider);
+            self.collider.set_origin(self.position.xy());
+            collision_space.update_collider(&self.collider);
 
             //
             //  Update sprite animation cycle
@@ -138,7 +139,7 @@ impl Entity for Hoodie {
     }
 
     fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_dynamic_collider(&self.collider);
+        collision_space.remove_collider(&self.collider);
     }
 
     fn entity_id(&self) -> u32 {

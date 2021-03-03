@@ -8,7 +8,10 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, rendering},
-    state::{constants::layers, events::Event},
+    state::{
+        constants::{layers, sprite_masks},
+        events::Event,
+    },
     tileset,
 };
 
@@ -74,12 +77,18 @@ impl Entity for PowerUp {
         _map: &map::Map,
         collision_space: &mut collision::Space,
     ) {
+        self.is_collider_active = true;
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
-        self.collider = sprite.into();
-        self.collider.shape = collision::Shape::Square;
-        collision_space.add_dynamic_collider(&self.collider);
-        self.is_collider_active = true;
+
+        // Make collider
+        self.collider = collision::Collider::new_dynamic(
+            sprite.bounds(),
+            entity_id,
+            collision::Shape::Square,
+            sprite_masks::ENTITY,
+        );
+        collision_space.add_collider(&self.collider);
 
         let type_name = tile
             .get_property("powerup_type")
@@ -100,7 +109,7 @@ impl Entity for PowerUp {
         self.time += dt;
 
         if !self.needs_collider && self.is_collider_active {
-            collision_space.remove_dynamic_collider(&self.collider);
+            collision_space.remove_collider(&self.collider);
             self.is_collider_active = false;
 
             // broadcast that this powerup has been consumed
@@ -108,7 +117,7 @@ impl Entity for PowerUp {
                 powerup_type: self.powerup_type.unwrap(),
             });
         } else if self.needs_collider && !self.is_collider_active {
-            collision_space.add_dynamic_collider(&self.collider);
+            collision_space.add_collider(&self.collider);
             self.is_collider_active = true;
         }
     }

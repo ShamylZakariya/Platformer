@@ -227,14 +227,11 @@ impl HitPointState {
         entity_id: u32,
         spawn_point_id: u32,
         position: Point3<f32>,
-        collision_space: &mut collision::Space,
+        _collision_space: &mut collision::Space,
         message_dispatcher: &mut Dispatcher,
     ) -> bool {
         if self.terminated || self.hit_points <= 0 {
             self.alive = false;
-
-            // remove self from collision space
-            collision_space.remove_dynamic_collider_with_entity_id(entity_id);
 
             // send death message to spawn point
             message_dispatcher.entity_to_entity(

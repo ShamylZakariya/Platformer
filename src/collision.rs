@@ -1,6 +1,6 @@
 use cgmath::*;
+use std::collections::HashMap;
 use std::hash::Hash;
-use std::{collections::HashMap, unimplemented};
 
 use crate::{sprite::core::*, util::*};
 
@@ -56,53 +56,78 @@ impl Shape {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    Static { position: Point2<i32> },
+    Dynamic { bounds: Bounds, entity_id: u32 },
+}
+
+impl Mode {
+    pub fn bounds(&self) -> Bounds {
+        match self {
+            Mode::Static { position } => {
+                Bounds::new(point2(position.x as f32, position.y as f32), vec2(1.0, 1.0))
+            }
+            Mode::Dynamic { bounds, .. } => *bounds,
+        }
+    }
+}
+
+impl PartialEq for Mode {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Mode::Static { position: p1 }, Mode::Static { position: p2 }) => p1 == p2,
+
+            (
+                Mode::Dynamic {
+                    bounds: b1,
+                    entity_id: eid1,
+                },
+                Mode::Dynamic {
+                    bounds: b2,
+                    entity_id: eid2,
+                },
+            ) => b1.eq(b2) && eid1 == eid2,
+
+            _ => false,
+        }
+    }
+}
+
+impl Hash for Mode {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Mode::Static { position } => position.hash(state),
+            Mode::Dynamic { bounds, entity_id } => {
+                hash_point2(&bounds.origin, state);
+                hash_vec2(&bounds.extent, state);
+                entity_id.hash(state);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Collider {
-    pub bounds: Bounds,
+    pub mode: Mode,
     pub shape: Shape,
     pub mask: u32,
-    pub entity_id: Option<u32>,
 }
 
 impl Default for Collider {
     fn default() -> Self {
         Self {
-            bounds: Bounds::default(),
+            mode: Mode::Static {
+                position: point2(0, 0),
+            },
             shape: Shape::None,
             mask: 0,
-            entity_id: None,
-        }
-    }
-}
-
-impl From<Sprite> for Collider {
-    fn from(sprite: Sprite) -> Self {
-        Self {
-            bounds: Bounds::new(sprite.origin.xy(), sprite.extent),
-            shape: sprite.collision_shape,
-            mask: sprite.mask,
-            entity_id: sprite.entity_id,
-        }
-    }
-}
-
-impl From<&Sprite> for Collider {
-    fn from(sprite: &Sprite) -> Self {
-        Self {
-            bounds: Bounds::new(sprite.origin.xy(), sprite.extent),
-            shape: sprite.collision_shape,
-            mask: sprite.mask,
-            entity_id: sprite.entity_id,
         }
     }
 }
 
 impl PartialEq for Collider {
     fn eq(&self, other: &Self) -> bool {
-        self.shape == other.shape
-            && self.entity_id == other.entity_id
-            && self.mask == other.mask
-            && relative_eq!(self.bounds.origin, other.bounds.origin)
-            && relative_eq!(self.bounds.extent, other.bounds.extent)
+        self.shape == other.shape && self.mode == other.mode && self.mask == other.mask
     }
 }
 
@@ -110,29 +135,61 @@ impl Eq for Collider {}
 
 impl Hash for Collider {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.mode.hash(state);
         self.shape.hash(state);
-        self.entity_id.hash(state);
-        hash_point2(&self.bounds.origin, state);
-        hash_vec2(&self.bounds.extent, state);
         self.mask.hash(state);
     }
 }
 
 impl Collider {
-    pub fn new(bounds: Bounds, shape: Shape, mask: u32, entity_id: Option<u32>) -> Self {
+    pub fn new_static(position: Point2<i32>, shape: Shape, mask: u32) -> Self {
         Self {
-            bounds,
+            mode: Mode::Static { position },
             shape,
             mask,
-            entity_id,
+        }
+    }
+
+    pub fn new_dynamic(bounds: Bounds, entity_id: u32, shape: Shape, mask: u32) -> Self {
+        Self {
+            mode: Mode::Dynamic { bounds, entity_id },
+            shape,
+            mask,
+        }
+    }
+
+    pub fn from_static_sprite(sprite: &Sprite) -> Self {
+        Self {
+            mode: Mode::Static {
+                position: point2(
+                    sprite.origin.x.floor() as i32,
+                    sprite.origin.y.floor() as i32,
+                ),
+            },
+            shape: sprite.collision_shape,
+            mask: sprite.mask,
+        }
+    }
+
+    pub fn from_dynamic_sprite(sprite: &Sprite) -> Self {
+        Self {
+            mode: Mode::Dynamic {
+                bounds: Bounds::new(sprite.origin.xy(), sprite.extent),
+                entity_id: sprite.entity_id.expect(
+                    "Collider::from_dynamic_sprite requires the sprite to have an entity_id",
+                ),
+            },
+            shape: sprite.collision_shape,
+            mask: sprite.mask,
         }
     }
 
     pub fn contains(&self, point: &Point2<f32>) -> bool {
-        if point.x >= self.bounds.origin.x
-            && point.x <= self.bounds.origin.x + self.bounds.extent.x
-            && point.y >= self.bounds.origin.y
-            && point.y <= self.bounds.origin.y + self.bounds.extent.y
+        let bounds = self.mode.bounds();
+        if point.x >= bounds.origin.x
+            && point.x <= bounds.origin.x + bounds.extent.x
+            && point.y >= bounds.origin.y
+            && point.y <= bounds.origin.y + bounds.extent.y
         {
             let p = vec2(point.x, point.y);
             return match self.shape {
@@ -141,24 +198,18 @@ impl Collider {
                 Shape::Square => true,
 
                 Shape::NorthEast => {
-                    let a = vec2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    );
-                    let b = vec2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
-                    );
+                    let a = vec2(bounds.origin.x, bounds.origin.y + bounds.extent.y);
+                    let b = vec2(bounds.origin.x + bounds.extent.x, bounds.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     cross(&ba, &pa) <= 0.0
                 }
 
                 Shape::SouthEast => {
-                    let a = vec2(self.bounds.origin.x, self.bounds.origin.y);
+                    let a = vec2(bounds.origin.x, bounds.origin.y);
                     let b = vec2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     );
                     let ba = b - a;
                     let pa = p - a;
@@ -166,14 +217,8 @@ impl Collider {
                 }
 
                 Shape::SouthWest => {
-                    let a = vec2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    );
-                    let b = vec2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
-                    );
+                    let a = vec2(bounds.origin.x, bounds.origin.y + bounds.extent.y);
+                    let b = vec2(bounds.origin.x + bounds.extent.x, bounds.origin.y);
                     let ba = b - a;
                     let pa = p - a;
                     // opposite winding of northeast
@@ -181,10 +226,10 @@ impl Collider {
                 }
 
                 Shape::NorthWest => {
-                    let a = vec2(self.bounds.origin.x, self.bounds.origin.y);
+                    let a = vec2(bounds.origin.x, bounds.origin.y);
                     let b = vec2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     );
                     let ba = b - a;
                     let pa = p - a;
@@ -200,87 +245,64 @@ impl Collider {
     /// if the line described by a->b intersects this Sprite, returns the point on it where the line
     /// segment intersects, otherwise, returns None
     pub fn line_intersection(&self, a: &Point2<f32>, b: &Point2<f32>) -> Option<Point2<f32>> {
+        let bounds = self.mode.bounds();
         match self.shape {
             Shape::None => None,
             Shape::Square => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
-                    point2(self.bounds.origin.x, self.bounds.origin.y),
+                    point2(bounds.origin.x, bounds.origin.y),
+                    point2(bounds.origin.x + bounds.extent.x, bounds.origin.y),
                     point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     ),
-                    point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
-                    point2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
+                    point2(bounds.origin.x, bounds.origin.y + bounds.extent.y),
                 ],
             ),
             Shape::NorthEast => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
-                    point2(self.bounds.origin.x, self.bounds.origin.y),
-                    point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
-                    ),
-                    point2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
+                    point2(bounds.origin.x, bounds.origin.y),
+                    point2(bounds.origin.x + bounds.extent.x, bounds.origin.y),
+                    point2(bounds.origin.x, bounds.origin.y + bounds.extent.y),
                 ],
             ),
             Shape::SouthEast => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
-                    point2(self.bounds.origin.x, self.bounds.origin.y),
+                    point2(bounds.origin.x, bounds.origin.y),
                     point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     ),
-                    point2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
+                    point2(bounds.origin.x, bounds.origin.y + bounds.extent.y),
                 ],
             ),
             Shape::SouthWest => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
+                    point2(bounds.origin.x + bounds.extent.x, bounds.origin.y),
                     point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     ),
-                    point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
-                    point2(
-                        self.bounds.origin.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
-                    ),
+                    point2(bounds.origin.x, bounds.origin.y + bounds.extent.y),
                 ],
             ),
             Shape::NorthWest => intersection::line_convex_poly_closest(
                 a,
                 b,
                 &[
-                    point2(self.bounds.origin.x, self.bounds.origin.y),
+                    point2(bounds.origin.x, bounds.origin.y),
+                    point2(bounds.origin.x + bounds.extent.x, bounds.origin.y),
                     point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y,
-                    ),
-                    point2(
-                        self.bounds.origin.x + self.bounds.extent.x,
-                        self.bounds.origin.y + self.bounds.extent.y,
+                        bounds.origin.x + bounds.extent.x,
+                        bounds.origin.y + bounds.extent.y,
                     ),
                 ],
             ),
@@ -297,22 +319,23 @@ impl Collider {
         inset: f32,
         contact: bool,
     ) -> bool {
+        let bounds = self.mode.bounds();
         let origin = point2(origin.x + inset, origin.y + inset);
         let extent = vec2(extent.x - 2.0 * inset, extent.y - 2.0 * inset);
 
         let (x_overlap, y_overlap) = if contact {
             (
-                self.bounds.origin.x <= origin.x + extent.x
-                    && self.bounds.origin.x + self.bounds.extent.x >= origin.x,
-                self.bounds.origin.y <= origin.y + extent.y
-                    && self.bounds.origin.y + self.bounds.extent.y >= origin.y,
+                bounds.origin.x <= origin.x + extent.x
+                    && bounds.origin.x + bounds.extent.x >= origin.x,
+                bounds.origin.y <= origin.y + extent.y
+                    && bounds.origin.y + bounds.extent.y >= origin.y,
             )
         } else {
             (
-                self.bounds.origin.x < origin.x + extent.x
-                    && self.bounds.origin.x + self.bounds.extent.x > origin.x,
-                self.bounds.origin.y < origin.y + extent.y
-                    && self.bounds.origin.y + self.bounds.extent.y > origin.y,
+                bounds.origin.x < origin.x + extent.x
+                    && bounds.origin.x + bounds.extent.x > origin.x,
+                bounds.origin.y < origin.y + extent.y
+                    && bounds.origin.y + bounds.extent.y > origin.y,
             )
         };
 
@@ -331,25 +354,92 @@ impl Collider {
         self.rect_intersection(origin, &vec2(1.0, 1.0), inset, contact)
     }
 
+    pub fn bounds(&self) -> Bounds {
+        self.mode.bounds()
+    }
+
+    pub fn origin(&self) -> Point2<f32> {
+        match self.mode {
+            Mode::Static { position } => point2(position.x as f32, position.y as f32),
+            Mode::Dynamic { bounds, .. } => bounds.origin,
+        }
+    }
+
+    pub fn set_origin(&mut self, new_origin: Point2<f32>) {
+        match &mut self.mode {
+            Mode::Static { position } => {
+                *position = point2(new_origin.x.floor() as i32, new_origin.y.floor() as i32)
+            }
+            Mode::Dynamic { bounds, .. } => bounds.origin = new_origin,
+        }
+    }
+
+    pub fn extent(&self) -> Vector2<f32> {
+        match self.mode {
+            Mode::Static { .. } => vec2(1.0, 1.0),
+            Mode::Dynamic { bounds, .. } => bounds.extent,
+        }
+    }
+
+    pub fn set_extent(&mut self, new_extent: Vector2<f32>) {
+        match &mut self.mode {
+            Mode::Static { .. } => panic!("Can't change extent of a static collider"),
+            Mode::Dynamic { bounds, .. } => bounds.extent = new_extent,
+        }
+    }
+
     pub fn left(&self) -> f32 {
-        self.bounds.origin.x
+        match self.mode {
+            Mode::Static { position } => position.x as f32,
+            Mode::Dynamic { bounds, .. } => bounds.origin.x,
+        }
     }
 
     pub fn right(&self) -> f32 {
-        self.bounds.origin.x + self.bounds.extent.x
+        match self.mode {
+            Mode::Static { position } => (position.x + 1) as f32,
+            Mode::Dynamic { bounds, .. } => bounds.right(),
+        }
     }
 
     pub fn bottom(&self) -> f32 {
-        self.bounds.origin.y
+        match self.mode {
+            Mode::Static { position } => position.y as f32,
+            Mode::Dynamic { bounds, .. } => bounds.origin.y,
+        }
     }
 
     pub fn top(&self) -> f32 {
-        self.bounds.origin.y + self.bounds.extent.y
+        match self.mode {
+            Mode::Static { position } => (position.y + 1) as f32,
+            Mode::Dynamic { bounds, .. } => bounds.top(),
+        }
+    }
+
+    pub fn width(&self) -> f32 {
+        match self.mode {
+            Mode::Static { .. } => 1.0,
+            Mode::Dynamic { bounds, .. } => bounds.width(),
+        }
+    }
+
+    pub fn height(&self) -> f32 {
+        match self.mode {
+            Mode::Static { .. } => 1.0,
+            Mode::Dynamic { bounds, .. } => bounds.height(),
+        }
+    }
+
+    pub fn entity_id(&self) -> Option<u32> {
+        match self.mode {
+            Mode::Static { .. } => None,
+            Mode::Dynamic { entity_id, .. } => Some(entity_id),
+        }
     }
 }
 
 pub struct Space {
-    static_unit_colliders: HashMap<Point2<i32>, Collider>,
+    static_colliders: HashMap<Point2<i32>, Collider>,
     dynamic_colliders: HashMap<u32, Collider>,
 }
 
@@ -362,71 +452,65 @@ pub struct Space {
 /// Dynamic colliders are identified by their entity_id. It is illegal to attempt
 /// to add a Dynamic collider without an entity id.
 impl Space {
-    /// Constructs a new Space with the provided static colliders.
-    /// Static colliders don't move at runtime. Colliders that move at
-    /// runtime should be added and manipulated via the dynamic_ methods.
-    pub fn new(static_colliders: &[Collider]) -> Self {
-        let mut static_unit_colliders = HashMap::new();
+    /// Constructs a new Space with the provided colliders.
+    pub fn new(colliders: &[Collider]) -> Self {
+        let mut static_colliders = HashMap::new();
+        let mut dynamic_colliders = HashMap::new();
 
-        for c in static_colliders {
-            // copy sprites into appropriate storage
-            if rel_eq(c.bounds.extent.x, 1.0) && rel_eq(c.bounds.extent.y, 1.0) {
-                static_unit_colliders.insert(
-                    point2(
-                        c.bounds.origin.x.floor() as i32,
-                        c.bounds.origin.y.floor() as i32,
-                    ),
-                    *c,
-                );
-            } else {
-                unimplemented!("Static colliders must be unit-sized")
+        for c in colliders {
+            match c.mode {
+                Mode::Static { position } => {
+                    static_colliders.insert(position, *c);
+                }
+                Mode::Dynamic { entity_id, .. } => {
+                    dynamic_colliders.insert(entity_id, *c);
+                }
             }
         }
 
         Self {
-            static_unit_colliders,
-            dynamic_colliders: HashMap::new(),
+            static_colliders,
+            dynamic_colliders,
         }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    pub fn add_static_collider(&mut self, collider: &Collider) {
-        let coord = point2(
-            collider.bounds.origin.x.floor() as i32,
-            collider.bounds.origin.y.floor() as i32,
-        );
-        self.static_unit_colliders.insert(coord, *collider);
+    pub fn add_collider(&mut self, collider: &Collider) {
+        match collider.mode {
+            Mode::Static { position } => self.static_colliders.insert(position, *collider),
+            Mode::Dynamic {
+                bounds: _,
+                entity_id,
+            } => self.dynamic_colliders.insert(entity_id, *collider),
+        };
     }
 
-    pub fn remove_static_collider(&mut self, collider: &Collider) {
-        let coord = point2(
-            collider.bounds.origin.x.floor() as i32,
-            collider.bounds.origin.y.floor() as i32,
-        );
-        self.static_unit_colliders.remove(&coord);
+    pub fn remove_collider(&mut self, collider: &Collider) {
+        match collider.mode {
+            Mode::Static { position } => self.static_colliders.remove(&position),
+            Mode::Dynamic {
+                bounds: _,
+                entity_id,
+            } => self.dynamic_colliders.remove(&entity_id),
+        };
     }
 
-    pub fn add_dynamic_collider(&mut self, collider: &Collider) {
-        let id = collider
-            .entity_id
-            .expect("Dynamic sprites must have an entity_id");
-        self.dynamic_colliders.insert(id, *collider);
+    pub fn update_collider(&mut self, collider: &Collider) {
+        if matches!(collider.mode, Mode::Static { .. }) {
+            panic!("Cannot update a static collider. Must remove it and add a new one");
+        }
+        self.add_collider(collider);
     }
 
-    pub fn remove_dynamic_collider(&mut self, sprite: &Collider) {
-        let id = sprite
-            .entity_id
-            .expect("Dynamic sprites must have an entity_id");
-        self.dynamic_colliders.remove(&id);
-    }
-
-    pub fn remove_dynamic_collider_with_entity_id(&mut self, entity_id: u32) {
-        self.dynamic_colliders.remove(&entity_id);
-    }
-
-    pub fn update_dynamic_collider(&mut self, collider: &Collider) {
-        self.add_dynamic_collider(collider);
+    pub fn has_collider(&self, collider: &Collider) -> bool {
+        match collider.mode {
+            Mode::Static { position } => self.static_colliders.contains_key(&position),
+            Mode::Dynamic {
+                bounds: _,
+                entity_id,
+            } => self.dynamic_colliders.contains_key(&entity_id),
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -439,26 +523,9 @@ impl Space {
             }
         }
 
-        self.static_unit_colliders
+        self.static_colliders
             .get(&(point))
             .filter(|s| s.mask & mask != 0)
-    }
-
-    pub fn has_collider(&self, collider: &Collider) -> bool {
-        let coord = point2(
-            collider.bounds.origin.x.floor() as i32,
-            collider.bounds.origin.y.floor() as i32,
-        );
-
-        if self.static_unit_colliders.contains_key(&coord) {
-            return true;
-        }
-
-        if let Some(id) = collider.entity_id {
-            return self.dynamic_colliders.contains_key(&id);
-        }
-
-        false
     }
 
     /// Tests the specified rect against colliders, invoking the specified callback for each contact/overlap.
@@ -538,7 +605,7 @@ impl Space {
             }
         }
 
-        self.static_unit_colliders
+        self.static_colliders
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
             .filter(|s| s.mask & mask != 0 && s.contains(&point))
     }
@@ -629,7 +696,7 @@ impl Space {
     }
 
     fn _get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
-        self.static_unit_colliders
+        self.static_colliders
             .get(&(point))
             .filter(|s| s.mask & mask != 0)
     }
@@ -650,7 +717,7 @@ impl Space {
                     if let Some(c) =
                         self._get_static_collider_at(point2(x, position_snapped.y), mask)
                     {
-                        result = Some((c.bounds.origin.x - (position.x + 1.0), c));
+                        result = Some((c.left() - (position.x + 1.0), c));
                         break;
                     }
                 }
@@ -661,7 +728,7 @@ impl Space {
                     if let Some(c) =
                         self._get_static_collider_at(point2(position_snapped.x, y), mask)
                     {
-                        result = Some((c.bounds.origin.y - (position.y + 1.0), c));
+                        result = Some((c.bottom() - (position.y + 1.0), c));
                         break;
                     }
                 }
@@ -708,38 +775,21 @@ mod space_tests {
 
     #[test]
     fn new_produces_expected_storage() {
-        let unit_0 = Collider::new(
-            Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
-            Shape::Square,
-            0,
-            None,
-        );
-
-        let unit_1 = Collider::new(
-            Bounds::new(point2(11.0, -33.0), vec2(1.0, 1.0)),
-            Shape::Square,
-            0,
-            None,
-        );
+        let unit_0 = Collider::new_static(point2(0, 0), Shape::Square, 0);
+        let unit_1 = Collider::new_static(point2(11, -33), Shape::Square, 0);
 
         let hit_tester = Space::new(&[unit_0, unit_1]);
         assert_eq!(
             hit_tester
-                .static_unit_colliders
-                .get(&point2(
-                    unit_0.bounds.origin.x as i32,
-                    unit_0.bounds.origin.y as i32,
-                ))
+                .static_colliders
+                .get(&point2(unit_0.origin().x as i32, unit_0.origin().y as i32,))
                 .unwrap(),
             &unit_0
         );
         assert_eq!(
             hit_tester
-                .static_unit_colliders
-                .get(&point2(
-                    unit_1.bounds.origin.x as i32,
-                    unit_1.bounds.origin.y as i32,
-                ))
+                .static_colliders
+                .get(&point2(unit_1.origin().x as i32, unit_1.origin().y as i32,))
                 .unwrap(),
             &unit_1
         );
@@ -751,47 +801,12 @@ mod space_tests {
         let triangle_mask = 1 << 1;
         let all_mask = square_mask | triangle_mask;
 
-        let sb1 = Collider::new(
-            Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
-            Shape::Square,
-            square_mask,
-            None,
-        );
-
-        let sb2 = Collider::new(
-            Bounds::new(point2(-1.0, -1.0), vec2(1.0, 1.0)),
-            Shape::Square,
-            square_mask,
-            None,
-        );
-
-        let tr0 = Collider::new(
-            Bounds::new(point2(0.0, 4.0), vec2(1.0, 1.0)),
-            Shape::NorthEast,
-            triangle_mask,
-            None,
-        );
-
-        let tr1 = Collider::new(
-            Bounds::new(point2(-1.0, 4.0), vec2(1.0, 1.0)),
-            Shape::NorthWest,
-            triangle_mask,
-            None,
-        );
-
-        let tr2 = Collider::new(
-            Bounds::new(point2(-1.0, 3.0), vec2(1.0, 1.0)),
-            Shape::SouthWest,
-            triangle_mask,
-            None,
-        );
-
-        let tr3 = Collider::new(
-            Bounds::new(point2(0.0, 3.0), vec2(1.0, 1.0)),
-            Shape::SouthEast,
-            triangle_mask,
-            None,
-        );
+        let sb1 = Collider::new_static((0, 0).into(), Shape::Square, square_mask);
+        let sb2 = Collider::new_static((-1, -1).into(), Shape::Square, square_mask);
+        let tr0 = Collider::new_static((0, 4).into(), Shape::NorthEast, triangle_mask);
+        let tr1 = Collider::new_static((-1, 4).into(), Shape::NorthWest, triangle_mask);
+        let tr2 = Collider::new_static((-1, 3).into(), Shape::SouthWest, triangle_mask);
+        let tr3 = Collider::new_static((0, 3).into(), Shape::SouthEast, triangle_mask);
 
         let hit_tester = Space::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
@@ -829,40 +844,41 @@ mod space_tests {
         Point2<f32>,
         Point2<f32>,
     ) {
+        let bounds = collider.bounds();
         (
             // inside
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.25,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+                bounds.origin.x + bounds.extent.x * 0.25,
+                bounds.origin.y + bounds.extent.y * 0.5,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.25,
+                bounds.origin.x + bounds.extent.x * 0.5,
+                bounds.origin.y + bounds.extent.y * 0.25,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.75,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+                bounds.origin.x + bounds.extent.x * 0.75,
+                bounds.origin.y + bounds.extent.y * 0.5,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.75,
+                bounds.origin.x + bounds.extent.x * 0.5,
+                bounds.origin.y + bounds.extent.y * 0.75,
             ),
             // outside
             point2(
-                collider.bounds.origin.x - collider.bounds.extent.x * 0.25,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+                bounds.origin.x - bounds.extent.x * 0.25,
+                bounds.origin.y + bounds.extent.y * 0.5,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
-                collider.bounds.origin.y - collider.bounds.extent.y * 0.25,
+                bounds.origin.x + bounds.extent.x * 0.5,
+                bounds.origin.y - bounds.extent.y * 0.25,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 1.25,
-                collider.bounds.origin.y + collider.bounds.extent.y * 0.5,
+                bounds.origin.x + bounds.extent.x * 1.25,
+                bounds.origin.y + bounds.extent.y * 0.5,
             ),
             point2(
-                collider.bounds.origin.x + collider.bounds.extent.x * 0.5,
-                collider.bounds.origin.y + collider.bounds.extent.y * 1.25,
+                bounds.origin.x + bounds.extent.x * 0.5,
+                bounds.origin.y + bounds.extent.y * 1.25,
             ),
         )
     }
@@ -933,80 +949,71 @@ mod space_tests {
 
     #[test]
     fn contains_works() {
-        let mut collider = Collider::new(
-            Bounds::new(point2(0.0, 0.0), vec2(0.0, 0.0)),
-            Shape::Square,
-            0,
-            None,
-        );
+        let collider =
+            |bounds: Bounds| -> Collider { Collider::new_dynamic(bounds, 0, Shape::Square, 0) };
 
-        test_containment(collider);
+        let mut bounds = Bounds::default();
 
         // tall, NE quadrant
-        collider.bounds.origin.x = 10.0;
-        collider.bounds.origin.y = 5.0;
-        collider.bounds.extent.y = 50.0;
-        collider.bounds.extent.x = 1.0;
-        test_containment(collider);
+        bounds.origin.x = 10.0;
+        bounds.origin.y = 5.0;
+        bounds.extent.y = 50.0;
+        bounds.extent.x = 1.0;
+        test_containment(collider(bounds));
 
         // wide, NE quad
-        collider.bounds.origin.x = 10.0;
-        collider.bounds.origin.y = 5.0;
-        collider.bounds.extent.y = 1.0;
-        collider.bounds.extent.x = 50.0;
-        test_containment(collider);
+        bounds.origin.x = 10.0;
+        bounds.origin.y = 5.0;
+        bounds.extent.y = 1.0;
+        bounds.extent.x = 50.0;
+        test_containment(collider(bounds));
 
         // tall, SE quadrant
-        collider.bounds.origin.x = 10.0;
-        collider.bounds.origin.y = -70.0;
-        collider.bounds.extent.y = 50.0;
-        collider.bounds.extent.x = 1.0;
-        test_containment(collider);
+        bounds.origin.x = 10.0;
+        bounds.origin.y = -70.0;
+        bounds.extent.y = 50.0;
+        bounds.extent.x = 1.0;
+        test_containment(collider(bounds));
 
         // wide, SE quad
-        collider.bounds.origin.x = 10.0;
-        collider.bounds.origin.y = -10.0;
-        collider.bounds.extent.y = 1.0;
-        collider.bounds.extent.x = 50.0;
-        test_containment(collider);
+        bounds.origin.x = 10.0;
+        bounds.origin.y = -10.0;
+        bounds.extent.y = 1.0;
+        bounds.extent.x = 50.0;
+        test_containment(collider(bounds));
 
         // tall, SW quadrant
-        collider.bounds.origin.x = -100.0;
-        collider.bounds.origin.y = -500.0;
-        collider.bounds.extent.y = 50.0;
-        collider.bounds.extent.x = 1.0;
-        test_containment(collider);
+        bounds.origin.x = -100.0;
+        bounds.origin.y = -500.0;
+        bounds.extent.y = 50.0;
+        bounds.extent.x = 1.0;
+        test_containment(collider(bounds));
 
         // wide, SW quad
-        collider.bounds.origin.x = -100.0;
-        collider.bounds.origin.y = -500.0;
-        collider.bounds.extent.y = 1.0;
-        collider.bounds.extent.x = 50.0;
-        test_containment(collider);
+        bounds.origin.x = -100.0;
+        bounds.origin.y = -500.0;
+        bounds.extent.y = 1.0;
+        bounds.extent.x = 50.0;
+        test_containment(collider(bounds));
 
         // tall, NW quadrant
-        collider.bounds.origin.x = -100.0;
-        collider.bounds.origin.y = 500.0;
-        collider.bounds.extent.y = 50.0;
-        collider.bounds.extent.x = 1.0;
-        test_containment(collider);
+        bounds.origin.x = -100.0;
+        bounds.origin.y = 500.0;
+        bounds.extent.y = 50.0;
+        bounds.extent.x = 1.0;
+        test_containment(collider(bounds));
 
         // wide, NW quad
-        collider.bounds.origin.x = -100.0;
-        collider.bounds.origin.y = 500.0;
-        collider.bounds.extent.y = 1.0;
-        collider.bounds.extent.x = 50.0;
-        test_containment(collider);
+        bounds.origin.x = -100.0;
+        bounds.origin.y = 500.0;
+        bounds.extent.y = 1.0;
+        bounds.extent.x = 50.0;
+        test_containment(collider(bounds));
     }
 
     #[test]
     fn line_intersection_with_square_works() {
-        let collider = Collider::new(
-            Bounds::new(point2(0.0, 0.0), vec2(0.0, 0.0)),
-            Shape::Square,
-            0,
-            None,
-        );
+        let collider = Collider::new_static((0, 0).into(), Shape::Square, 0);
 
         assert_eq!(
             collider.line_intersection(&point2(-0.5, 0.5), &point2(0.5, 0.5)),
@@ -1028,12 +1035,7 @@ mod space_tests {
 
     #[test]
     fn line_intersection_with_slopes_works() {
-        let mut collider = Collider::new(
-            Bounds::new(point2(0.0, 0.0), vec2(1.0, 1.0)),
-            Shape::NorthEast,
-            0,
-            None,
-        );
+        let mut collider = Collider::new_static((0, 0).into(), Shape::NorthEast, 0);
 
         assert_eq!(
             collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),

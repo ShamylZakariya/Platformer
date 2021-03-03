@@ -46,10 +46,10 @@ impl Entity for UiHealthDot {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
 
-        self.collider = sprite.into();
+        self.collider = collision::Collider::from_static_sprite(sprite);
         self.collider.mask = sprite_masks::ui::HEALTH_DOT;
 
-        collision_space.add_static_collider(&self.collider);
+        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -114,7 +114,7 @@ impl UiHealthDot {
     /// Here we walk left, looking for other heath dots in the collision space, until we come up empty. The
     /// length of that walk determines our index. Yeesh.
     fn determine_index(&self, collision_space: &collision::Space) -> i32 {
-        let position: Point2<i32> = self.collider.bounds.origin.xy().cast().unwrap();
+        let position: Point2<i32> = self.collider.origin().cast().unwrap();
         let mut offset: i32 = 1;
         loop {
             let test_position = point2(position.x - offset, position.y);

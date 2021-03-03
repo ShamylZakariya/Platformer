@@ -112,30 +112,30 @@ impl Entity for Fireball {
             next_position.y - FIREBALL_DIAMETER / 2.0,
         );
         let collider_extent = vec2(FIREBALL_DIAMETER, FIREBALL_DIAMETER);
-        if let Some(sprite) =
+        if let Some(collider) =
             collision_space.test_rect_first(&collider_origin, &collider_extent, mask)
         {
-            if let Some(target_entity_id) = sprite.entity_id {
-                if target_entity_id != self.sender_id {
-                    //
-                    // hit an entity that's not the sender
-                    //
-
-                    message_dispatcher.entity_to_entity(
-                        self.entity_id(),
-                        target_entity_id,
-                        Event::HitByFireball {
-                            direction: self.velocity.into(),
-                            damage: self.damage,
-                        },
-                    );
-                    self.alive = false;
+            match collider.mode {
+                collision::Mode::Static { .. } => {
+                    self.alive = false; // hit a wall
                 }
-            } else {
-                //
-                // hit static level geometry
-                //
-                self.alive = false;
+                collision::Mode::Dynamic { entity_id, .. } => {
+                    if entity_id != self.sender_id {
+                        //
+                        // hit an entity that's not the sender
+                        //
+
+                        message_dispatcher.entity_to_entity(
+                            self.entity_id(),
+                            entity_id,
+                            Event::HitByFireball {
+                                direction: self.velocity.into(),
+                                damage: self.damage,
+                            },
+                        );
+                        self.alive = false;
+                    }
+                }
             }
         }
 
@@ -200,5 +200,45 @@ impl Entity for Fireball {
 
     fn did_exit_viewport(&mut self) {
         self.alive = false;
+    }
+
+    fn init_from_map_sprite(
+        &mut self,
+        _entity_id: u32,
+        _sprite: &crate::sprite::Sprite,
+        _tile: &crate::tileset::Tile,
+        _map: &map::Map,
+        _collision_space: &mut collision::Space,
+    ) {
+    }
+
+    fn process_keyboard(
+        &mut self,
+        _key: winit::event::VirtualKeyCode,
+        _state: winit::event::ElementState,
+    ) -> bool {
+        false
+    }
+
+    fn remove_collider(&self, _collision_space: &mut collision::Space) {}
+
+    fn should_draw(&self) -> bool {
+        true
+    }
+
+    fn handle_message(&mut self, _message: &Message) {}
+
+    fn overlapping_sprites(&self) -> Option<&std::collections::HashSet<crate::sprite::Sprite>> {
+        None
+    }
+
+    fn contacting_sprites(&self) -> Option<&std::collections::HashSet<crate::sprite::Sprite>> {
+        None
+    }
+
+    fn did_enter_viewport(&mut self) {}
+
+    fn stage_sprites(&self) -> Option<Vec<crate::sprite::Sprite>> {
+        None
     }
 }
