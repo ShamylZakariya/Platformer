@@ -3,6 +3,7 @@
  <image source="game_ui_tileset.png" width="135" height="135"/>
  <tile id="4">
   <properties>
+   <property name="collision_shape" value="square"/>
    <property name="cycle" value="full"/>
    <property name="entity_class" value="UiHealthDot"/>
    <property name="name" value="health_dot"/>
@@ -11,6 +12,7 @@
  </tile>
  <tile id="5">
   <properties>
+   <property name="collision_shape" value="square"/>
    <property name="cycle" value="empty"/>
    <property name="name" value="health_dot"/>
    <property name="role" value="root"/>

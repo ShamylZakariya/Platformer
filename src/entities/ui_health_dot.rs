@@ -47,7 +47,6 @@ impl Entity for UiHealthDot {
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
 
         let mut collider = collision::Collider::from_static_sprite(sprite);
-        collider.shape = collision::Shape::Square;
         collider.mask = sprite_masks::ui::HEALTH_DOT;
 
         self.collider_id = Some(collision_space.add_collider(collider));
