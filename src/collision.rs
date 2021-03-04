@@ -426,6 +426,14 @@ impl Collider {
     }
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Sentinel {
+    Continue,
+    Stop,
+}
+
 pub struct Space {
     colliders: Vec<Collider>,
     static_colliders: HashMap<Point2<i32>, u32>,
@@ -570,11 +578,14 @@ impl Space {
         mask: u32,
         mut callback: C,
     ) where
-        C: FnMut(&Collider) -> bool,
+        C: FnMut(&Collider) -> Sentinel,
     {
         for id in self.dynamic_colliders.iter() {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.rect_intersection(origin, extent, 0.0, true) && callback(c) {
+            if c.mask & mask != 0
+                && c.rect_intersection(origin, extent, 0.0, true)
+                && matches!(callback(c), Sentinel::Stop)
+            {
                 return;
             }
         }
@@ -587,7 +598,9 @@ impl Space {
 
         for p in [a, b, c, d].iter() {
             if let Some(c) = self.get_static_collider_at(*p, mask) {
-                if c.rect_intersection(origin, extent, 0.0, true) && callback(c) {
+                if c.rect_intersection(origin, extent, 0.0, true)
+                    && matches!(callback(c), Sentinel::Stop)
+                {
                     return;
                 }
             }

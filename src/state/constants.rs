@@ -1,3 +1,5 @@
+use cgmath::*;
+
 // These constants were determined by examination of recorded gamplay (and fiddling)
 // Units are seconds & tiles-per-second unless otherwise specified.
 
@@ -45,3 +47,10 @@ pub const GRAVITY_VEL: f32 = -1.0 / 0.129_032_25;
 pub fn apply_gravity(vertical_velocity: f32, dt: f32) -> f32 {
     vertical_velocity + (2.5 * dt * (GRAVITY_VEL - vertical_velocity))
 }
+
+pub mod colors {
+    pub const WHITE: cgmath::Vector4<f32> = cgmath::vec4(1.0, 1.0, 1.0, 1.0);
+}
+
+pub const UNUSED_MAP_SPRITE_ORIGIN: Point2<f32> = point2(0.875, 0.875);
+pub const UNUSED_MAP_SPRITE_EXTENT: Vector2<f32> = vec2(0.125, 0.125);

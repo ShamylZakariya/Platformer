@@ -1,12 +1,6 @@
 CURRENTLY:
     YAK SHAVING:
         HealthDot broken
-        
-
-
-        Drop use of HashMap for storing colliders, make it a vec! Let the Collider id be the index.
-        When removing a collider, just set a flag on it to "disabled" or something. Remove it from the static and dynamic stores. Then lookup is an array index, and much faster.
-
         Once this is done, can rewrite dynamic collision detection to be faster by:
             - sorting the dynamics by Collider.left()
             - binary search

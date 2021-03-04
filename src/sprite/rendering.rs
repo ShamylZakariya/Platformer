@@ -1,12 +1,13 @@
 use cgmath::{prelude::*, *};
 use core::panic;
+use std::hash::Hash;
 use std::rc::Rc;
 use std::{collections::HashMap, time::Duration};
 
-use crate::sprite::core::*;
 use crate::texture;
 use crate::tileset;
 use crate::{camera, util::Bounds};
+use crate::{sprite::core::*, util::*};
 use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -317,13 +318,44 @@ impl Material {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(Debug, Clone, Copy)]
+struct SpriteSpatialIndexer {
+    pub origin: Point2<f32>,
+    pub extent: Vector2<f32>,
+}
+
+impl SpriteSpatialIndexer {
+    fn from(sprite: &Sprite) -> Self {
+        Self {
+            origin: sprite.origin.xy(),
+            extent: sprite.extent,
+        }
+    }
+}
+
+impl Hash for SpriteSpatialIndexer {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        hash_point2(&self.origin, state);
+        hash_vec2(&self.extent, state);
+    }
+}
+
+impl PartialEq for SpriteSpatialIndexer {
+    fn eq(&self, other: &Self) -> bool {
+        relative_eq!(self.origin, other.origin) && relative_eq!(self.extent, other.extent)
+    }
+}
+
+impl Eq for SpriteSpatialIndexer {}
+
 pub struct Mesh {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub num_elements: u32,
     pub material: usize,
-    pub sprite_element_indices: HashMap<Sprite, u32>,
     pub bounds: Bounds, // 2d bounds of the vertices in this mesh
+
+    sprite_element_indices: HashMap<SpriteSpatialIndexer, u32>,
 }
 
 impl Mesh {
@@ -335,7 +367,7 @@ impl Mesh {
 
         let mut vertices = vec![];
         let mut indices = vec![];
-        let mut sprite_element_indices: HashMap<Sprite, u32> = HashMap::new();
+        let mut sprite_element_indices: HashMap<SpriteSpatialIndexer, u32> = HashMap::new();
         for sprite in sprites {
             // update bounds
             left = left.min(sprite.left());
@@ -400,7 +432,7 @@ impl Mesh {
             vertices.push(sv_c);
             vertices.push(sv_d);
 
-            sprite_element_indices.insert(*sprite, indices.len() as u32);
+            sprite_element_indices.insert(SpriteSpatialIndexer::from(sprite), indices.len() as u32);
             indices.push(idx as u32);
             indices.push((idx + 1) as u32);
             indices.push((idx + 2) as u32);
@@ -451,6 +483,13 @@ impl Mesh {
         render_pass.draw_indexed(0..self.num_elements, 0, 0..1);
     }
 
+    /// Draws the sprites that best match the sprites in I. Since meshes are expensive to create, we
+    /// attempt to find the sprite mesh that best corresponds to the ones in the provided array, and
+    /// draw them instead. This means the sprite passes in only has to have the same 2D origin and extent to
+    /// match up to a sprite in this mesh to draw that mesh sprite. The other fields - z, texcoords, color, etc are ignored.
+    /// This is a hack, but it's for displaying collision response, where the collision system has no knowledge of
+    /// the graphics system, and as such, there's no good way to extract exact sprite data from a collision response,
+    /// just position and extent of the collider.
     pub fn draw_sprites<'a, 'b, I>(
         &'a self,
         sprites: I,
@@ -468,7 +507,10 @@ impl Mesh {
         render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
 
         for sprite in sprites.into_iter() {
-            if let Some(index) = self.sprite_element_indices.get(sprite) {
+            if let Some(index) = self
+                .sprite_element_indices
+                .get(&SpriteSpatialIndexer::from(sprite))
+            {
                 render_pass.draw_indexed(*index..*index + 6, 0, 0..1);
             }
         }

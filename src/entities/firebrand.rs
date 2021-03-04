@@ -14,9 +14,12 @@ use crate::{
     event_dispatch::*,
     input::*,
     map,
-    sprite::{self, rendering},
+    sprite::{self, rendering, Sprite},
     state::{
-        constants::{self, layers, sprite_masks::*, GRAVITY_VEL},
+        constants::{
+            self, colors, layers, sprite_masks::*, GRAVITY_VEL, UNUSED_MAP_SPRITE_EXTENT,
+            UNUSED_MAP_SPRITE_ORIGIN,
+        },
         events::Event,
     },
     util::{clamp, lerp, Bounds},
@@ -292,9 +295,11 @@ pub struct Firebrand {
 
     // colliders the character is overlapping and might collide with
     overlapping_colliders: HashSet<collision::Collider>,
+    overlapping_sprites: HashSet<Sprite>,
 
     // colliders the character is contacting
     contacting_colliders: HashSet<collision::Collider>,
+    contacting_sprites: HashSet<Sprite>,
 
     vertical_velocity: f32,
     jump_time_remaining: f32,
@@ -324,7 +329,9 @@ impl Firebrand {
             input_state: FirebrandInputState::default(),
             character_state: CharacterState::new(position.xy(), num_lives_remaining),
             overlapping_colliders: HashSet::new(),
+            overlapping_sprites: HashSet::new(),
             contacting_colliders: HashSet::new(),
+            contacting_sprites: HashSet::new(),
             vertical_velocity: 0.0,
             jump_time_remaining: 0.0,
             flight_countdown: FLIGHT_DURATION,
@@ -679,7 +686,7 @@ impl Entity for Firebrand {
                 if c.mask & PLAYER == 0 {
                     self.process_potential_collision_with(c);
                 }
-                false
+                collision::Sentinel::Continue
             },
         );
 
@@ -723,6 +730,44 @@ impl Entity for Firebrand {
                 status: self.character_state,
             },
         );
+
+        //
+        // Update overlapping/contacting sprites for debug rendering
+        //
+
+        self.overlapping_sprites = self
+            .overlapping_colliders
+            .iter()
+            .map(|c| {
+                let b = c.bounds();
+                Sprite::new(
+                    c.shape,
+                    point3(b.origin.x, b.origin.y, 0.0),
+                    c.extent(),
+                    UNUSED_MAP_SPRITE_ORIGIN,
+                    UNUSED_MAP_SPRITE_EXTENT,
+                    colors::WHITE,
+                    c.mask,
+                )
+            })
+            .collect();
+
+        self.contacting_sprites = self
+            .contacting_colliders
+            .iter()
+            .map(|c| {
+                let b = c.bounds();
+                Sprite::new(
+                    c.shape,
+                    point3(b.origin.x, b.origin.y, 0.0),
+                    c.extent(),
+                    UNUSED_MAP_SPRITE_ORIGIN,
+                    UNUSED_MAP_SPRITE_EXTENT,
+                    colors::WHITE,
+                    c.mask,
+                )
+            })
+            .collect();
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -852,11 +897,11 @@ impl Entity for Firebrand {
     }
 
     fn overlapping_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
+        Some(&self.overlapping_sprites)
     }
 
     fn contacting_sprites(&self) -> Option<&HashSet<sprite::Sprite>> {
-        None
+        Some(&self.contacting_sprites)
     }
 }
 
@@ -1461,7 +1506,7 @@ impl Firebrand {
         let mut in_water = false;
         collision_space.test_rect(&position, &vec2(1.0, 1.0), WATER, |_sprite| {
             in_water = true;
-            true
+            collision::Sentinel::Stop
         });
 
         in_water
