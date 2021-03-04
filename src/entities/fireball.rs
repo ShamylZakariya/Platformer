@@ -201,44 +201,4 @@ impl Entity for Fireball {
     fn did_exit_viewport(&mut self) {
         self.alive = false;
     }
-
-    fn init_from_map_sprite(
-        &mut self,
-        _entity_id: u32,
-        _sprite: &crate::sprite::Sprite,
-        _tile: &crate::tileset::Tile,
-        _map: &map::Map,
-        _collision_space: &mut collision::Space,
-    ) {
-    }
-
-    fn process_keyboard(
-        &mut self,
-        _key: winit::event::VirtualKeyCode,
-        _state: winit::event::ElementState,
-    ) -> bool {
-        false
-    }
-
-    fn remove_collider(&self, _collision_space: &mut collision::Space) {}
-
-    fn should_draw(&self) -> bool {
-        true
-    }
-
-    fn handle_message(&mut self, _message: &Message) {}
-
-    fn overlapping_sprites(&self) -> Option<&std::collections::HashSet<crate::sprite::Sprite>> {
-        None
-    }
-
-    fn contacting_sprites(&self) -> Option<&std::collections::HashSet<crate::sprite::Sprite>> {
-        None
-    }
-
-    fn did_enter_viewport(&mut self) {}
-
-    fn stage_sprites(&self) -> Option<Vec<crate::sprite::Sprite>> {
-        None
-    }
 }

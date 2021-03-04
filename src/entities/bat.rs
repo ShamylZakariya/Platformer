@@ -24,8 +24,8 @@ const PLAYER_CLOSENESS_THRESHOLD: f32 = (ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2
 
 pub struct Bat {
     entity_id: u32,
+    collider_id: Option<u32>,
     spawn_point_id: u32,
-    collider: collision::Collider,
     sprite_size_px: Vector2<f32>,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
@@ -38,8 +38,8 @@ impl Default for Bat {
     fn default() -> Self {
         Self {
             entity_id: 0,
+            collider_id: None,
             spawn_point_id: 0,
-            collider: collision::Collider::default(),
             sprite_size_px: vec2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
@@ -68,13 +68,13 @@ impl Entity for Bat {
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
         // Create collider
-        self.collider = collision::Collider::new_dynamic(
+        let collider = collision::Collider::new_dynamic(
             sprite.bounds(),
             entity_id,
             collision::Shape::Square,
             sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
         );
-        collision_space.add_collider(&self.collider);
+        self.collider_id = Some(collision_space.add_collider(collider));
     }
 
     fn update(
@@ -117,8 +117,9 @@ impl Entity for Bat {
             //  Update the sprite for collision detection
             //
 
-            self.collider.set_origin(self.position.xy());
-            collision_space.update_collider(&self.collider);
+            if let Some(id) = self.collider_id {
+                collision_space.update_collider_position(id, self.position.xy());
+            }
 
             //
             //  Update sprite animation cycle
@@ -136,8 +137,11 @@ impl Entity for Bat {
         uniforms.data.set_model_position(self.position);
     }
 
-    fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_collider(&self.collider);
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None
     }
 
     fn entity_id(&self) -> u32 {

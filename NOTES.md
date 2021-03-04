@@ -1,16 +1,19 @@
 CURRENTLY:
     YAK SHAVING:
-        - New Collider
-        Do we ever use entity_id on static colliders? Might use it for FallingBridge and/or PowerUp
+        HealthDot broken
+        
 
-        I don't like holding on to a collider object. I think API should look like this:
-        self.collider_id = collision_space.add(Collider::new_static(...))
 
-        collision_space.move(self.collider_id, point2(...))
+        Drop use of HashMap for storing colliders, make it a vec! Let the Collider id be the index.
+        When removing a collider, just set a flag on it to "disabled" or something. Remove it from the static and dynamic stores. Then lookup is an array index, and much faster.
 
-            NOTES:
-                - this breaks the nice overlapping_sprites visualization, but whatever
-                    - could handle this by creating sprites from Colliders using some default color/texcoord mapping
+        Once this is done, can rewrite dynamic collision detection to be faster by:
+            - sorting the dynamics by Collider.left()
+            - binary search
+
+
+        - Using Collider breaks the nice overlapping_sprites visualization, but whatever
+            - could handle this by creating sprites from Colliders using some default color/texcoord mapping
 
 
         - Refactor geom.rs, I don't like that module's existence.

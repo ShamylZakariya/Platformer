@@ -14,7 +14,7 @@ use crate::{
 
 pub struct UiHealthDot {
     entity_id: u32,
-    collider: collision::Collider,
+    collider_id: Option<u32>,
     position: Point3<f32>,
     index: Option<i32>,
     visible: bool, // is the dot visible
@@ -25,7 +25,7 @@ impl Default for UiHealthDot {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            collider: collision::Collider::default(),
+            collider_id: None,
             position: point3(0.0, 0.0, 0.0),
             index: None,
             visible: false,
@@ -46,10 +46,11 @@ impl Entity for UiHealthDot {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::ui::FOREGROUND);
 
-        self.collider = collision::Collider::from_static_sprite(sprite);
-        self.collider.mask = sprite_masks::ui::HEALTH_DOT;
+        let mut collider = collision::Collider::from_static_sprite(sprite);
+        collider.shape = collision::Shape::Square;
+        collider.mask = sprite_masks::ui::HEALTH_DOT;
 
-        collision_space.add_collider(&self.collider);
+        self.collider_id = Some(collision_space.add_collider(collider));
     }
 
     fn update(
@@ -72,6 +73,13 @@ impl Entity for UiHealthDot {
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         uniforms.data.set_model_position(self.position);
+    }
+
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None;
     }
 
     fn entity_id(&self) -> u32 {
@@ -114,7 +122,13 @@ impl UiHealthDot {
     /// Here we walk left, looking for other heath dots in the collision space, until we come up empty. The
     /// length of that walk determines our index. Yeesh.
     fn determine_index(&self, collision_space: &collision::Space) -> i32 {
-        let position: Point2<i32> = self.collider.origin().cast().unwrap();
+        let position: Point2<i32> = collision_space
+            .get_collider(self.collider_id.unwrap())
+            .unwrap()
+            .bounds()
+            .origin
+            .cast()
+            .unwrap();
         let mut offset: i32 = 1;
         loop {
             let test_position = point2(position.x - offset, position.y);

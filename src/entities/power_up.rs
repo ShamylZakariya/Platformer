@@ -46,8 +46,8 @@ const FLICKER_PERIOD: f32 = 0.133 * 2.0;
 
 pub struct PowerUp {
     entity_id: u32,
+    collider_id: Option<u32>,
     position: Point3<f32>,
-    collider: collision::Collider,
     powerup_type: Option<Type>,
     time: f32,
     needs_collider: bool,
@@ -58,8 +58,8 @@ impl Default for PowerUp {
     fn default() -> Self {
         Self {
             entity_id: 0,
+            collider_id: None,
             position: point3(0.0, 0.0, 0.0),
-            collider: collision::Collider::default(),
             powerup_type: None,
             time: 0.0,
             needs_collider: true,
@@ -82,13 +82,15 @@ impl Entity for PowerUp {
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
 
         // Make collider
-        self.collider = collision::Collider::new_dynamic(
-            sprite.bounds(),
-            entity_id,
-            collision::Shape::Square,
-            sprite_masks::ENTITY,
+
+        self.collider_id = Some(
+            collision_space.add_collider(collision::Collider::new_dynamic(
+                sprite.bounds(),
+                entity_id,
+                collision::Shape::Square,
+                sprite_masks::ENTITY,
+            )),
         );
-        collision_space.add_collider(&self.collider);
 
         let type_name = tile
             .get_property("powerup_type")
@@ -109,7 +111,9 @@ impl Entity for PowerUp {
         self.time += dt;
 
         if !self.needs_collider && self.is_collider_active {
-            collision_space.remove_collider(&self.collider);
+            if let Some(id) = self.collider_id {
+                collision_space.deactivate_collider(id);
+            }
             self.is_collider_active = false;
 
             // broadcast that this powerup has been consumed
@@ -117,7 +121,9 @@ impl Entity for PowerUp {
                 powerup_type: self.powerup_type.unwrap(),
             });
         } else if self.needs_collider && !self.is_collider_active {
-            collision_space.add_collider(&self.collider);
+            if let Some(id) = self.collider_id {
+                collision_space.activate_collider(id);
+            }
             self.is_collider_active = true;
         }
     }
@@ -129,6 +135,13 @@ impl Entity for PowerUp {
             .data
             .set_color(vec4(1.0, 1.0, 1.0, alpha))
             .set_model_position(self.position);
+    }
+
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None;
     }
 
     fn entity_id(&self) -> u32 {

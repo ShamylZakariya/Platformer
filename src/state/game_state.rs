@@ -859,7 +859,7 @@ impl GameState {
         self.camera_shaker = None;
 
         // For every entity which will be removed in reset, we need to remove collider.
-        for ec in self.entities.values() {
+        for ec in self.entities.values_mut() {
             if !ec.entity.entity_class().survives_level_restart() {
                 ec.entity.remove_collider(&mut self.collision_space);
             }
@@ -1103,7 +1103,7 @@ impl GameState {
             !ec.class().is_enemy() && !ec.class().is_projectile()
         };
 
-        for ec in self.entities.values() {
+        for ec in self.entities.values_mut() {
             if !should_retain(ec) {
                 ec.entity.remove_collider(&mut self.collision_space);
             }

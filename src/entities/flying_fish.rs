@@ -26,8 +26,8 @@ const HIT_POINTS: i32 = 1;
 
 pub struct FlyingFish {
     entity_id: u32,
+    collider_id: Option<u32>,
     spawn_point_id: u32,
-    collider: collision::Collider,
     centroid: Point2<f32>,
     position: Point3<f32>,
     time_in_phase: f32,
@@ -43,8 +43,8 @@ impl Default for FlyingFish {
     fn default() -> Self {
         Self {
             entity_id: 0,
+            collider_id: None,
             spawn_point_id: 0,
-            collider: collision::Collider::default(),
             centroid: point2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             time_in_phase: 0.0,
@@ -79,15 +79,15 @@ impl Entity for FlyingFish {
         // offset phase such that neighbor fish don't jump in same dir
         self.phase = self.position.x as i32 % 2;
 
-        // Create a collider
         // Make collider
-        self.collider = collision::Collider::new_dynamic(
-            sprite.bounds(),
-            entity_id,
-            collision::Shape::Square,
-            sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+        self.collider_id = Some(
+            collision_space.add_collider(collision::Collider::new_dynamic(
+                sprite.bounds(),
+                entity_id,
+                collision::Shape::Square,
+                sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
+            )),
         );
-        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -146,8 +146,9 @@ impl Entity for FlyingFish {
         //  Update the sprite for collision detection
         //
 
-        self.collider.set_origin(self.position.xy());
-        collision_space.update_collider(&self.collider);
+        if let Some(id) = self.collider_id {
+            collision_space.update_collider_position(id, self.position.xy());
+        }
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
@@ -161,8 +162,11 @@ impl Entity for FlyingFish {
             .set_sprite_scale(vec2(xscale, 1.0));
     }
 
-    fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_collider(&self.collider);
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None;
     }
 
     fn entity_id(&self) -> u32 {

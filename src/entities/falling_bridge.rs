@@ -19,7 +19,7 @@ const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
 
 pub struct FallingBridge {
     entity_id: u32,
-    collider: collision::Collider,
+    collider_id: Option<u32>,
     position: Point3<f32>,
     offset: Vector3<f32>,
     time_remaining: Option<f32>,
@@ -32,7 +32,7 @@ impl Default for FallingBridge {
     fn default() -> Self {
         Self {
             entity_id: 0,
-            collider: collision::Collider::default(),
+            collider_id: None,
             position: point3(0.0, 0.0, 0.0),
             offset: vec3(0.0, 0.0, 0.0),
             time_remaining: None,
@@ -57,13 +57,14 @@ impl Entity for FallingBridge {
         self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
 
         // we need to use a dynamic collider so we can assign an entity id
-        self.collider = collision::Collider::new_dynamic(
-            sprite.bounds(),
-            entity_id,
-            collision::Shape::Square,
-            sprite_masks::ENTITY | sprite_masks::GROUND | sprite_masks::RATCHET,
+        self.collider_id = Some(
+            collision_space.add_collider(collision::Collider::new_dynamic(
+                sprite.bounds(),
+                entity_id,
+                collision::Shape::Square,
+                sprite_masks::ENTITY | sprite_masks::GROUND | sprite_masks::RATCHET,
+            )),
         );
-        collision_space.add_collider(&self.collider);
     }
 
     fn update(
@@ -75,6 +76,7 @@ impl Entity for FallingBridge {
         _game_state_peek: &GameStatePeek,
     ) {
         let dt = dt.as_secs_f32();
+        let collider_id = self.collider_id.unwrap();
 
         if self.is_falling && self.should_draw() {
             self.vertical_velocity = constants::apply_gravity(self.vertical_velocity, dt);
@@ -86,12 +88,12 @@ impl Entity for FallingBridge {
                 self.is_falling = true;
                 self.time_remaining = None;
 
-                collision_space.remove_collider(&self.collider);
+                collision_space.deactivate_collider(collider_id);
             } else {
                 self.time_remaining = Some(time_remaining);
             }
-        } else if !collision_space.has_collider(&self.collider) {
-            collision_space.add_collider(&self.collider);
+        } else if !collision_space.is_collider_activated(collider_id) {
+            collision_space.activate_collider(collider_id);
         }
     }
 

@@ -112,7 +112,7 @@ pub trait Entity {
     fn update_uniforms(&self, _uniforms: &mut rendering::Uniforms) {}
 
     /// Called on an entity before removing it from GameState
-    fn remove_collider(&self, _collision_space: &mut collision::Space) {}
+    fn remove_collider(&mut self, _collision_space: &mut collision::Space) {}
 
     /// The unique id for this Entity, a value from [0,u32::MAX]
     fn entity_id(&self) -> u32;

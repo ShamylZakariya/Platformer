@@ -13,6 +13,7 @@ use crate::{
         events::Event,
     },
     tileset,
+    util::Bounds,
 };
 
 use super::util::{Axis, CompassDir, HorizontalDir};
@@ -46,7 +47,7 @@ enum AttackPhase {
 pub struct BossFish {
     entity_id: u32,
     spawn_point_id: u32,
-    collider: collision::Collider,
+    collider_id: Option<u32>,
     position: Point3<f32>,
     active: bool,
     animation_cycle_tick_countdown: f32,
@@ -73,7 +74,7 @@ impl Default for BossFish {
         Self {
             entity_id: 0,
             spawn_point_id: 0,
-            collider: collision::Collider::default(),
+            collider_id: None,
             position: point3(0.0, 0.0, 0.0),
             active: false, // waits for Event::QueryBossFightMayStart
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
@@ -104,7 +105,7 @@ impl Entity for BossFish {
         sprite: &sprite::Sprite,
         tile: &tileset::Tile,
         _map: &map::Map,
-        _collision_space: &mut collision::Space,
+        collision_space: &mut collision::Space,
     ) {
         self.entity_id = entity_id;
         self.spawn_point_id = sprite
@@ -120,13 +121,13 @@ impl Entity for BossFish {
         self.water_height = tile.float_property("water_height");
 
         // Create collider
-        // Create collider
-        self.collider = collision::Collider::new_dynamic(
-            sprite.bounds(),
+        let collider = collision::Collider::new_dynamic(
+            self.collider_bounds(),
             entity_id,
             collision::Shape::Square,
             sprite_masks::ENTITY | sprite_masks::SHOOTABLE | sprite_masks::CONTACT_DAMAGE,
         );
+        self.collider_id = Some(collision_space.add_collider(collider));
     }
 
     fn process_keyboard(
@@ -166,7 +167,10 @@ impl Entity for BossFish {
             //
 
             self.update_phase(dt, game_state_peek, message_dispatcher);
-            self.update_sprite(collision_space);
+
+            if let Some(id) = self.collider_id {
+                collision_space.update_collider_position(id, self.collider_bounds().origin);
+            }
 
             //
             //  Update sprite animation cycle
@@ -178,7 +182,9 @@ impl Entity for BossFish {
                 self.animation_cycle_tick += 1;
             }
         } else {
-            collision_space.remove_collider(&self.collider);
+            if let Some(id) = self.collider_id {
+                collision_space.deactivate_collider(id);
+            }
 
             if !self.sent_defeated_message {
                 message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
@@ -245,8 +251,11 @@ impl Entity for BossFish {
             .set_sprite_scale(vec2(xscale, 1.0));
     }
 
-    fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_collider(&self.collider);
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None
     }
 
     fn entity_id(&self) -> u32 {
@@ -448,12 +457,8 @@ impl BossFish {
         self.attack_phase = new_phase;
     }
 
-    fn update_sprite(&mut self, collision_space: &mut collision::Space) {
-        // sprite is 3x3 with root centered at bottom
-        self.collider
-            .set_origin(self.position.xy() - vec2(0.5, 0.0));
-        self.collider.set_extent(SPRITE_SIZE);
-        collision_space.update_collider(&self.collider);
+    fn collider_bounds(&mut self) -> Bounds {
+        Bounds::new(self.position.xy() - vec2(0.5, 0.0), SPRITE_SIZE)
     }
 
     fn submersion_depth(&self) -> f32 {

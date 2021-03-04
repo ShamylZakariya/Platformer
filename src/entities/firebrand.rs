@@ -282,7 +282,7 @@ impl CharacterState {
 
 pub struct Firebrand {
     entity_id: u32,
-    collider: collision::Collider,
+    collider_id: Option<u32>,
     pixels_per_unit: Vector2<f32>,
 
     time: f32,
@@ -317,7 +317,7 @@ impl Firebrand {
     pub fn new(position: Point2<f32>, num_lives_remaining: u32) -> Firebrand {
         Self {
             entity_id: 0,
-            collider: collision::Collider::default(),
+            collider_id: None,
             pixels_per_unit: vec2(0.0, 0.0),
             time: 0.0,
             step: 0,
@@ -349,13 +349,14 @@ impl Entity for Firebrand {
         self.entity_id = entity_id;
         self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
 
-        self.collider = collision::Collider::new_dynamic(
-            Bounds::new(self.character_state.position.xy(), vec2(1.0, 1.0)),
-            entity_id,
-            collision::Shape::Square,
-            constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE,
+        self.collider_id = Some(
+            collision_space.add_collider(collision::Collider::new_dynamic(
+                Bounds::new(self.character_state.position.xy(), vec2(1.0, 1.0)),
+                entity_id,
+                collision::Shape::Square,
+                constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE,
+            )),
         );
-        collision_space.add_collider(&self.collider);
     }
 
     fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
@@ -392,7 +393,10 @@ impl Entity for Firebrand {
 
         if !self.character_state.alive {
             if !self.did_send_death_message {
-                collision_space.remove_collider(&self.collider);
+                if let Some(id) = self.collider_id {
+                    collision_space.remove_collider(id);
+                }
+                self.collider_id = None;
                 message_dispatcher.broadcast(Event::FirebrandDied);
                 self.did_send_death_message = true;
             }
@@ -672,7 +676,7 @@ impl Entity for Firebrand {
             &vec2(1.0, 1.0),
             ENTITY,
             |c| {
-                if *c != self.collider {
+                if c.id != self.collider_id {
                     self.process_potential_collision_with(c);
                 }
                 false
@@ -683,8 +687,9 @@ impl Entity for Firebrand {
         //  Update our own collider in case other entities are probing for contacts
         //
 
-        self.collider.set_origin(self.character_state.position.xy());
-        collision_space.update_collider(&self.collider);
+        if let Some(id) = self.collider_id {
+            collision_space.update_collider_position(id, self.character_state.position.xy());
+        }
 
         //
         //  Remove any sprites in the contacting set from the overlapping set.
@@ -758,8 +763,11 @@ impl Entity for Firebrand {
         }
     }
 
-    fn remove_collider(&self, collision_space: &mut collision::Space) {
-        collision_space.remove_collider(&self.collider);
+    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+        if let Some(id) = self.collider_id {
+            collision_space.remove_collider(id);
+        }
+        self.collider_id = None;
     }
 
     fn entity_id(&self) -> u32 {
