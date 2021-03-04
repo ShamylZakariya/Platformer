@@ -516,8 +516,11 @@ impl Space {
         if let Some(c) = self.colliders.get_mut(collider_id as usize) {
             match &mut c.mode {
                 Mode::Static { position } => {
+                    // remove the entry from the old position, update the position, and re-insert
+                    self.static_colliders.remove(position);
                     *position =
                         point2(new_position.x.floor() as i32, new_position.y.floor() as i32);
+                    self.static_colliders.insert(position.clone(), collider_id);
                 }
                 Mode::Dynamic { bounds, .. } => {
                     bounds.origin = new_position;
@@ -570,7 +573,7 @@ impl Space {
     /// Tests the specified rect against colliders, invoking the specified callback for each contact/overlap.
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, dynamic sprites will be passed to the callback before static.
-    /// The callback should return true to end the search, false to continue.
+    /// The callback returns Sentinel::Continue to continue search, or Sentinel::Stop to terminate search.
     pub fn test_rect<C>(
         &self,
         origin: &Point2<f32>,
