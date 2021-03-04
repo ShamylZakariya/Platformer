@@ -354,7 +354,7 @@ impl Entity for Firebrand {
                 Bounds::new(self.character_state.position.xy(), vec2(1.0, 1.0)),
                 entity_id,
                 collision::Shape::Square,
-                constants::sprite_masks::ENTITY | constants::sprite_masks::SHOOTABLE,
+                ENTITY | SHOOTABLE | PLAYER,
             )),
         );
     }
@@ -394,7 +394,7 @@ impl Entity for Firebrand {
         if !self.character_state.alive {
             if !self.did_send_death_message {
                 if let Some(id) = self.collider_id {
-                    collision_space.remove_collider(id);
+                    collision_space.deactivate_collider(id);
                 }
                 self.collider_id = None;
                 message_dispatcher.broadcast(Event::FirebrandDied);
@@ -676,7 +676,7 @@ impl Entity for Firebrand {
             &vec2(1.0, 1.0),
             ENTITY,
             |c| {
-                if c.id != self.collider_id {
+                if c.mask & PLAYER == 0 {
                     self.process_potential_collision_with(c);
                 }
                 false
@@ -763,9 +763,9 @@ impl Entity for Firebrand {
         }
     }
 
-    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+    fn deactivate_collider(&mut self, collision_space: &mut collision::Space) {
         if let Some(id) = self.collider_id {
-            collision_space.remove_collider(id);
+            collision_space.deactivate_collider(id);
         }
         self.collider_id = None;
     }

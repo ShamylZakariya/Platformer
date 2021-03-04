@@ -537,7 +537,7 @@ impl GameState {
                 }
 
                 if !e.entity.is_alive() {
-                    e.entity.remove_collider(&mut self.collision_space);
+                    e.entity.deactivate_collider(&mut self.collision_space);
                     expired_count += 1;
                 }
             }
@@ -861,7 +861,7 @@ impl GameState {
         // For every entity which will be removed in reset, we need to remove collider.
         for ec in self.entities.values_mut() {
             if !ec.entity.entity_class().survives_level_restart() {
-                ec.entity.remove_collider(&mut self.collision_space);
+                ec.entity.deactivate_collider(&mut self.collision_space);
             }
         }
 
@@ -1105,7 +1105,7 @@ impl GameState {
 
         for ec in self.entities.values_mut() {
             if !should_retain(ec) {
-                ec.entity.remove_collider(&mut self.collision_space);
+                ec.entity.deactivate_collider(&mut self.collision_space);
             }
         }
 

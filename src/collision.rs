@@ -111,15 +111,11 @@ pub struct Collider {
     pub mode: Mode,
     pub shape: Shape,
     pub mask: u32,
-    pub id: Option<u32>,
 }
 
 impl PartialEq for Collider {
     fn eq(&self, other: &Self) -> bool {
-        self.mode == other.mode
-            && self.shape == other.shape
-            && self.mask == other.mask
-            && self.id == other.id
+        self.mode == other.mode && self.shape == other.shape && self.mask == other.mask
     }
 }
 
@@ -130,7 +126,6 @@ impl Hash for Collider {
         self.mode.hash(state);
         self.shape.hash(state);
         self.mask.hash(state);
-        self.id.hash(state);
     }
 }
 
@@ -140,7 +135,6 @@ impl Collider {
             mode: Mode::Static { position },
             shape,
             mask,
-            id: None,
         }
     }
 
@@ -149,7 +143,6 @@ impl Collider {
             mode: Mode::Dynamic { bounds, entity_id },
             shape,
             mask,
-            id: None,
         }
     }
 
@@ -163,7 +156,6 @@ impl Collider {
             },
             shape: sprite.collision_shape,
             mask: sprite.mask,
-            id: None,
         }
     }
 
@@ -177,7 +169,6 @@ impl Collider {
             },
             shape: sprite.collision_shape,
             mask: sprite.mask,
-            id: None,
         }
     }
 
@@ -436,8 +427,7 @@ impl Collider {
 }
 
 pub struct Space {
-    id_counter: u32,
-    colliders: HashMap<u32, Collider>,
+    colliders: Vec<Collider>,
     static_colliders: HashMap<Point2<i32>, u32>,
     dynamic_colliders: HashSet<u32>,
     active_colliders: HashSet<u32>,
@@ -446,8 +436,7 @@ pub struct Space {
 impl Space {
     pub fn new(colliders: &[Collider]) -> Self {
         let mut space = Self {
-            id_counter: 0,
-            colliders: HashMap::new(),
+            colliders: Vec::new(),
             static_colliders: HashMap::new(),
             dynamic_colliders: HashSet::new(),
             active_colliders: HashSet::new(),
@@ -460,19 +449,11 @@ impl Space {
         space
     }
 
-    fn next_id(&mut self) -> u32 {
-        let next = self.id_counter;
-        self.id_counter += 1;
-        next
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn add_collider(&mut self, collider: Collider) -> u32 {
-        let mut collider = collider;
-        let id = self.next_id();
-        collider.id = Some(id);
-        self.colliders.insert(id, collider);
+        let id = self.colliders.len() as u32;
+        self.colliders.push(collider);
         self.active_colliders.insert(id);
 
         match collider.mode {
@@ -488,12 +469,12 @@ impl Space {
     }
 
     pub fn get_collider(&self, collider_id: u32) -> Option<&Collider> {
-        self.colliders.get(&collider_id)
+        self.colliders.get(collider_id as usize)
     }
 
     pub fn deactivate_collider(&mut self, collider_id: u32) {
         self.active_colliders.remove(&collider_id);
-        if let Some(c) = self.colliders.remove(&collider_id) {
+        if let Some(c) = self.colliders.get_mut(collider_id as usize) {
             match c.mode {
                 Mode::Static { position } => {
                     self.static_colliders.remove(&position);
@@ -506,7 +487,7 @@ impl Space {
     }
 
     pub fn activate_collider(&mut self, collider_id: u32) {
-        if let Some(c) = self.colliders.get(&collider_id) {
+        if let Some(c) = self.colliders.get_mut(collider_id as usize) {
             self.active_colliders.insert(collider_id);
             match c.mode {
                 Mode::Static { position } => {
@@ -523,14 +504,8 @@ impl Space {
         self.active_colliders.contains(&collider_id)
     }
 
-    /// Removes collider and leaves the collider_id unusable
-    pub fn remove_collider(&mut self, collider_id: u32) {
-        self.deactivate_collider(collider_id);
-        self.colliders.remove(&collider_id);
-    }
-
     pub fn update_collider_position(&mut self, collider_id: u32, new_position: Point2<f32>) {
-        if let Some(c) = self.colliders.get_mut(&collider_id) {
+        if let Some(c) = self.colliders.get_mut(collider_id as usize) {
             match &mut c.mode {
                 Mode::Static { position } => {
                     *position =
@@ -544,7 +519,7 @@ impl Space {
     }
 
     pub fn update_collider_extent(&mut self, collider_id: u32, new_extent: Vector2<f32>) {
-        if let Some(c) = self.colliders.get_mut(&collider_id) {
+        if let Some(c) = self.colliders.get_mut(collider_id as usize) {
             match &mut c.mode {
                 Mode::Static { .. } => panic!("Cannot change size of a static collider"),
                 Mode::Dynamic { bounds, .. } => {
@@ -554,39 +529,31 @@ impl Space {
         }
     }
 
-    pub fn has_collider(&self, collider_id: u32) -> bool {
-        self.colliders.contains_key(&collider_id)
-    }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn get_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
         let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
         for id in self.dynamic_colliders.iter() {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 && c.contains(&point_f) {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.contains(&point_f) {
+                return Some(c);
             }
         }
-
         if let Some(id) = self.static_colliders.get(&point) {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 && c.contains(&point_f) {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.contains(&point_f) {
+                return Some(c);
             }
         }
-
         None
     }
 
     fn get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
+        let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
         if let Some(id) = self.static_colliders.get(&point) {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.contains(&point_f) {
+                return Some(c);
             }
         }
         None
@@ -606,13 +573,9 @@ impl Space {
         C: FnMut(&Collider) -> bool,
     {
         for id in self.dynamic_colliders.iter() {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0
-                    && c.rect_intersection(origin, extent, 0.0, true)
-                    && callback(c)
-                {
-                    return;
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.rect_intersection(origin, extent, 0.0, true) && callback(c) {
+                return;
             }
         }
 
@@ -642,10 +605,9 @@ impl Space {
         mask: u32,
     ) -> Option<&Collider> {
         for id in self.dynamic_colliders.iter() {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 && c.rect_intersection(origin, extent, 0.0, true) {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.rect_intersection(origin, extent, 0.0, true) {
+                return Some(c);
             }
         }
 
@@ -672,10 +634,9 @@ impl Space {
     /// but otherwise there is no guarantee of which will be returned.
     pub fn test_point_first(&self, point: Point2<f32>, mask: u32) -> Option<&Collider> {
         for id in self.dynamic_colliders.iter() {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 && c.contains(&point) {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.contains(&point) {
+                return Some(c);
             }
         }
 
@@ -683,10 +644,9 @@ impl Space {
             .static_colliders
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
         {
-            if let Some(c) = self.colliders.get(id) {
-                if c.mask & mask != 0 && c.contains(&point) {
-                    return Some(c);
-                }
+            let c = &self.colliders[*id as usize];
+            if c.mask & mask != 0 && c.contains(&point) {
+                return Some(c);
             }
         }
 

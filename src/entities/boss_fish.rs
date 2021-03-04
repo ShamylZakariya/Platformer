@@ -251,9 +251,9 @@ impl Entity for BossFish {
             .set_sprite_scale(vec2(xscale, 1.0));
     }
 
-    fn remove_collider(&mut self, collision_space: &mut collision::Space) {
+    fn deactivate_collider(&mut self, collision_space: &mut collision::Space) {
         if let Some(id) = self.collider_id {
-            collision_space.remove_collider(id);
+            collision_space.deactivate_collider(id);
         }
         self.collider_id = None
     }
