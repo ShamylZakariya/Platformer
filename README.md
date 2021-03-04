@@ -1,7 +1,7 @@
 # Platformer
 A remake of the first level of the wonderful old Gamebody platformer [Gargoyle's Quest](https://en.wikipedia.org/wiki/Gargoyle%27s_Quest).
 
-![Screeenshot](README_assets/ggq.png)
+![Screeenshot](README_assets/ggq_2.png)
 
 ```bash
 # play the game
