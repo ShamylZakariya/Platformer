@@ -153,6 +153,11 @@ impl FirebrandInputState {
         self.input_state.process_keyboard(key, state)
     }
 
+    fn process_gamepad(&mut self, _active_gamepad:Option<gilrs::GamepadId>) {
+
+    }
+
+
     fn update(&mut self) {
         self.input_state.update();
     }
@@ -383,6 +388,12 @@ impl Entity for Firebrand {
                 }
                 _ => false,
             }
+        }
+    }
+
+    fn process_gamepad(&mut self, active_gamepad:Option<gilrs::GamepadId>) {
+        if !self.did_pass_through_exit_door {
+            self.input_state.process_gamepad(active_gamepad);
         }
     }
 

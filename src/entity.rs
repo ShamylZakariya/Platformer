@@ -93,6 +93,9 @@ pub trait Entity {
         false
     }
 
+    /// Query the active gamepad
+    fn process_gamepad(&mut self, _active_gamepad:Option<gilrs::GamepadId>) {}
+
     /// Update internal state of entity.
     /// # Arguments
     /// * `dt` delta time since last update

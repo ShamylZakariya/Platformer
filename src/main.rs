@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use futures::executor::block_on;
+use gilrs::Gilrs;
 use state::constants::{ORIGINAL_WINDOW_HEIGHT, ORIGINAL_WINDOW_WIDTH};
 use structopt::StructOpt;
 use winit::{
@@ -56,6 +57,12 @@ fn main() {
         builder = builder.with_inner_size(size);
     }
 
+    let mut gilrs = Gilrs::new().unwrap();
+    let mut active_gamepad = None;
+    for (_id, gamepad) in gilrs.gamepads() {
+        println!("{} is {:?}", gamepad.name(), gamepad.power_info());
+    }
+
     let window = builder.build(&event_loop).unwrap();
 
     let gpu = block_on(state::gpu_state::GpuState::new(&window));
@@ -63,6 +70,11 @@ fn main() {
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
+        while let Some(event) = gilrs.next_event() {
+            active_gamepad = Some(event.id);
+            app_state.gamepad_input(event);
+        }
+
         app_state.event(&window, &event);
 
         match event {
@@ -70,7 +82,7 @@ fn main() {
                 let now = std::time::Instant::now();
                 let dt = now - last_render_time;
                 last_render_time = now;
-                app_state.update(&window, dt);
+                app_state.update(&window, active_gamepad, dt);
                 app_state.render(&window);
             }
             Event::MainEventsCleared => {

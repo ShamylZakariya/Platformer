@@ -34,9 +34,12 @@ impl GameController {
         }
     }
 
+    pub fn gamepad_input(&mut self, _event: gilrs::Event) {}
+
     pub fn update(
         &mut self,
         _window: &Window,
+        _active_gamepad: Option<gilrs::GamepadId>,
         dt: std::time::Duration,
         game_state: &mut GameState,
         message_dispatcher: &mut event_dispatch::Dispatcher,

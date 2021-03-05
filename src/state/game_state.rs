@@ -465,9 +465,12 @@ impl GameState {
         }
     }
 
+    pub fn gamepad_input(&mut self, event: gilrs::Event) {}
+
     pub fn update(
         &mut self,
         _window: &Window,
+        active_gamepad: Option<gilrs::GamepadId>,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
         message_dispatcher: &mut event_dispatch::Dispatcher,
@@ -524,6 +527,7 @@ impl GameState {
 
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
+                e.entity.process_gamepad(active_gamepad);
                 e.entity.update(
                     dt,
                     &self.map,

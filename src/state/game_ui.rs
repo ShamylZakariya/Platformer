@@ -227,9 +227,18 @@ impl GameUi {
         }
     }
 
+    pub fn gamepad_input(&mut self, event: gilrs::Event) {
+        if let gilrs::EventType::ButtonPressed(button, ..) = event.event {
+            if matches!(button, gilrs::Button::Start) {
+                self.drawer_open = !self.drawer_open;
+            }
+        }
+    }
+
     pub fn update(
         &mut self,
         _window: &Window,
+        _active_gamepad: Option<gilrs::GamepadId>,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
         game: &game_state::GameState,

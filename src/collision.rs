@@ -520,7 +520,7 @@ impl Space {
                     self.static_colliders.remove(position);
                     *position =
                         point2(new_position.x.floor() as i32, new_position.y.floor() as i32);
-                    self.static_colliders.insert(position.clone(), collider_id);
+                    self.static_colliders.insert(*position, collider_id);
                 }
                 Mode::Dynamic { bounds, .. } => {
                     bounds.origin = new_position;
