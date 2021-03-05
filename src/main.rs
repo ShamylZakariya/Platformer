@@ -58,7 +58,6 @@ fn main() {
     }
 
     let mut gilrs = Gilrs::new().unwrap();
-    let mut active_gamepad = None;
     for (_id, gamepad) in gilrs.gamepads() {
         println!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
@@ -71,7 +70,6 @@ fn main() {
 
     event_loop.run(move |event, _, control_flow| {
         while let Some(event) = gilrs.next_event() {
-            active_gamepad = Some(event.id);
             app_state.gamepad_input(event);
         }
 
@@ -82,7 +80,8 @@ fn main() {
                 let now = std::time::Instant::now();
                 let dt = now - last_render_time;
                 last_render_time = now;
-                app_state.update(&window, active_gamepad, dt);
+
+                app_state.update(&window, dt);
                 app_state.render(&window);
             }
             Event::MainEventsCleared => {

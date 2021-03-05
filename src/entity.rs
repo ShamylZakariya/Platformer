@@ -93,8 +93,9 @@ pub trait Entity {
         false
     }
 
-    /// Query the active gamepad
-    fn process_gamepad(&mut self, _active_gamepad:Option<gilrs::GamepadId>) {}
+    /// Handle gamepad input events. This is invoked on each entity when the
+    /// gamepad input state changes.
+    fn process_gamepad(&mut self, _event: gilrs::Event) {}
 
     /// Update internal state of entity.
     /// # Arguments

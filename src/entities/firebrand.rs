@@ -131,6 +131,14 @@ impl Display for Stance {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#[derive(Debug, Copy, Clone, Hash)]
+enum Action {
+    MoveLeft,
+    MoveRight,
+    Jump,
+    Shoot,
+}
+
 struct FirebrandInputState {
     input_state: InputState,
 }
@@ -153,10 +161,40 @@ impl FirebrandInputState {
         self.input_state.process_keyboard(key, state)
     }
 
-    fn process_gamepad(&mut self, _active_gamepad:Option<gilrs::GamepadId>) {
+    /// Maps gamepad input into keyboard input. Total hack, but, it works.
+    pub fn gamepad_input(&mut self, event: gilrs::Event) {
+        let input = match event.event {
+            gilrs::EventType::ButtonPressed(button, ..) => match button {
+                gilrs::Button::South | gilrs::Button::North => {
+                    Some((VirtualKeyCode::Space, ElementState::Pressed))
+                }
+                gilrs::Button::East | gilrs::Button::West => {
+                    Some((VirtualKeyCode::W, ElementState::Pressed))
+                }
+                gilrs::Button::DPadUp => Some((VirtualKeyCode::W, ElementState::Pressed)),
+                gilrs::Button::DPadLeft => Some((VirtualKeyCode::A, ElementState::Pressed)),
+                gilrs::Button::DPadRight => Some((VirtualKeyCode::D, ElementState::Pressed)),
+                _ => None,
+            },
+            gilrs::EventType::ButtonReleased(button, ..) => match button {
+                gilrs::Button::South | gilrs::Button::North => {
+                    Some((VirtualKeyCode::Space, ElementState::Released))
+                }
+                gilrs::Button::East | gilrs::Button::West => {
+                    Some((VirtualKeyCode::W, ElementState::Released))
+                }
+                gilrs::Button::DPadUp => Some((VirtualKeyCode::W, ElementState::Released)),
+                gilrs::Button::DPadLeft => Some((VirtualKeyCode::A, ElementState::Released)),
+                gilrs::Button::DPadRight => Some((VirtualKeyCode::D, ElementState::Released)),
+                _ => None,
+            },
+            _ => None,
+        };
 
+        if let Some((key, state)) = input {
+            self.process_keyboard(key, state);
+        }
     }
-
 
     fn update(&mut self) {
         self.input_state.update();
@@ -391,9 +429,9 @@ impl Entity for Firebrand {
         }
     }
 
-    fn process_gamepad(&mut self, active_gamepad:Option<gilrs::GamepadId>) {
+    fn process_gamepad(&mut self, event: gilrs::Event) {
         if !self.did_pass_through_exit_door {
-            self.input_state.process_gamepad(active_gamepad);
+            self.input_state.gamepad_input(event);
         }
     }
 

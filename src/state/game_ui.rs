@@ -238,7 +238,6 @@ impl GameUi {
     pub fn update(
         &mut self,
         _window: &Window,
-        _active_gamepad: Option<gilrs::GamepadId>,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
         game: &game_state::GameState,

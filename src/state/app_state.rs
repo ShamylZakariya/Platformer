@@ -78,17 +78,13 @@ impl AppState {
     }
 
     pub fn gamepad_input(&mut self, event: gilrs::Event) {
-        self.game_state.gamepad_input(event);
+        self.game_state
+            .gamepad_input(event, self.game_ui.is_paused());
         self.game_ui.gamepad_input(event);
         self.game_controller.gamepad_input(event);
     }
 
-    pub fn update(
-        &mut self,
-        window: &Window,
-        active_gamepad: Option<gilrs::GamepadId>,
-        dt: std::time::Duration,
-    ) {
+    pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
         // Set a max timestep - this is crude, but prevents explosions when stopping
         // execution in the debugger, and we get a HUGE timestep after resuming.
         let dt = dt.min(std::time::Duration::from_millis(32));
@@ -105,7 +101,6 @@ impl AppState {
 
         self.game_state.update(
             window,
-            active_gamepad,
             game_dt,
             &mut self.gpu,
             &mut self.message_dispatcher,
@@ -114,7 +109,6 @@ impl AppState {
 
         self.game_ui.update(
             window,
-            active_gamepad,
             dt,
             &mut self.gpu,
             &self.game_state,
@@ -124,7 +118,6 @@ impl AppState {
 
         self.game_controller.update(
             window,
-            active_gamepad,
             dt,
             &mut self.game_state,
             &mut self.message_dispatcher,
