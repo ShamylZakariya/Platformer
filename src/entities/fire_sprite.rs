@@ -187,8 +187,4 @@ impl Entity for FireSprite {
     fn handle_message(&mut self, message: &Message) {
         self.life.handle_message(message);
     }
-
-    fn did_exit_viewport(&mut self) {
-        self.life.terminate();
-    }
 }

@@ -941,15 +941,16 @@ impl GameState {
 
     /// For each entity, dispatches did_enter_viewport or did_leave_viewport as needed.
     pub fn update_entity_visibility(&mut self) {
-        // get the viewport - outset it by 1 unit in each edge to "pad" it.
+        // get the viewport - outset it by a few units in each edge to "pad" it.
         // since enemy re-spawning isn't exactly a matter of going offscreen,
         // but more like going "a little offscreen".
-        let viewport = self.camera_controller.viewport_bounds(-1.0);
+        let outset = ORIGINAL_VIEWPORT_TILES_WIDE as f32 / 2.0;
+        let viewport = self.camera_controller.viewport_bounds(-outset);
 
         let previously_visible_entities = std::mem::take(&mut self.visible_entities);
         for e in self.entities.values() {
             let bounds = e.entity.bounds();
-            if crate::util::intersection::rect_rect_intersects(viewport, bounds) {
+            if collision::intersection::rect_rect_intersects(viewport, bounds) {
                 self.visible_entities.insert(e.id());
             }
         }
