@@ -244,6 +244,8 @@ impl GameUi {
         message_dispatcher: &mut event_dispatch::Dispatcher,
         _entity_id_vendor: &mut entity::IdVendor,
     ) {
+        self.drawer_collision_space.update();
+
         self.time += dt.as_secs_f32();
 
         // Canter camera on window, and set projection scale

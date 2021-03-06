@@ -1,9 +1,5 @@
 CURRENTLY:
     YAK SHAVING:
-        - Refactor geom.rs, I don't like that module's existence.
-            - move the line_line and other intersection tests into the collision module
-            - move Bounds and lerp, hermite, clamp into a util module
-        - outset visibility determination bounds further, it's too tight right now
         - Implement some kind of binary sort to speedup dynamic collision testing
         - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms. Could make a Uniform<camera::UniformData> or something like that, will need trait constraints for btytemuck::Pod and Zeroable
         - Upgrade various cargo deps. Known API breakages using wgpu-rs 0.7, and saw a few more in other modules. So, upgrade them one-at-a-time.

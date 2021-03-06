@@ -322,8 +322,7 @@ impl MarchState {
                 if let Some(sprite_to_right) =
                     collision_space.get_collider_at(snapped_next_position + vec2(1, 0), GROUND)
                 {
-                    if sprite_to_right.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
-                    {
+                    if sprite_to_right.intersects_rect(&next_position, &vec2(1.0, 1.0), 0.0, true) {
                         should_reverse_direction = true
                     }
                 }
@@ -345,8 +344,7 @@ impl MarchState {
                 if let Some(sprite_to_left) =
                     collision_space.get_collider_at(snapped_next_position, GROUND)
                 {
-                    if sprite_to_left.rect_intersection(&next_position, &vec2(1.0, 1.0), 0.0, true)
-                    {
+                    if sprite_to_left.intersects_rect(&next_position, &vec2(1.0, 1.0), 0.0, true) {
                         should_reverse_direction = true
                     }
                 }

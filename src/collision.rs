@@ -7,6 +7,15 @@ use crate::{sprite::core::*, util::*};
 pub mod intersection {
     use super::*;
 
+    pub fn range_range_intersects(
+        origin_a: f32,
+        extent_a: f32,
+        origin_b: f32,
+        extent_b: f32,
+    ) -> bool {
+        (origin_a <= origin_b + extent_b) && (origin_a + extent_a >= origin_b)
+    }
+
     /// Returns true if the two rectangle
     pub fn rect_rect_intersects(rect_a: Bounds, rect_b: Bounds) -> bool {
         let (x_overlap, y_overlap) = {
@@ -406,7 +415,7 @@ impl Collider {
         }
     }
 
-    pub fn contains(&self, point: &Point2<f32>) -> bool {
+    pub fn contains_point(&self, point: &Point2<f32>) -> bool {
         let bounds = self.mode.bounds();
         if point.x >= bounds.origin.x
             && point.x <= bounds.origin.x + bounds.extent.x
@@ -466,7 +475,7 @@ impl Collider {
 
     /// if the line described by a->b intersects this Sprite, returns the point on it where the line
     /// segment intersects, otherwise, returns None
-    pub fn line_intersection(&self, a: &Point2<f32>, b: &Point2<f32>) -> Option<Point2<f32>> {
+    pub fn intersects_line(&self, a: &Point2<f32>, b: &Point2<f32>) -> Option<Point2<f32>> {
         let bounds = self.mode.bounds();
         match self.shape {
             Shape::None => None,
@@ -534,7 +543,7 @@ impl Collider {
     /// Returns true if this Sprite overlaps the described rect with lower/left origin and extent and inset.
     /// Inset: The amount to inset the test rect
     /// contact: If true, contacts will also count as an intersection, not just overlap. In this case rects with touching edges will be treated as intersections.
-    pub fn rect_intersection(
+    pub fn intersects_rect(
         &self,
         origin: &Point2<f32>,
         extent: &Vector2<f32>,
@@ -572,8 +581,8 @@ impl Collider {
     }
 
     /// Returns true if this Sprite overlaps the described unit square with lower/left origin and extent of (1,1).
-    pub fn unit_rect_intersection(&self, origin: &Point2<f32>, inset: f32, contact: bool) -> bool {
-        self.rect_intersection(origin, &vec2(1.0, 1.0), inset, contact)
+    pub fn intersects_unit_rect(&self, origin: &Point2<f32>, inset: f32, contact: bool) -> bool {
+        self.intersects_rect(origin, &vec2(1.0, 1.0), inset, contact)
     }
 
     pub fn bounds(&self) -> Bounds {
@@ -670,18 +679,20 @@ pub enum Sentinel {
 
 pub struct Space {
     colliders: Vec<Collider>,
-    static_colliders: HashMap<Point2<i32>, u32>,
-    dynamic_colliders: HashSet<u32>,
     active_colliders: HashSet<u32>,
+    static_colliders: HashMap<Point2<i32>, usize>,
+    dynamic_colliders: Vec<usize>,
+    dynamic_colliders_changed: bool,
 }
 
 impl Space {
     pub fn new(colliders: &[Collider]) -> Self {
         let mut space = Self {
             colliders: Vec::new(),
-            static_colliders: HashMap::new(),
-            dynamic_colliders: HashSet::new(),
             active_colliders: HashSet::new(),
+            static_colliders: HashMap::new(),
+            dynamic_colliders: Vec::new(),
+            dynamic_colliders_changed: false,
         };
 
         for c in colliders {
@@ -691,23 +702,40 @@ impl Space {
         space
     }
 
+    pub fn update(&mut self) {
+        if self.dynamic_colliders_changed {
+            let colliders = std::mem::replace(&mut self.colliders, vec![]);
+
+            self.dynamic_colliders.sort_by(|a, b| {
+                let c_a = &colliders[*a as usize];
+                let c_b = &colliders[*b as usize];
+                c_a.left().partial_cmp(&c_b.left()).unwrap()
+            });
+
+            let _ = std::mem::replace(&mut self.colliders, colliders);
+
+            self.dynamic_colliders_changed = false
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     pub fn add_collider(&mut self, collider: Collider) -> u32 {
-        let id = self.colliders.len() as u32;
+        let index = self.colliders.len();
         self.colliders.push(collider);
-        self.active_colliders.insert(id);
+        self.active_colliders.insert(index as u32);
 
         match collider.mode {
             Mode::Static { position } => {
-                self.static_colliders.insert(position, id);
+                self.static_colliders.insert(position, index);
             }
             Mode::Dynamic { .. } => {
-                self.dynamic_colliders.insert(id);
+                self.dynamic_colliders.push(index);
+                self.dynamic_colliders_changed = true;
             }
         }
 
-        id
+        index as u32
     }
 
     pub fn get_collider(&self, collider_id: u32) -> Option<&Collider> {
@@ -722,7 +750,9 @@ impl Space {
                     self.static_colliders.remove(&position);
                 }
                 Mode::Dynamic { .. } => {
-                    self.dynamic_colliders.remove(&collider_id);
+                    self.dynamic_colliders
+                        .retain(|id| *id != collider_id as usize);
+                    self.dynamic_colliders_changed = true;
                 }
             };
         }
@@ -733,10 +763,11 @@ impl Space {
             self.active_colliders.insert(collider_id);
             match c.mode {
                 Mode::Static { position } => {
-                    self.static_colliders.insert(position, collider_id);
+                    self.static_colliders.insert(position, collider_id as usize);
                 }
                 Mode::Dynamic { .. } => {
-                    self.dynamic_colliders.insert(collider_id);
+                    self.dynamic_colliders.push(collider_id as usize);
+                    self.dynamic_colliders_changed = true;
                 }
             }
         }
@@ -754,10 +785,12 @@ impl Space {
                     self.static_colliders.remove(position);
                     *position =
                         point2(new_position.x.floor() as i32, new_position.y.floor() as i32);
-                    self.static_colliders.insert(*position, collider_id);
+                    self.static_colliders
+                        .insert(*position, collider_id as usize);
                 }
                 Mode::Dynamic { bounds, .. } => {
                     bounds.origin = new_position;
+                    self.dynamic_colliders_changed = true;
                 }
             }
         }
@@ -769,6 +802,7 @@ impl Space {
                 Mode::Static { .. } => panic!("Cannot change size of a static collider"),
                 Mode::Dynamic { bounds, .. } => {
                     bounds.extent = new_extent;
+                    self.dynamic_colliders_changed = true;
                 }
             }
         }
@@ -780,24 +814,111 @@ impl Space {
         let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
         for id in self.dynamic_colliders.iter() {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains(&point_f) {
+            if c.mask & mask != 0 && c.contains_point(&point_f) {
                 return Some(c);
             }
         }
         if let Some(id) = self.static_colliders.get(&point) {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains(&point_f) {
+            if c.mask & mask != 0 && c.contains_point(&point_f) {
                 return Some(c);
             }
         }
         None
     }
 
+    fn get_dynamic_colliders_intersecting_rect<C>(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        mut cb: C,
+    ) where
+        C: FnMut(&Collider),
+    {
+        if self.dynamic_colliders.is_empty() {
+            return;
+        }
+
+        // find first collider whos x-range overlaps point, and scan the following
+        // until we leave possibility of collision. TODO: Use a binary search to
+        // speed up the initial search.
+
+        let mut perform_test = false;
+        for idx in self.dynamic_colliders.iter() {
+            let collider = &self.colliders[*idx];
+            let left = collider.left();
+            let right = collider.right();
+
+            if intersection::range_range_intersects(left, right - left, origin.x, extent.x) {
+                perform_test = true;
+            } else if left > origin.x + extent.x {
+                // we're done
+                break;
+            }
+
+            if perform_test && collider.intersects_rect(origin, extent, 0.0, true) {
+                cb(collider);
+            }
+        }
+    }
+
+    fn get_dynamic_colliders_intersecting_point<C>(&self, point: &Point2<f32>, mut cb: C)
+    where
+        C: FnMut(&Collider),
+    {
+        if self.dynamic_colliders.is_empty() {
+            return;
+        }
+
+        // find first collider whos x-range overlaps point, and scan the following
+        // until we leave possibility of collision. TODO: Use a binary search to
+        // speed up the initial search.
+        let mut perform_test = false;
+        for idx in self.dynamic_colliders.iter() {
+            let collider = &self.colliders[*idx];
+            let left = collider.left();
+            let right = collider.right();
+            if left <= point.x && right >= point.x {
+                perform_test = true;
+            } else if left > point.x {
+                // we're done
+                break;
+            }
+
+            if perform_test && collider.contains_point(point) {
+                cb(collider);
+            }
+        }
+
+        // // Variation on binary search. Our dynamic coliders have been sorted along x by their .left()
+        // let mut left = 0_usize;
+        // let mut right = self.dynamic_colliders.len() - 1;
+        // while left <= right {
+        //     let middle = left + ((right - left) / 2);
+        //     let collider_idx = self.dynamic_colliders[middle];
+        //     let collider = &self.colliders[collider_idx];
+
+        //     if collider.right() < point.x {
+        //         right = middle;
+        //     } else if collider.left() > point.x {
+        //         left = middle;
+        //     } else {
+        //         for i in left..=right {
+        //             let collider = &self.colliders[self.dynamic_colliders[i]];
+        //             if collider.contains_point(point) {
+        //                 cb(collider);
+        //             }
+        //         }
+        //         break;
+        //     }
+        // }
+    }
+
     fn get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
         let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
         if let Some(id) = self.static_colliders.get(&point) {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains(&point_f) {
+            if c.mask & mask != 0 && c.contains_point(&point_f) {
                 return Some(c);
             }
         }
@@ -820,7 +941,7 @@ impl Space {
         for id in self.dynamic_colliders.iter() {
             let c = &self.colliders[*id as usize];
             if c.mask & mask != 0
-                && c.rect_intersection(origin, extent, 0.0, true)
+                && c.intersects_rect(origin, extent, 0.0, true)
                 && matches!(callback(c), Sentinel::Stop)
             {
                 return;
@@ -835,7 +956,7 @@ impl Space {
 
         for p in [a, b, c, d].iter() {
             if let Some(c) = self.get_static_collider_at(*p, mask) {
-                if c.rect_intersection(origin, extent, 0.0, true)
+                if c.intersects_rect(origin, extent, 0.0, true)
                     && matches!(callback(c), Sentinel::Stop)
                 {
                     return;
@@ -856,7 +977,7 @@ impl Space {
     ) -> Option<&Collider> {
         for id in self.dynamic_colliders.iter() {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.rect_intersection(origin, extent, 0.0, true) {
+            if c.mask & mask != 0 && c.intersects_rect(origin, extent, 0.0, true) {
                 return Some(c);
             }
         }
@@ -869,7 +990,7 @@ impl Space {
 
         for p in [a, b, c, d].iter() {
             if let Some(c) = self.get_static_collider_at(*p, mask) {
-                if c.rect_intersection(origin, extent, 0.0, true) {
+                if c.intersects_rect(origin, extent, 0.0, true) {
                     return Some(c);
                 }
             }
@@ -885,7 +1006,7 @@ impl Space {
     pub fn test_point_first(&self, point: Point2<f32>, mask: u32) -> Option<&Collider> {
         for id in self.dynamic_colliders.iter() {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains(&point) {
+            if c.mask & mask != 0 && c.contains_point(&point) {
                 return Some(c);
             }
         }
@@ -895,7 +1016,7 @@ impl Space {
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
         {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains(&point) {
+            if c.mask & mask != 0 && c.contains_point(&point) {
                 return Some(c);
             }
         }
@@ -1152,64 +1273,64 @@ mod space_tests {
         let (p0, p1, p2, p3, p4, p5, p6, p7) = test_points(&collider);
 
         collider.shape = Shape::None;
-        assert!(!collider.contains(&p0));
-        assert!(!collider.contains(&p1));
-        assert!(!collider.contains(&p2));
-        assert!(!collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(!collider.contains_point(&p0));
+        assert!(!collider.contains_point(&p1));
+        assert!(!collider.contains_point(&p2));
+        assert!(!collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
 
         collider.shape = Shape::Square;
-        assert!(collider.contains(&p0));
-        assert!(collider.contains(&p1));
-        assert!(collider.contains(&p2));
-        assert!(collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(collider.contains_point(&p0));
+        assert!(collider.contains_point(&p1));
+        assert!(collider.contains_point(&p2));
+        assert!(collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
 
         collider.shape = Shape::NorthEast;
-        assert!(collider.contains(&p0));
-        assert!(collider.contains(&p1));
-        assert!(!collider.contains(&p2));
-        assert!(!collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(collider.contains_point(&p0));
+        assert!(collider.contains_point(&p1));
+        assert!(!collider.contains_point(&p2));
+        assert!(!collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
 
         collider.shape = Shape::SouthEast;
-        assert!(collider.contains(&p0));
-        assert!(!collider.contains(&p1));
-        assert!(!collider.contains(&p2));
-        assert!(collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(collider.contains_point(&p0));
+        assert!(!collider.contains_point(&p1));
+        assert!(!collider.contains_point(&p2));
+        assert!(collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
 
         collider.shape = Shape::SouthWest;
-        assert!(!collider.contains(&p0));
-        assert!(!collider.contains(&p1));
-        assert!(collider.contains(&p2));
-        assert!(collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(!collider.contains_point(&p0));
+        assert!(!collider.contains_point(&p1));
+        assert!(collider.contains_point(&p2));
+        assert!(collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
 
         collider.shape = Shape::NorthWest;
-        assert!(!collider.contains(&p0));
-        assert!(collider.contains(&p1));
-        assert!(collider.contains(&p2));
-        assert!(!collider.contains(&p3));
-        assert!(!collider.contains(&p4));
-        assert!(!collider.contains(&p5));
-        assert!(!collider.contains(&p6));
-        assert!(!collider.contains(&p7));
+        assert!(!collider.contains_point(&p0));
+        assert!(collider.contains_point(&p1));
+        assert!(collider.contains_point(&p2));
+        assert!(!collider.contains_point(&p3));
+        assert!(!collider.contains_point(&p4));
+        assert!(!collider.contains_point(&p5));
+        assert!(!collider.contains_point(&p6));
+        assert!(!collider.contains_point(&p7));
     }
 
     #[test]
@@ -1281,19 +1402,19 @@ mod space_tests {
         let collider = Collider::new_static((0, 0).into(), Shape::Square, 0);
 
         assert_eq!(
-            collider.line_intersection(&point2(-0.5, 0.5), &point2(0.5, 0.5)),
+            collider.intersects_line(&point2(-0.5, 0.5), &point2(0.5, 0.5)),
             Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, 0.5)),
+            collider.intersects_line(&point2(0.5, 1.5), &point2(0.5, 0.5)),
             Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            collider.line_intersection(&point2(1.5, 0.5), &point2(0.5, 0.5)),
+            collider.intersects_line(&point2(1.5, 0.5), &point2(0.5, 0.5)),
             Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 0.5)),
+            collider.intersects_line(&point2(0.5, -0.5), &point2(0.5, 0.5)),
             Some(point2(0.5, 0.0))
         );
     }
@@ -1303,77 +1424,197 @@ mod space_tests {
         let mut collider = Collider::new_static((0, 0).into(), Shape::NorthEast, 0);
 
         assert_eq!(
-            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            collider.intersects_line(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
             Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            collider.intersects_line(&point2(0.5, 1.5), &point2(0.5, -0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            collider.intersects_line(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            collider.intersects_line(&point2(0.5, -0.5), &point2(0.5, 1.5)),
             Some(point2(0.5, 0.0))
         );
 
         collider.shape = Shape::SouthEast;
         assert_eq!(
-            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            collider.intersects_line(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
             Some(point2(0.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            collider.intersects_line(&point2(0.5, 1.5), &point2(0.5, -0.5)),
             Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            collider.intersects_line(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            collider.intersects_line(&point2(0.5, -0.5), &point2(0.5, 1.5)),
             Some(point2(0.5, 0.5))
         );
 
         collider.shape = Shape::SouthWest;
         assert_eq!(
-            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            collider.intersects_line(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            collider.intersects_line(&point2(0.5, 1.5), &point2(0.5, -0.5)),
             Some(point2(0.5, 1.0))
         );
         assert_eq!(
-            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            collider.intersects_line(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
             Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            collider.intersects_line(&point2(0.5, -0.5), &point2(0.5, 1.5)),
             Some(point2(0.5, 0.5))
         );
 
         collider.shape = Shape::NorthWest;
         assert_eq!(
-            collider.line_intersection(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
+            collider.intersects_line(&point2(-0.5, 0.5), &point2(1.5, 0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, 1.5), &point2(0.5, -0.5)),
+            collider.intersects_line(&point2(0.5, 1.5), &point2(0.5, -0.5)),
             Some(point2(0.5, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
+            collider.intersects_line(&point2(1.5, 0.5), &point2(-0.5, 0.5)),
             Some(point2(1.0, 0.5))
         );
         assert_eq!(
-            collider.line_intersection(&point2(0.5, -0.5), &point2(0.5, 1.5)),
+            collider.intersects_line(&point2(0.5, -0.5), &point2(0.5, 1.5)),
             Some(point2(0.5, 0.0))
         );
     }
 
     #[test]
     fn rect_intersection_works() {}
+
+    #[test]
+    fn get_dynamic_colliders_lookup_works() {
+        let mask = 1;
+        let colliders = [
+            Collider::new_dynamic(
+                Bounds::new(point2(2.0, 1.0), vec2(2.0, 2.0)),
+                0,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(3.0, 2.0), vec2(2.0, 3.0)),
+                1,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(8.0, 3.0), vec2(1.0, 1.0)),
+                2,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(16.0, 3.0), vec2(2.0, 2.0)),
+                3,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(17.0, 7.0), vec2(1.0, 1.0)),
+                4,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(22.0, 2.0), vec2(3.0, 3.0)),
+                5,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(24.0, 4.0), vec2(2.0, 2.0)),
+                6,
+                Shape::Square,
+                mask,
+            ),
+            Collider::new_dynamic(
+                Bounds::new(point2(32.0, 3.0), vec2(1.0, 1.0)),
+                7,
+                Shape::Square,
+                mask,
+            ),
+        ];
+        let space = Space::new(&colliders);
+
+        //
+        //  Test points
+        //
+
+        let test_point = |point: Point2<f32>, expected_ids: &[u32]| {
+            let mut found: HashSet<u32> = HashSet::new();
+            space.get_dynamic_colliders_intersecting_point(&point, |c| {
+                found.insert(c.entity_id().unwrap());
+            });
+            assert_eq!(found.len(), expected_ids.len());
+            for id in expected_ids.iter() {
+                assert!(found.contains(id));
+            }
+        };
+
+        // confirm that we get nothing for a non-hit
+        test_point(point2(0.0, 0.0), &[]);
+        test_point(point2(12.0, 1.0), &[]);
+
+        test_point(point2(2.5, 1.5), &[0]);
+        test_point(point2(4.5, 4.0), &[1]);
+        test_point(point2(3.5, 2.5), &[0, 1]);
+        test_point(point2(8.5, 3.5), &[2]);
+        test_point(point2(16.5, 3.5), &[3]);
+        test_point(point2(17.5, 7.5), &[4]);
+        test_point(point2(17.5, 6.5), &[]); // miss
+        test_point(point2(22.5, 2.5), &[5]);
+        test_point(point2(24.5, 4.5), &[5, 6]);
+        test_point(point2(25.5, 5.5), &[6]);
+        test_point(point2(32.5, 3.5), &[7]);
+        test_point(point2(32.5, 1.5), &[]); // miss
+
+        //
+        //  test rects
+        //
+
+        let test_rect = |origin: Point2<f32>, extent: Vector2<f32>, expected_ids: &[u32]| {
+            let mut found: HashSet<u32> = HashSet::new();
+            space.get_dynamic_colliders_intersecting_rect(&origin, &extent, |c| {
+                found.insert(c.entity_id().unwrap());
+            });
+            assert_eq!(found.len(), expected_ids.len());
+            for id in expected_ids.iter() {
+                assert!(found.contains(id));
+            }
+        };
+        let unit = vec2(1.0, 1.0);
+
+        test_rect(point2(0.0, 0.0), unit, &[]);
+        test_rect(point2(12.0, 1.0), unit, &[]);
+
+        test_rect(point2(1.5, 1.0), unit, &[0]);
+        test_rect(point2(4.0, 4.0), unit, &[1]);
+        test_rect(point2(3.0, 2.0), unit, &[0, 1]);
+        test_rect(point2(8.0, 3.0), unit, &[2]);
+        test_rect(point2(16.0, 3.0), unit, &[3]);
+        test_rect(point2(17.0, 7.0), unit, &[4]);
+        test_rect(point2(21.5, 2.5), unit, &[5]);
+        test_rect(point2(24.0, 4.0), unit, &[5, 6]);
+        test_rect(point2(25.5, 5.5), unit, &[6]);
+        test_rect(point2(31.5, 2.5), unit, &[7]);
+        test_rect(point2(31.5, 7.5), unit, &[]); // miss
+        test_rect(point2(35.0, 2.5), unit, &[]); // miss
+    }
 }

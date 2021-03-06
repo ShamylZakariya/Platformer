@@ -482,6 +482,8 @@ impl GameState {
         message_dispatcher: &mut event_dispatch::Dispatcher,
         entity_id_vendor: &mut entity::IdVendor,
     ) {
+        self.collision_space.update();
+
         //
         //  Process pending entity additions
         //

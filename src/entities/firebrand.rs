@@ -1130,7 +1130,7 @@ impl Firebrand {
                 if can_collide_width(&position, c) {
                     match c.shape {
                         collision::Shape::Square => {
-                            if c.unit_rect_intersection(
+                            if c.intersects_unit_rect(
                                 &position,
                                 inset_for_collider(c),
                                 contacts_are_collision,
@@ -1143,7 +1143,7 @@ impl Firebrand {
                             }
                         }
                         collision::Shape::NorthEast | collision::Shape::NorthWest => {
-                            if let Some(intersection) = c.line_intersection(
+                            if let Some(intersection) = c.intersects_line(
                                 &(position + vec2(0.5, 1.0)),
                                 &(position + vec2(0.5, 0.0)),
                             ) {
@@ -1419,7 +1419,7 @@ impl Firebrand {
     /// If the sprite contacts our player's bounds, inserts into contacting_sprites, otherwise
     /// inserts into overlapping_sprites (which are useful for debugging potential contacts)
     fn process_potential_collision_with(&mut self, collider: &collision::Collider) {
-        if collider.unit_rect_intersection(&self.position().xy(), 0.0, true) {
+        if collider.intersects_unit_rect(&self.position().xy(), 0.0, true) {
             self.contacting_colliders.insert(*collider);
         } else {
             self.overlapping_colliders.insert(*collider);
