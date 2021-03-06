@@ -682,7 +682,7 @@ pub struct Space {
     active_colliders: HashSet<u32>,
     static_colliders: HashMap<Point2<i32>, usize>,
     dynamic_colliders: Vec<usize>,
-    dynamic_colliders_changed: bool,
+    dynamic_colliders_need_sort: bool,
 }
 
 impl Space {
@@ -692,7 +692,7 @@ impl Space {
             active_colliders: HashSet::new(),
             static_colliders: HashMap::new(),
             dynamic_colliders: Vec::new(),
-            dynamic_colliders_changed: false,
+            dynamic_colliders_need_sort: false,
         };
 
         for c in colliders {
@@ -703,7 +703,7 @@ impl Space {
     }
 
     pub fn update(&mut self) {
-        if self.dynamic_colliders_changed {
+        if self.dynamic_colliders_need_sort {
             let colliders = std::mem::replace(&mut self.colliders, vec![]);
 
             self.dynamic_colliders.sort_by(|a, b| {
@@ -714,7 +714,7 @@ impl Space {
 
             let _ = std::mem::replace(&mut self.colliders, colliders);
 
-            self.dynamic_colliders_changed = false
+            self.dynamic_colliders_need_sort = false
         }
     }
 
@@ -731,7 +731,7 @@ impl Space {
             }
             Mode::Dynamic { .. } => {
                 self.dynamic_colliders.push(index);
-                self.dynamic_colliders_changed = true;
+                self.dynamic_colliders_need_sort = true;
             }
         }
 
@@ -750,9 +750,10 @@ impl Space {
                     self.static_colliders.remove(&position);
                 }
                 Mode::Dynamic { .. } => {
+                    // remove; note we don't need to re-sort when
+                    // removing an item from an already sorted list.
                     self.dynamic_colliders
                         .retain(|id| *id != collider_id as usize);
-                    self.dynamic_colliders_changed = true;
                 }
             };
         }
@@ -767,7 +768,7 @@ impl Space {
                 }
                 Mode::Dynamic { .. } => {
                     self.dynamic_colliders.push(collider_id as usize);
-                    self.dynamic_colliders_changed = true;
+                    self.dynamic_colliders_need_sort = true;
                 }
             }
         }
@@ -790,7 +791,7 @@ impl Space {
                 }
                 Mode::Dynamic { bounds, .. } => {
                     bounds.origin = new_position;
-                    self.dynamic_colliders_changed = true;
+                    self.dynamic_colliders_need_sort = true;
                 }
             }
         }
@@ -801,8 +802,8 @@ impl Space {
             match &mut c.mode {
                 Mode::Static { .. } => panic!("Cannot change size of a static collider"),
                 Mode::Dynamic { bounds, .. } => {
+                    // we don't need to re-sort list when changing a colider's extent
                     bounds.extent = new_extent;
-                    self.dynamic_colliders_changed = true;
                 }
             }
         }
@@ -812,12 +813,11 @@ impl Space {
 
     pub fn get_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
         let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
-        for id in self.dynamic_colliders.iter() {
-            let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains_point(&point_f) {
-                return Some(c);
-            }
+        let found = self.get_first_dynamic_collider_containing_point(&point_f, mask);
+        if found.is_some() {
+            return found;
         }
+
         if let Some(id) = self.static_colliders.get(&point) {
             let c = &self.colliders[*id as usize];
             if c.mask & mask != 0 && c.contains_point(&point_f) {
@@ -827,13 +827,68 @@ impl Space {
         None
     }
 
+    fn get_first_dynamic_collider_intersecting_rect(
+        &self,
+        origin: &Point2<f32>,
+        extent: &Vector2<f32>,
+        mask: u32,
+    ) -> Option<&Collider> {
+        let mut perform_test = false;
+        for idx in self.dynamic_colliders.iter() {
+            let collider = &self.colliders[*idx];
+            let left = collider.left();
+            let right = collider.right();
+
+            if intersection::range_range_intersects(left, right - left, origin.x, extent.x) {
+                perform_test = true;
+            } else if left > origin.x + extent.x {
+                // we're done
+                break;
+            }
+
+            if perform_test
+                && collider.mask & mask != 0
+                && collider.intersects_rect(origin, extent, 0.0, true)
+            {
+                return Some(collider);
+            }
+        }
+        None
+    }
+
+    fn get_first_dynamic_collider_containing_point(
+        &self,
+        point: &Point2<f32>,
+        mask: u32,
+    ) -> Option<&Collider> {
+        let mut perform_test = false;
+        for idx in self.dynamic_colliders.iter() {
+            let collider = &self.colliders[*idx];
+            let left = collider.left();
+            let right = collider.right();
+
+            if left <= point.x && right >= point.x {
+                perform_test = true;
+            } else if left > point.x {
+                // we're done
+                break;
+            }
+
+            if perform_test && collider.mask & mask != 0 && collider.contains_point(point) {
+                return Some(collider);
+            }
+        }
+        None
+    }
+
     fn get_dynamic_colliders_intersecting_rect<C>(
         &self,
         origin: &Point2<f32>,
         extent: &Vector2<f32>,
+        mask: u32,
         mut cb: C,
     ) where
-        C: FnMut(&Collider),
+        C: FnMut(&Collider) -> Sentinel,
     {
         if self.dynamic_colliders.is_empty() {
             return;
@@ -856,15 +911,19 @@ impl Space {
                 break;
             }
 
-            if perform_test && collider.intersects_rect(origin, extent, 0.0, true) {
-                cb(collider);
+            if perform_test
+                && collider.mask & mask != 0
+                && collider.intersects_rect(origin, extent, 0.0, true)
+                && matches!(cb(collider), Sentinel::Stop)
+            {
+                return;
             }
         }
     }
 
-    fn get_dynamic_colliders_intersecting_point<C>(&self, point: &Point2<f32>, mut cb: C)
+    fn get_dynamic_colliders_intersecting_point<C>(&self, point: &Point2<f32>, mask: u32, mut cb: C)
     where
-        C: FnMut(&Collider),
+        C: FnMut(&Collider) -> Sentinel,
     {
         if self.dynamic_colliders.is_empty() {
             return;
@@ -885,33 +944,14 @@ impl Space {
                 break;
             }
 
-            if perform_test && collider.contains_point(point) {
-                cb(collider);
+            if perform_test
+                && collider.mask & mask != 0
+                && collider.contains_point(point)
+                && matches!(cb(collider), Sentinel::Stop)
+            {
+                return;
             }
         }
-
-        // // Variation on binary search. Our dynamic coliders have been sorted along x by their .left()
-        // let mut left = 0_usize;
-        // let mut right = self.dynamic_colliders.len() - 1;
-        // while left <= right {
-        //     let middle = left + ((right - left) / 2);
-        //     let collider_idx = self.dynamic_colliders[middle];
-        //     let collider = &self.colliders[collider_idx];
-
-        //     if collider.right() < point.x {
-        //         right = middle;
-        //     } else if collider.left() > point.x {
-        //         left = middle;
-        //     } else {
-        //         for i in left..=right {
-        //             let collider = &self.colliders[self.dynamic_colliders[i]];
-        //             if collider.contains_point(point) {
-        //                 cb(collider);
-        //             }
-        //         }
-        //         break;
-        //     }
-        // }
     }
 
     fn get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
@@ -938,14 +978,17 @@ impl Space {
     ) where
         C: FnMut(&Collider) -> Sentinel,
     {
-        for id in self.dynamic_colliders.iter() {
-            let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0
-                && c.intersects_rect(origin, extent, 0.0, true)
-                && matches!(callback(c), Sentinel::Stop)
-            {
-                return;
+        let mut early_exit = false;
+        self.get_dynamic_colliders_intersecting_rect(origin, extent, mask, |c| {
+            let s = callback(c);
+            if s == Sentinel::Stop {
+                early_exit = true;
             }
+            s
+        });
+
+        if early_exit {
+            return;
         }
 
         let snapped_extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
@@ -975,11 +1018,9 @@ impl Space {
         extent: &Vector2<f32>,
         mask: u32,
     ) -> Option<&Collider> {
-        for id in self.dynamic_colliders.iter() {
-            let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.intersects_rect(origin, extent, 0.0, true) {
-                return Some(c);
-            }
+        let found = self.get_first_dynamic_collider_intersecting_rect(origin, extent, mask);
+        if found.is_some() {
+            return found;
         }
 
         let snapped_extent = vec2(extent.x.round() as i32, extent.y.round() as i32);
@@ -1003,12 +1044,10 @@ impl Space {
     /// Filters by mask, such that only sprites with matching mask bits will be matched.
     /// In the case of overlapping sprites, dynamic sprites will be returned before static,
     /// but otherwise there is no guarantee of which will be returned.
-    pub fn test_point_first(&self, point: Point2<f32>, mask: u32) -> Option<&Collider> {
-        for id in self.dynamic_colliders.iter() {
-            let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains_point(&point) {
-                return Some(c);
-            }
+    pub fn test_point_first(&self, point: &Point2<f32>, mask: u32) -> Option<&Collider> {
+        let found = self.get_first_dynamic_collider_containing_point(point, mask);
+        if found.is_some() {
+            return found;
         }
 
         if let Some(id) = self
@@ -1197,24 +1236,24 @@ mod space_tests {
         let hit_tester = Space::new(&[sb1, sb2, tr0, tr1, tr2, tr3]);
 
         // test triangle is hit only when using triangle_flags or all_mask
-        assert!(hit_tester.test_point_first(point2(0.1, 4.1), triangle_mask) == Some(&tr0));
-        assert!(hit_tester.test_point_first(point2(-0.1, 4.1), triangle_mask) == Some(&tr1));
-        assert!(hit_tester.test_point_first(point2(-0.1, 3.9), triangle_mask) == Some(&tr2));
-        assert!(hit_tester.test_point_first(point2(0.1, 3.9), triangle_mask) == Some(&tr3));
+        assert!(hit_tester.test_point_first(&point2(0.1, 4.1), triangle_mask) == Some(&tr0));
+        assert!(hit_tester.test_point_first(&point2(-0.1, 4.1), triangle_mask) == Some(&tr1));
+        assert!(hit_tester.test_point_first(&point2(-0.1, 3.9), triangle_mask) == Some(&tr2));
+        assert!(hit_tester.test_point_first(&point2(0.1, 3.9), triangle_mask) == Some(&tr3));
         assert!(hit_tester
-            .test_point_first(point2(0.1, 4.1), square_mask)
+            .test_point_first(&point2(0.1, 4.1), square_mask)
             .is_none());
         assert!(hit_tester
-            .test_point_first(point2(0.1, 3.9), all_mask)
+            .test_point_first(&point2(0.1, 3.9), all_mask)
             .is_some());
 
         // test square is only hit when mask is square or all_mask
-        assert!(hit_tester.test_point_first(point2(0.5, 0.5), square_mask) == Some(&sb1));
+        assert!(hit_tester.test_point_first(&point2(0.5, 0.5), square_mask) == Some(&sb1));
         assert!(hit_tester
-            .test_point_first(point2(0.5, 0.5), triangle_mask)
+            .test_point_first(&point2(0.5, 0.5), triangle_mask)
             .is_none());
         assert!(hit_tester
-            .test_point_first(point2(0.5, 0.5), all_mask)
+            .test_point_first(&point2(0.5, 0.5), all_mask)
             .is_some());
     }
 
@@ -1559,8 +1598,9 @@ mod space_tests {
 
         let test_point = |point: Point2<f32>, expected_ids: &[u32]| {
             let mut found: HashSet<u32> = HashSet::new();
-            space.get_dynamic_colliders_intersecting_point(&point, |c| {
+            space.get_dynamic_colliders_intersecting_point(&point, mask, |c| {
                 found.insert(c.entity_id().unwrap());
+                Sentinel::Continue
             });
             assert_eq!(found.len(), expected_ids.len());
             for id in expected_ids.iter() {
@@ -1591,8 +1631,9 @@ mod space_tests {
 
         let test_rect = |origin: Point2<f32>, extent: Vector2<f32>, expected_ids: &[u32]| {
             let mut found: HashSet<u32> = HashSet::new();
-            space.get_dynamic_colliders_intersecting_rect(&origin, &extent, |c| {
+            space.get_dynamic_colliders_intersecting_rect(&origin, &extent, mask, |c| {
                 found.insert(c.entity_id().unwrap());
+                Sentinel::Continue
             });
             assert_eq!(found.len(), expected_ids.len());
             for id in expected_ids.iter() {
