@@ -1,22 +1,14 @@
 CURRENTLY:
     YAK SHAVING:
-        HealthDot broken
-        Once this is done, can rewrite dynamic collision detection to be faster by:
-            - sorting the dynamics by Collider.left()
-            - binary search
-
-
-        - Using Collider breaks the nice overlapping_sprites visualization, but whatever
-            - could handle this by creating sprites from Colliders using some default color/texcoord mapping
-
-
         - Refactor geom.rs, I don't like that module's existence.
             - move the line_line and other intersection tests into the collision module
             - move Bounds and lerp, hermite, clamp into a util module
+        - Implement some kind of binary sort to speedup dynamic collision testing
         - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms. Could make a Uniform<camera::UniformData> or something like that, will need trait constraints for btytemuck::Pod and Zeroable
+        - Upgrade various cargo deps. Known API breakages using wgpu-rs 0.7, and saw a few more in other modules. So, upgrade them one-at-a-time.
 
 TODO:
-    - We need the fade in, fade out animation. Best way to do it is via postprocessing shader.
+    - We need the fade in, fade out animation. Best way to do it is via palette-shift in postprocessing shader.
         - When firebrand dies we have 3 seconds of the death animation, followed by fade to white over 1 second, 1 second of white, 1 second fade back to normal and blink the ready text.
     - Postprocessing shader to make Gameboy looking graphics
         - We need a color attachment texture, see  encoder.begin_render_pass in GameState and GameUi, both take the frame color attachment. We can presumably make a texture view like we do for depth, and then make a later pass which does take the frame color attachment which runs a shader transform.
