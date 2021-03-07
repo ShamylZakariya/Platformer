@@ -4,10 +4,10 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::{collections::HashMap, time::Duration};
 
-use crate::texture;
 use crate::tileset;
 use crate::{camera, util::Bounds};
 use crate::{sprite::core::*, util::*};
+use crate::{texture, util};
 use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -155,8 +155,8 @@ pub struct UniformData {
 unsafe impl bytemuck::Pod for UniformData {}
 unsafe impl bytemuck::Zeroable for UniformData {}
 
-impl UniformData {
-    pub fn new() -> Self {
+impl Default for UniformData {
+    fn default() -> Self {
         Self {
             model_position: Vector4::zero(),
             color: vec4(1.0, 1.0, 1.0, 1.0),
@@ -165,7 +165,9 @@ impl UniformData {
             tex_coord_offset: vec2(0.0, 0.0),
         }
     }
+}
 
+impl UniformData {
     pub fn set_color(&mut self, color: Vector4<f32>) -> &mut Self {
         self.color = color;
         self
@@ -198,61 +200,6 @@ impl UniformData {
 }
 
 // --------------------------------------------------------------------------------------------------------------------
-
-pub struct Uniforms {
-    pub data: UniformData,
-    pub buffer: wgpu::Buffer,
-    pub bind_group_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
-}
-
-impl Uniforms {
-    pub fn new(device: &wgpu::Device, sprite_size_px: Vector2<f32>) -> Self {
-        let mut data = UniformData::new();
-        data.set_sprite_size_px(sprite_size_px);
-
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Sprite Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[data]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                ty: wgpu::BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("Sprite Uniform Bind Group Layout"),
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
-            }],
-            label: Some("Sprite Uniform Bind Group"),
-        });
-
-        Self {
-            data,
-            buffer,
-            bind_group_layout,
-            bind_group,
-        }
-    }
-
-    pub fn write(&self, queue: &mut wgpu::Queue) {
-        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.data]));
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
 
 pub struct Material {
     pub name: String,
@@ -472,8 +419,8 @@ impl Mesh {
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..));
@@ -495,8 +442,8 @@ impl Mesh {
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
     ) where
         I: IntoIterator<Item = &'a Sprite>,
     {
@@ -547,8 +494,8 @@ impl Drawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
@@ -560,8 +507,8 @@ impl Drawable {
         &'a self,
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
     ) where
         // TODO: Not happy about this +Copy here, the sprites array is being copied for each pass of the loop?
         I: IntoIterator<Item = &'a Sprite> + Copy,
@@ -597,7 +544,6 @@ pub struct EntityDrawable {
     // maps a string, e.g., "face_right" to a renderable mesh
     meshes_by_cycle: HashMap<String, Mesh>,
 
-    // TODO: this should be &Material so multiple entities can share a single spritesheet?
     material: Rc<Material>,
 
     // maps a string, e.g., "face_right" to a the sprites it is made up of
@@ -694,8 +640,8 @@ impl EntityDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
         cycle: &str,
     ) where
         'a: 'b,
@@ -742,7 +688,7 @@ impl FlipbookAnimationDrawable {
         self.sequence.durations[frame % self.sequence.durations.len()]
     }
 
-    pub fn set_frame(&self, sprite_uniforms: &mut Uniforms, frame: usize) {
+    pub fn set_frame(&self, sprite_uniforms: &mut util::Uniforms<UniformData>, frame: usize) {
         sprite_uniforms
             .data
             .set_tex_coord_offset(self.sequence.offsets[frame % self.sequence.offsets.len()]);
@@ -751,8 +697,8 @@ impl FlipbookAnimationDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
-        sprite_uniforms: &'a Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
+        sprite_uniforms: &'a util::Uniforms<UniformData>,
     ) where
         'a: 'b,
     {
@@ -771,13 +717,13 @@ impl FlipbookAnimationDrawable {
 /// it needs to render.
 pub struct FlipbookAnimationComponents {
     pub drawable: FlipbookAnimationDrawable,
-    pub uniforms: Uniforms,
+    pub uniforms: util::Uniforms<UniformData>,
     seconds_until_next_frame: f32,
     current_frame: usize,
 }
 
 impl FlipbookAnimationComponents {
-    pub fn new(flipbook: FlipbookAnimationDrawable, uniforms: Uniforms) -> Self {
+    pub fn new(flipbook: FlipbookAnimationDrawable, uniforms: util::Uniforms<UniformData>) -> Self {
         let seconds_until_next_frame = flipbook.duration_for_frame(0).as_secs_f32();
         Self {
             drawable: flipbook,

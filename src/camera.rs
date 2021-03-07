@@ -1,12 +1,11 @@
 use cgmath::*;
 use std::time::Duration;
-use wgpu::util::DeviceExt;
 use winit::dpi::LogicalPosition;
 use winit::event::*;
 
 use crate::{
     state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
-    util::Bounds,
+    util::{Bounds, Uniforms},
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -143,15 +142,17 @@ pub struct UniformData {
 unsafe impl bytemuck::Pod for UniformData {}
 unsafe impl bytemuck::Zeroable for UniformData {}
 
-impl UniformData {
-    pub fn new() -> Self {
+impl Default for UniformData {
+    fn default() -> Self {
         Self {
             position: Zero::zero(),
             view_proj: Matrix4::identity(),
             framebuffer_size: Zero::zero(),
         }
     }
+}
 
+impl UniformData {
     pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) -> &mut Self {
         self.position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
@@ -162,68 +163,14 @@ impl UniformData {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-pub struct Uniforms {
-    pub data: UniformData,
-    pub buffer: wgpu::Buffer,
-    pub bind_group_layout: wgpu::BindGroupLayout,
-    pub bind_group: wgpu::BindGroup,
-}
-
-impl Uniforms {
-    pub fn new(device: &wgpu::Device) -> Self {
-        let data = UniformData::new();
-
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Camera Uniform Buffer"),
-            contents: bytemuck::cast_slice(&[data]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                ty: wgpu::BindingType::UniformBuffer {
-                    dynamic: false,
-                    min_binding_size: None,
-                },
-                count: None,
-            }],
-            label: Some("Camera Uniform Bind Group Layout"),
-        });
-
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
-            }],
-            label: Some("Camera Uniform Bind Group"),
-        });
-
-        Self {
-            data,
-            buffer,
-            bind_group_layout,
-            bind_group,
-        }
-    }
-
-    pub fn write(&self, queue: &mut wgpu::Queue) {
-        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.data]));
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 pub struct CameraController {
     pub camera: Camera,
     pub projection: Projection,
-    pub uniforms: Uniforms,
+    pub uniforms: Uniforms<UniformData>,
 }
 
 impl CameraController {
-    pub fn new(camera: Camera, projection: Projection, uniforms: Uniforms) -> Self {
+    pub fn new(camera: Camera, projection: Projection, uniforms: Uniforms<UniformData>) -> Self {
         Self {
             camera,
             projection,

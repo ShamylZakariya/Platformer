@@ -9,7 +9,7 @@ use crate::{
     map,
     sprite::{self, find_bounds, rendering},
     state::{constants::layers, events::Event},
-    util::Bounds,
+    util::{self, Bounds},
 };
 
 use super::util::HorizontalDir;
@@ -112,7 +112,7 @@ impl Entity for ExitDoor {
         self.last_player_position = Some(game_state_peek.player_position);
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         // round offset to 0.5 unit increments
         let x = (self.offset.x / 0.5).round() * 0.5;
         let offset = point3(x, self.offset.y, self.offset.z);

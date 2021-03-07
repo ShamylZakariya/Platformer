@@ -21,9 +21,8 @@ use crate::{
     entity::{self, EntityComponents, GameStatePeek},
     event_dispatch, map,
     sprite::rendering,
-    sprite::rendering::Uniforms as SpriteUniforms,
     texture, tileset,
-    util::{hermite, lerp, Bounds},
+    util::{self, hermite, lerp, Bounds},
     Options,
 };
 
@@ -89,9 +88,9 @@ pub struct GameState {
 
     // Stage rendering
     stage_material: Rc<rendering::Material>,
-    stage_uniforms: SpriteUniforms,
-    stage_debug_draw_overlap_uniforms: SpriteUniforms,
-    stage_debug_draw_contact_uniforms: SpriteUniforms,
+    stage_uniforms: util::Uniforms<rendering::UniformData>,
+    stage_debug_draw_overlap_uniforms: util::Uniforms<rendering::UniformData>,
+    stage_debug_draw_contact_uniforms: util::Uniforms<rendering::UniformData>,
     stage_sprite_drawable: rendering::Drawable,
 
     // Collision detection and dispatch
@@ -265,16 +264,23 @@ impl GameState {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-        let camera_uniforms = camera::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 
         // Build the sprite render pipeline
 
-        let mut stage_uniforms = SpriteUniforms::new(&gpu.device, sprite_size_px);
+        let mut stage_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        stage_uniforms.data.set_sprite_size_px(sprite_size_px);
         let mut stage_debug_draw_overlap_uniforms =
-            SpriteUniforms::new(&gpu.device, sprite_size_px);
+            util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        stage_debug_draw_overlap_uniforms
+            .data
+            .set_sprite_size_px(sprite_size_px);
         let mut stage_debug_draw_contact_uniforms =
-            SpriteUniforms::new(&gpu.device, sprite_size_px);
+            util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        stage_debug_draw_contact_uniforms
+            .data
+            .set_sprite_size_px(sprite_size_px);
 
         let sprite_render_pipeline_layout =
             gpu.device
@@ -332,10 +338,9 @@ impl GameState {
                 )
             })
             .map(|a| {
-                rendering::FlipbookAnimationComponents::new(
-                    a,
-                    SpriteUniforms::new(&gpu.device, sprite_size_px),
-                )
+                let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+                uniforms.data.set_sprite_size_px(sprite_size_px);
+                rendering::FlipbookAnimationComponents::new(a, uniforms)
             })
             .collect::<Vec<_>>();
 
@@ -1059,6 +1064,8 @@ impl GameState {
             let sprite_name = req.entity.sprite_name().to_string();
             // The Entity has specified a sprite name, which means it's using
             // an EntityDrawable to render.
+            let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+            uniforms.data.set_sprite_size_px(sprite_size_px);
             EntityComponents::with_entity_drawable(
                 req.entity,
                 rendering::EntityDrawable::load(
@@ -1068,18 +1075,20 @@ impl GameState {
                     &sprite_name,
                     0,
                 ),
-                SpriteUniforms::new(&gpu.device, sprite_size_px),
+                uniforms,
             )
         } else if let Some(sprites) = req.entity.stage_sprites() {
             // The Entity has specified sprites to render, which means its using a
             // sprite::Drawable using the stage material to render.
+            let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+            uniforms.data.set_sprite_size_px(sprite_size_px);
             EntityComponents::with_sprite_drawable(
                 req.entity,
                 rendering::Drawable::with(
                     rendering::Mesh::new(&sprites, 0, &gpu.device, "Entity Stage Sprite Mesh"),
                     self.stage_material.clone(),
                 ),
-                SpriteUniforms::new(&gpu.device, sprite_size_px),
+                uniforms,
             )
         } else {
             EntityComponents::just_entity(req.entity)

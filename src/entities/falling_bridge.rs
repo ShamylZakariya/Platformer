@@ -12,7 +12,7 @@ use crate::{
         constants::{self, layers, sprite_masks},
         events::Event,
     },
-    tileset,
+    tileset, util,
 };
 
 const FALLING_BRIDGE_CONTACT_DELAY: f32 = 0.2;
@@ -97,7 +97,7 @@ impl Entity for FallingBridge {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         uniforms
             .data
             .set_model_position(self.position + self.offset);

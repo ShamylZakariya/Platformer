@@ -13,7 +13,7 @@ use crate::{
         constants::{layers, sprite_masks},
         events::Event,
     },
-    util::Bounds,
+    util::{self, Bounds},
 };
 
 const RISE_SPEED: f32 = 1.0 / 0.467;
@@ -93,7 +93,7 @@ impl Entity for RisingFloor {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         uniforms.data.set_model_position(self.offset);
     }
 

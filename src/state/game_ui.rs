@@ -13,7 +13,10 @@ use crate::{
     texture,
 };
 use crate::{event_dispatch, Options};
-use crate::{map, util::lerp};
+use crate::{
+    map,
+    util::{self, lerp},
+};
 
 use super::{
     constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},
@@ -34,18 +37,18 @@ pub struct GameUi {
 
     camera_view: camera::Camera,
     camera_projection: camera::Projection,
-    camera_uniforms: camera::Uniforms,
+    camera_uniforms: util::Uniforms<camera::UniformData>,
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_collision_space: collision::Space,
     game_ui_map: map::Map,
     sprite_material: Rc<rendering::Material>,
     drawer_drawable: rendering::Drawable,
-    drawer_uniforms: rendering::Uniforms,
+    drawer_uniforms: util::Uniforms<rendering::UniformData>,
     game_start_drawable: rendering::Drawable,
-    game_start_uniforms: rendering::Uniforms,
+    game_start_uniforms: util::Uniforms<rendering::UniformData>,
     game_over_drawable: rendering::Drawable,
-    game_over_uniforms: rendering::Uniforms,
+    game_over_uniforms: util::Uniforms<rendering::UniformData>,
     entities: HashMap<u32, entity::EntityComponents>,
 
     // state
@@ -64,7 +67,7 @@ impl GameUi {
     ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
-        let camera_uniforms = camera::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
             gpu.sc_desc.height,
@@ -95,7 +98,8 @@ impl GameUi {
         };
 
         let sprite_size_px = game_ui_map.tileset.get_sprite_size().cast().unwrap();
-        let drawer_uniforms = rendering::Uniforms::new(&gpu.device, sprite_size_px);
+        let mut drawer_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        drawer_uniforms.data.set_sprite_size_px(sprite_size_px);
 
         let pipeline_layout = gpu
             .device
@@ -156,6 +160,8 @@ impl GameUi {
             .into_iter()
             .map(|e| {
                 let sprite_name = e.sprite_name().to_string();
+                let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+                uniforms.data.set_sprite_size_px(sprite_size_px);
                 let ec = EntityComponents::with_entity_drawable(
                     e,
                     rendering::EntityDrawable::load(
@@ -165,11 +171,17 @@ impl GameUi {
                         &sprite_name,
                         0,
                     ),
-                    rendering::Uniforms::new(&gpu.device, sprite_size_px),
+                    uniforms,
                 );
                 (ec.id(), ec)
             })
             .collect::<HashMap<_, _>>();
+
+        let mut game_over_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        game_over_uniforms.data.set_sprite_size_px(sprite_size_px);
+
+        let mut game_start_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
+        game_start_uniforms.data.set_sprite_size_px(sprite_size_px);
 
         let mut game_ui = Self {
             pipeline,
@@ -184,9 +196,9 @@ impl GameUi {
             drawer_drawable,
             drawer_uniforms,
             game_over_drawable,
-            game_over_uniforms: rendering::Uniforms::new(&gpu.device, sprite_size_px),
+            game_over_uniforms,
             game_start_drawable,
-            game_start_uniforms: rendering::Uniforms::new(&gpu.device, sprite_size_px),
+            game_start_uniforms,
             entities,
 
             time: 0.0,
@@ -287,7 +299,8 @@ impl GameUi {
 
         // update game over and game start uniforms to center their test strings
         let mut center_drawable =
-            |drawable: &rendering::Drawable, uniforms: &mut rendering::Uniforms| {
+            |drawable: &rendering::Drawable,
+             uniforms: &mut util::Uniforms<rendering::UniformData>| {
                 let bounds = drawable
                     .meshes
                     .first()

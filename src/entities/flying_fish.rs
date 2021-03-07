@@ -9,7 +9,7 @@ use crate::{
     map,
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
-    tileset,
+    tileset, util,
 };
 
 use super::util::HitPointState;
@@ -151,7 +151,7 @@ impl Entity for FlyingFish {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         let (xscale, xoffset) = match self.phase % 2 {
             0 => (-1.0, 1.0 - 1.0 / self.sprite_size_px.x),
             _ => (1.0, 0.0),

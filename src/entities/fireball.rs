@@ -9,7 +9,7 @@ use crate::{
     map,
     sprite::rendering,
     state::{constants::layers, events::Event},
-    util::Bounds,
+    util::{self, Bounds},
 };
 
 use super::util::HorizontalDir;
@@ -152,7 +152,7 @@ impl Entity for Fireball {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         uniforms
             .data
             .set_model_position(self.position - vec3(0.5, 0.5, 0.0));

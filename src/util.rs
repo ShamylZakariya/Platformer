@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use wgpu::util::DeviceExt;
 
 use cgmath::*;
 
@@ -102,5 +103,60 @@ impl Bounds {
     }
     pub fn inset(&self, by: Vector2<f32>) -> Bounds {
         Bounds::new(self.origin + by * 0.5, self.extent - by)
+    }
+}
+
+/// Uniforms is a generic "holder" for uniform data types. See camera::UniformData as an example payload.
+pub struct Uniforms<D> {
+    pub data: D,
+    pub buffer: wgpu::Buffer,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
+}
+
+impl<D> Uniforms<D>
+where
+    D: bytemuck::Pod + bytemuck::Zeroable + Default,
+{
+    pub fn new(device: &wgpu::Device) -> Self {
+        let data = D::default();
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[data]),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                ty: wgpu::BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+            label: Some("Uniform Bind Group Layout"),
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer(buffer.slice(..)),
+            }],
+            label: Some("Uniform Bind Group"),
+        });
+
+        Self {
+            data,
+            buffer,
+            bind_group_layout,
+            bind_group,
+        }
+    }
+
+    pub fn write(&self, queue: &mut wgpu::Queue) {
+        queue.write_buffer(&self.buffer, 0, bytemuck::cast_slice(&[self.data]));
     }
 }

@@ -8,7 +8,7 @@ use crate::{
     map,
     sprite::{self, rendering},
     state::constants::layers,
-    tileset,
+    tileset, util,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ impl Entity for UiFlightBar {
             FLIGHT_BAR_SCALE * (game_state_peek.player_flight.0 / game_state_peek.player_flight.1);
     }
 
-    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
+    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
         uniforms
             .data
             .set_model_position(self.position)
