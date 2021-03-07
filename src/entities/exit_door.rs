@@ -112,7 +112,7 @@ impl Entity for ExitDoor {
         self.last_player_position = Some(game_state_peek.player_position);
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         // round offset to 0.5 unit increments
         let x = (self.offset.x / 0.5).round() * 0.5;
         let offset = point3(x, self.offset.y, self.offset.z);

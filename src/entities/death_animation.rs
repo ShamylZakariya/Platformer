@@ -113,7 +113,7 @@ impl Entity for DeathAnimation {
         self.position.y = next_position.y;
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         if let Mode::EnemyDeath = self.mode {
             let (xscale, xoffset) = match self.direction {
                 CompassDir::East => (-1.0, 1.0),

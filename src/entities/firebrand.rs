@@ -819,7 +819,7 @@ impl Entity for Firebrand {
             .collect();
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         //
         //  Write state into uniform storage
         //

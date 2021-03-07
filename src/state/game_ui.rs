@@ -37,18 +37,18 @@ pub struct GameUi {
 
     camera_view: camera::Camera,
     camera_projection: camera::Projection,
-    camera_uniforms: util::Uniforms<camera::UniformData>,
+    camera_uniforms: util::UniformWrapper<camera::Uniforms>,
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_collision_space: collision::Space,
     game_ui_map: map::Map,
     sprite_material: Rc<rendering::Material>,
     drawer_drawable: rendering::Drawable,
-    drawer_uniforms: util::Uniforms<rendering::UniformData>,
+    drawer_uniforms: util::UniformWrapper<rendering::Uniforms>,
     game_start_drawable: rendering::Drawable,
-    game_start_uniforms: util::Uniforms<rendering::UniformData>,
+    game_start_uniforms: util::UniformWrapper<rendering::Uniforms>,
     game_over_drawable: rendering::Drawable,
-    game_over_uniforms: util::Uniforms<rendering::UniformData>,
+    game_over_uniforms: util::UniformWrapper<rendering::Uniforms>,
     entities: HashMap<u32, entity::EntityComponents>,
 
     // state
@@ -57,6 +57,7 @@ pub struct GameUi {
     drawer_open_progress: f32,
     start_message_blink_countdown: f32,
     game_over_message_visible: bool,
+    sprite_size_px: Vector2<f32>,
 }
 
 impl GameUi {
@@ -67,7 +68,8 @@ impl GameUi {
     ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
-        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::UniformWrapper<camera::Uniforms> =
+            util::UniformWrapper::new(&gpu.device);
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
             gpu.sc_desc.height,
@@ -98,8 +100,7 @@ impl GameUi {
         };
 
         let sprite_size_px = game_ui_map.tileset.get_sprite_size().cast().unwrap();
-        let mut drawer_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        drawer_uniforms.data.set_sprite_size_px(sprite_size_px);
+        let drawer_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
 
         let pipeline_layout = gpu
             .device
@@ -160,8 +161,6 @@ impl GameUi {
             .into_iter()
             .map(|e| {
                 let sprite_name = e.sprite_name().to_string();
-                let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-                uniforms.data.set_sprite_size_px(sprite_size_px);
                 let ec = EntityComponents::with_entity_drawable(
                     e,
                     rendering::EntityDrawable::load(
@@ -171,17 +170,14 @@ impl GameUi {
                         &sprite_name,
                         0,
                     ),
-                    uniforms,
+                    util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device),
                 );
                 (ec.id(), ec)
             })
             .collect::<HashMap<_, _>>();
 
-        let mut game_over_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        game_over_uniforms.data.set_sprite_size_px(sprite_size_px);
-
-        let mut game_start_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        game_start_uniforms.data.set_sprite_size_px(sprite_size_px);
+        let game_over_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+        let game_start_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
 
         let mut game_ui = Self {
             pipeline,
@@ -206,6 +202,7 @@ impl GameUi {
             drawer_open_progress: 0.0,
             start_message_blink_countdown: 0.0,
             game_over_message_visible: false,
+            sprite_size_px,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -256,6 +253,7 @@ impl GameUi {
         message_dispatcher: &mut event_dispatch::Dispatcher,
         _entity_id_vendor: &mut entity::IdVendor,
     ) {
+        let sprite_size_px = self.sprite_size_px;
         self.drawer_collision_space.update();
 
         self.time += dt.as_secs_f32();
@@ -276,6 +274,7 @@ impl GameUi {
 
         self.drawer_uniforms
             .data
+            .set_sprite_size_px(sprite_size_px)
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
         self.drawer_uniforms.write(&mut gpu.queue);
@@ -292,7 +291,10 @@ impl GameUi {
             );
             if let Some(ref mut uniforms) = e.uniforms {
                 e.entity.update_uniforms(uniforms);
-                uniforms.data.offset_model_position(drawer_offset);
+                uniforms
+                    .data
+                    .set_sprite_size_px(sprite_size_px)
+                    .offset_model_position(drawer_offset);
                 uniforms.write(&mut gpu.queue);
             }
         }
@@ -300,7 +302,7 @@ impl GameUi {
         // update game over and game start uniforms to center their test strings
         let mut center_drawable =
             |drawable: &rendering::Drawable,
-             uniforms: &mut util::Uniforms<rendering::UniformData>| {
+             uniforms: &mut util::UniformWrapper<rendering::Uniforms>| {
                 let bounds = drawable
                     .meshes
                     .first()
@@ -308,6 +310,7 @@ impl GameUi {
                     .bounds;
                 uniforms
                     .data
+                    .set_sprite_size_px(sprite_size_px)
                     .set_color(vec4(1.0, 1.0, 1.0, 1.0))
                     .set_model_position(point3(-bounds.width() / 2.0, -bounds.height() / 2.0, 0.0));
                 uniforms.write(&mut gpu.queue);

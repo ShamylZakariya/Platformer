@@ -144,7 +144,7 @@ impl VertexBufferDescription for Vertex {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct UniformData {
+pub struct Uniforms {
     model_position: Vector4<f32>,
     color: Vector4<f32>,
     sprite_scale: Vector2<f32>,
@@ -152,10 +152,10 @@ pub struct UniformData {
     tex_coord_offset: Vector2<f32>,
 }
 
-unsafe impl bytemuck::Pod for UniformData {}
-unsafe impl bytemuck::Zeroable for UniformData {}
+unsafe impl bytemuck::Pod for Uniforms {}
+unsafe impl bytemuck::Zeroable for Uniforms {}
 
-impl Default for UniformData {
+impl Default for Uniforms {
     fn default() -> Self {
         Self {
             model_position: Vector4::zero(),
@@ -167,7 +167,7 @@ impl Default for UniformData {
     }
 }
 
-impl UniformData {
+impl Uniforms {
     pub fn set_color(&mut self, color: Vector4<f32>) -> &mut Self {
         self.color = color;
         self
@@ -419,8 +419,8 @@ impl Mesh {
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..));
@@ -442,8 +442,8 @@ impl Mesh {
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
     ) where
         I: IntoIterator<Item = &'a Sprite>,
     {
@@ -494,8 +494,8 @@ impl Drawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
@@ -507,8 +507,8 @@ impl Drawable {
         &'a self,
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
     ) where
         // TODO: Not happy about this +Copy here, the sprites array is being copied for each pass of the loop?
         I: IntoIterator<Item = &'a Sprite> + Copy,
@@ -640,8 +640,8 @@ impl EntityDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
         cycle: &str,
     ) where
         'a: 'b,
@@ -688,7 +688,7 @@ impl FlipbookAnimationDrawable {
         self.sequence.durations[frame % self.sequence.durations.len()]
     }
 
-    pub fn set_frame(&self, sprite_uniforms: &mut util::Uniforms<UniformData>, frame: usize) {
+    pub fn set_frame(&self, sprite_uniforms: &mut util::UniformWrapper<Uniforms>, frame: usize) {
         sprite_uniforms
             .data
             .set_tex_coord_offset(self.sequence.offsets[frame % self.sequence.offsets.len()]);
@@ -697,8 +697,8 @@ impl FlipbookAnimationDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
-        sprite_uniforms: &'a util::Uniforms<UniformData>,
+        camera_uniforms: &'a util::UniformWrapper<camera::Uniforms>,
+        sprite_uniforms: &'a util::UniformWrapper<Uniforms>,
     ) where
         'a: 'b,
     {
@@ -717,13 +717,16 @@ impl FlipbookAnimationDrawable {
 /// it needs to render.
 pub struct FlipbookAnimationComponents {
     pub drawable: FlipbookAnimationDrawable,
-    pub uniforms: util::Uniforms<UniformData>,
+    pub uniforms: util::UniformWrapper<Uniforms>,
     seconds_until_next_frame: f32,
     current_frame: usize,
 }
 
 impl FlipbookAnimationComponents {
-    pub fn new(flipbook: FlipbookAnimationDrawable, uniforms: util::Uniforms<UniformData>) -> Self {
+    pub fn new(
+        flipbook: FlipbookAnimationDrawable,
+        uniforms: util::UniformWrapper<Uniforms>,
+    ) -> Self {
         let seconds_until_next_frame = flipbook.duration_for_frame(0).as_secs_f32();
         Self {
             drawable: flipbook,

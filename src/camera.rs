@@ -5,7 +5,7 @@ use winit::event::*;
 
 use crate::{
     state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
-    util::{Bounds, Uniforms},
+    util::{Bounds, UniformWrapper},
 };
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -132,17 +132,17 @@ impl Projection {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct UniformData {
+pub struct Uniforms {
     // use vec4 for 16-byte spacing requirement
     position: Vector4<f32>,
     view_proj: Matrix4<f32>,
     framebuffer_size: Vector2<f32>,
 }
 
-unsafe impl bytemuck::Pod for UniformData {}
-unsafe impl bytemuck::Zeroable for UniformData {}
+unsafe impl bytemuck::Pod for Uniforms {}
+unsafe impl bytemuck::Zeroable for Uniforms {}
 
-impl Default for UniformData {
+impl Default for Uniforms {
     fn default() -> Self {
         Self {
             position: Zero::zero(),
@@ -152,7 +152,7 @@ impl Default for UniformData {
     }
 }
 
-impl UniformData {
+impl Uniforms {
     pub fn update_view_proj(&mut self, camera: &Camera, projection: &Projection) -> &mut Self {
         self.position = camera.position().to_homogeneous(); // converts to vec4
         self.view_proj = projection.calc_matrix() * camera.calc_matrix();
@@ -166,11 +166,11 @@ impl UniformData {
 pub struct CameraController {
     pub camera: Camera,
     pub projection: Projection,
-    pub uniforms: Uniforms<UniformData>,
+    pub uniforms: UniformWrapper<Uniforms>,
 }
 
 impl CameraController {
-    pub fn new(camera: Camera, projection: Projection, uniforms: Uniforms<UniformData>) -> Self {
+    pub fn new(camera: Camera, projection: Projection, uniforms: UniformWrapper<Uniforms>) -> Self {
         Self {
             camera,
             projection,

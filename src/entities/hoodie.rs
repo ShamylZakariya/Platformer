@@ -126,7 +126,7 @@ impl Entity for Hoodie {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         let one_px = 1.0 / self.sprite_size_px.x;
 
         let (xscale, xoffset) = match self.march.current_movement_dir() {

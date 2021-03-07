@@ -1,6 +1,5 @@
 CURRENTLY:
     YAK SHAVING:
-        - Uniforms struct can be parameterized on the underlying data...but should it? Right now camera::Uniforms is essentially identical to sprite::Uniforms. Could make a Uniform<camera::UniformData> or something like that, will need trait constraints for btytemuck::Pod and Zeroable
         - Upgrade various cargo deps. Known API breakages using wgpu-rs 0.7, and saw a few more in other modules. So, upgrade them one-at-a-time.
 
 TODO:

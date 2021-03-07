@@ -137,7 +137,7 @@ impl Entity for FireSprite {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         let (xscale, xoffset) = if self.animation_cycle_tick / 2 % 2 == 0 {
             (1.0, 0.0)
         } else {

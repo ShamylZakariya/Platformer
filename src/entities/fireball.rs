@@ -152,7 +152,7 @@ impl Entity for Fireball {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         uniforms
             .data
             .set_model_position(self.position - vec3(0.5, 0.5, 0.0));

@@ -113,7 +113,7 @@ pub trait Entity {
     }
 
     /// Write updated state into this entity's uniform buffer for rendering.
-    fn update_uniforms(&self, _uniforms: &mut util::Uniforms<rendering::UniformData>) {}
+    fn update_uniforms(&self, _uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {}
 
     /// Called on an entity before removing it from GameState
     fn deactivate_collider(&mut self, _collision_space: &mut collision::Space) {}
@@ -189,14 +189,14 @@ pub struct EntityComponents {
     pub entity: Box<dyn Entity>,
     pub entity_drawable: Option<crate::sprite::rendering::EntityDrawable>,
     pub sprite_drawable: Option<crate::sprite::rendering::Drawable>,
-    pub uniforms: Option<util::Uniforms<rendering::UniformData>>,
+    pub uniforms: Option<util::UniformWrapper<rendering::Uniforms>>,
 }
 
 impl EntityComponents {
     pub fn with_entity_drawable(
         entity: Box<dyn Entity>,
         entity_drawable: crate::sprite::rendering::EntityDrawable,
-        uniforms: util::Uniforms<rendering::UniformData>,
+        uniforms: util::UniformWrapper<rendering::Uniforms>,
     ) -> Self {
         Self {
             entity,
@@ -209,7 +209,7 @@ impl EntityComponents {
     pub fn with_sprite_drawable(
         entity: Box<dyn Entity>,
         sprite_drawable: crate::sprite::rendering::Drawable,
-        uniforms: util::Uniforms<rendering::UniformData>,
+        uniforms: util::UniformWrapper<rendering::Uniforms>,
     ) -> Self {
         Self {
             entity,

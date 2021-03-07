@@ -151,7 +151,7 @@ impl Entity for FlyingFish {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         let (xscale, xoffset) = match self.phase % 2 {
             0 => (-1.0, 1.0 - 1.0 / self.sprite_size_px.x),
             _ => (1.0, 0.0),

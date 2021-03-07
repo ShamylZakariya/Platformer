@@ -88,9 +88,9 @@ pub struct GameState {
 
     // Stage rendering
     stage_material: Rc<rendering::Material>,
-    stage_uniforms: util::Uniforms<rendering::UniformData>,
-    stage_debug_draw_overlap_uniforms: util::Uniforms<rendering::UniformData>,
-    stage_debug_draw_contact_uniforms: util::Uniforms<rendering::UniformData>,
+    stage_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    stage_debug_draw_overlap_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    stage_debug_draw_contact_uniforms: util::UniformWrapper<rendering::Uniforms>,
     stage_sprite_drawable: rendering::Drawable,
 
     // Collision detection and dispatch
@@ -125,6 +125,7 @@ pub struct GameState {
     viewport_left_when_boss_arena_entered: Option<f32>,
     camera_shaker: Option<CameraShaker>,
     game_state_peek: GameStatePeek,
+    sprite_size_px: Vector2<f32>,
 }
 
 impl GameState {
@@ -264,23 +265,17 @@ impl GameState {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::UniformWrapper<camera::Uniforms> =
+            util::UniformWrapper::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 
         // Build the sprite render pipeline
 
-        let mut stage_uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        stage_uniforms.data.set_sprite_size_px(sprite_size_px);
+        let mut stage_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
         let mut stage_debug_draw_overlap_uniforms =
-            util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        stage_debug_draw_overlap_uniforms
-            .data
-            .set_sprite_size_px(sprite_size_px);
+            util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
         let mut stage_debug_draw_contact_uniforms =
-            util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-        stage_debug_draw_contact_uniforms
-            .data
-            .set_sprite_size_px(sprite_size_px);
+            util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
 
         let sprite_render_pipeline_layout =
             gpu.device
@@ -338,8 +333,7 @@ impl GameState {
                 )
             })
             .map(|a| {
-                let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-                uniforms.data.set_sprite_size_px(sprite_size_px);
+                let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
                 rendering::FlipbookAnimationComponents::new(a, uniforms)
             })
             .collect::<Vec<_>>();
@@ -403,6 +397,7 @@ impl GameState {
             viewport_left_when_boss_arena_entered: None,
             camera_shaker: None,
             game_state_peek: GameStatePeek::default(),
+            sprite_size_px,
         };
 
         for req in entity_add_requests {
@@ -549,6 +544,7 @@ impl GameState {
                 );
                 if let Some(ref mut uniforms) = e.uniforms {
                     e.entity.update_uniforms(uniforms);
+                    uniforms.data.set_sprite_size_px(self.sprite_size_px);
                     uniforms.write(&mut gpu.queue);
                 }
 
@@ -563,12 +559,23 @@ impl GameState {
             }
         }
 
+        self.stage_uniforms
+            .data
+            .set_sprite_size_px(self.sprite_size_px);
+        self.stage_debug_draw_contact_uniforms
+            .data
+            .set_sprite_size_px(self.sprite_size_px);
+        self.stage_debug_draw_overlap_uniforms
+            .data
+            .set_sprite_size_px(self.sprite_size_px);
+
         //
         //  Update flipbook animations
         //
 
         for a in &mut self.flipbook_animations {
             a.update(dt);
+            a.uniforms.data.set_sprite_size_px(self.sprite_size_px);
             a.uniforms.write(&mut gpu.queue);
         }
 
@@ -1058,14 +1065,11 @@ impl GameState {
                 .init(req.entity_id, &self.map, &mut self.collision_space);
         }
 
-        let sprite_size_px = self.map.tileset.get_sprite_size().cast::<f32>().unwrap();
-
         let components = if !req.entity.sprite_name().is_empty() {
             let sprite_name = req.entity.sprite_name().to_string();
             // The Entity has specified a sprite name, which means it's using
             // an EntityDrawable to render.
-            let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-            uniforms.data.set_sprite_size_px(sprite_size_px);
+            let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
             EntityComponents::with_entity_drawable(
                 req.entity,
                 rendering::EntityDrawable::load(
@@ -1080,8 +1084,7 @@ impl GameState {
         } else if let Some(sprites) = req.entity.stage_sprites() {
             // The Entity has specified sprites to render, which means its using a
             // sprite::Drawable using the stage material to render.
-            let mut uniforms = util::Uniforms::<rendering::UniformData>::new(&gpu.device);
-            uniforms.data.set_sprite_size_px(sprite_size_px);
+            let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
             EntityComponents::with_sprite_drawable(
                 req.entity,
                 rendering::Drawable::with(

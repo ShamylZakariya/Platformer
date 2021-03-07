@@ -93,7 +93,7 @@ impl Entity for RisingFloor {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::Uniforms<rendering::UniformData>) {
+    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
         uniforms.data.set_model_position(self.offset);
     }
 

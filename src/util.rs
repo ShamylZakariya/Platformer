@@ -107,14 +107,14 @@ impl Bounds {
 }
 
 /// Uniforms is a generic "holder" for uniform data types. See camera::UniformData as an example payload.
-pub struct Uniforms<D> {
+pub struct UniformWrapper<D> {
     pub data: D,
     pub buffer: wgpu::Buffer,
     pub bind_group_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
 }
 
-impl<D> Uniforms<D>
+impl<D> UniformWrapper<D>
 where
     D: bytemuck::Pod + bytemuck::Zeroable + Default,
 {
