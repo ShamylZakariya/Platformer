@@ -4,10 +4,10 @@ use std::hash::Hash;
 use std::rc::Rc;
 use std::{collections::HashMap, time::Duration};
 
-use crate::texture;
 use crate::tileset;
 use crate::{camera, util::Bounds};
 use crate::{sprite::core::*, util::*};
+use crate::{texture, util};
 use wgpu::util::DeviceExt;
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -472,7 +472,7 @@ impl Mesh {
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
@@ -495,7 +495,7 @@ impl Mesh {
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
         material: &'a Material,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
     ) where
         I: IntoIterator<Item = &'a Sprite>,
@@ -547,7 +547,7 @@ impl Drawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
     ) {
         for mesh in &self.meshes {
@@ -560,7 +560,7 @@ impl Drawable {
         &'a self,
         sprites: I,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
     ) where
         // TODO: Not happy about this +Copy here, the sprites array is being copied for each pass of the loop?
@@ -694,7 +694,7 @@ impl EntityDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
         cycle: &str,
     ) where
@@ -751,7 +751,7 @@ impl FlipbookAnimationDrawable {
     pub fn draw<'a, 'b>(
         &'a self,
         render_pass: &'b mut wgpu::RenderPass<'a>,
-        camera_uniforms: &'a camera::Uniforms,
+        camera_uniforms: &'a util::Uniforms<camera::UniformData>,
         sprite_uniforms: &'a Uniforms,
     ) where
         'a: 'b,

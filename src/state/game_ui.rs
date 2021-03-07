@@ -13,7 +13,10 @@ use crate::{
     texture,
 };
 use crate::{event_dispatch, Options};
-use crate::{map, util::lerp};
+use crate::{
+    map,
+    util::{self, lerp},
+};
 
 use super::{
     constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},
@@ -34,7 +37,7 @@ pub struct GameUi {
 
     camera_view: camera::Camera,
     camera_projection: camera::Projection,
-    camera_uniforms: camera::Uniforms,
+    camera_uniforms: util::Uniforms<camera::UniformData>,
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_collision_space: collision::Space,
@@ -64,7 +67,7 @@ impl GameUi {
     ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
-        let camera_uniforms = camera::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
             gpu.sc_desc.height,

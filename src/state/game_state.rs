@@ -23,7 +23,7 @@ use crate::{
     sprite::rendering,
     sprite::rendering::Uniforms as SpriteUniforms,
     texture, tileset,
-    util::{hermite, lerp, Bounds},
+    util::{self, hermite, lerp, Bounds},
     Options,
 };
 
@@ -265,7 +265,7 @@ impl GameState {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-        let camera_uniforms = camera::Uniforms::new(&gpu.device);
+        let camera_uniforms: util::Uniforms<camera::UniformData> = util::Uniforms::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 
         // Build the sprite render pipeline
