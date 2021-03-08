@@ -85,16 +85,21 @@ impl GameUi {
         //
         //  Create sprite material and pipeline layout
         //
+        let tonemap = Rc::new(
+            texture::Texture::load(&gpu.device, &gpu.queue, "res/tonemap.png", false).unwrap(),
+        );
 
         let bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let sprite_material = {
             let spritesheet_path = Path::new("res").join(&game_ui_map.tileset.image_path);
-            let spritesheet =
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
+            let spritesheet = Rc::new(
+                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
+            );
             Rc::new(rendering::Material::new(
                 &gpu.device,
                 "UI Sprite Material",
                 spritesheet,
+                tonemap,
                 &bind_group_layout,
             ))
         };

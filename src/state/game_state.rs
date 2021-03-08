@@ -147,6 +147,10 @@ impl GameState {
             map.tileset.tile_height as f32,
         );
 
+        let tonemap = Rc::new(
+            texture::Texture::load(&gpu.device, &gpu.queue, "res/tonemap.png", false).unwrap(),
+        );
+
         let material_bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let (
             stage_sprite_material,
@@ -158,13 +162,15 @@ impl GameState {
         ) = {
             let stage_sprite_material = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
-                let spritesheet =
+                let spritesheet = Rc::new(
                     texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false)
-                        .unwrap();
+                        .unwrap(),
+                );
                 Rc::new(rendering::Material::new(
                     &gpu.device,
                     "Sprite Material",
-                    spritesheet,
+                    spritesheet.clone(),
+                    tonemap.clone(),
                     &material_bind_group_layout,
                 ))
             };
@@ -304,13 +310,15 @@ impl GameState {
 
         let entity_material = Rc::new({
             let spritesheet_path = Path::new("res").join(&entity_tileset.image_path);
-            let spritesheet =
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap();
+            let spritesheet = Rc::new(
+                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
+            );
 
             rendering::Material::new(
                 &gpu.device,
                 "Sprite Material",
-                spritesheet,
+                spritesheet.clone(),
+                tonemap.clone(),
                 &material_bind_group_layout,
             )
         });

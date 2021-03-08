@@ -6,7 +6,8 @@ layout(location = 1) in vec4 v_color;
 layout(location = 0) out vec4 f_color;
 
 layout(set = 0, binding = 0) uniform texture2D t_diffuse;
-layout(set = 0, binding = 1) uniform sampler s_diffuse;
+layout(set = 0, binding = 1) uniform texture2D t_tonemap;
+layout(set = 0, binding = 2) uniform sampler s_diffuse;
 
 layout(set = 1, binding = 0) uniform CameraUniforms {
   vec3 u_position;         // camera aposition world
@@ -32,10 +33,16 @@ void main() {
 
   // for now, treat palette shift as a color scale
   if (u_palette_shift > 0) {
-    object_color = mix(object_color, vec4(1, 1, 1, object_color.a), u_palette_shift);
+    object_color =
+        mix(object_color, vec4(1, 1, 1, object_color.a), u_palette_shift);
   } else if (u_palette_shift < 0) {
-    object_color = mix(object_color, vec4(0, 0, 0, object_color.a), -u_palette_shift);
+    object_color =
+        mix(object_color, vec4(0, 0, 0, object_color.a), -u_palette_shift);
   }
+
+  // apply tonemap
+  object_color =
+      texture(sampler2D(t_tonemap, s_diffuse), vec2(object_color.r, 0));
 
   f_color = object_color;
 }
