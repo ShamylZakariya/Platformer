@@ -26,9 +26,10 @@ pub struct AppState {
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let mut entity_id_vendor = entity::IdVendor::default();
-        let tonemap = Rc::new(
-            texture::Texture::load(&gpu.device, &gpu.queue, "res/tonemap.png", false).unwrap(),
-        );
+
+        let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
+        let tonemap =
+            Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false).unwrap());
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));

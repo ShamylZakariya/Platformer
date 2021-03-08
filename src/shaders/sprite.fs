@@ -40,7 +40,8 @@ void main() {
         mix(object_color, vec4(0, 0, 0, object_color.a), -u_palette_shift);
   }
 
-  // apply tonemap
+  // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
+  // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
   object_color =
       texture(sampler2D(t_tonemap, s_diffuse), vec2(object_color.r + 0.125, 0));
 

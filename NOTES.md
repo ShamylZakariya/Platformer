@@ -1,6 +1,8 @@
 CURRENTLY:
     YAK SHAVING:
-        - Tonemap should be created in AppState (can be an argument) and passed down to gamestate and gameui
+        - need to list available tonemap options in help
+        - need to add a proper default gameboy palette
+
         - Upgrade various cargo deps. Known API breakages using wgpu-rs 0.7, and saw a few more in other modules. So, upgrade them one-at-a-time.
 
 TODO:

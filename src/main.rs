@@ -43,6 +43,9 @@ pub struct Options {
     /// Number of lives to give player
     #[structopt(short, long, default_value = "3")]
     pub lives: u32,
+
+    #[structopt(short, long, default_value = "nostalgia")]
+    pub palette: String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
