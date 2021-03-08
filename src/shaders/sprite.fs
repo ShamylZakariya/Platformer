@@ -42,7 +42,7 @@ void main() {
 
   // apply tonemap
   object_color =
-      texture(sampler2D(t_tonemap, s_diffuse), vec2(object_color.r, 0));
+      texture(sampler2D(t_tonemap, s_diffuse), vec2(object_color.r + 0.125, 0));
 
   f_color = object_color;
 }

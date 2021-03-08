@@ -136,6 +136,7 @@ impl GameState {
         gpu: &mut gpu_state::GpuState,
         options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
+        tonemap: Rc<texture::Texture>,
         start_checkpoint: u32,
         lives_remaining: u32,
     ) -> Self {
@@ -145,10 +146,6 @@ impl GameState {
         let sprite_size_px = vec2(
             map.tileset.tile_width as f32,
             map.tileset.tile_height as f32,
-        );
-
-        let tonemap = Rc::new(
-            texture::Texture::load(&gpu.device, &gpu.queue, "res/tonemap.png", false).unwrap(),
         );
 
         let material_bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);

@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{entity, event_dispatch, Options};
+use crate::{entity, event_dispatch, texture, Options};
 
 use super::{
     debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
@@ -24,6 +26,9 @@ pub struct AppState {
 impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
         let mut entity_id_vendor = entity::IdVendor::default();
+        let tonemap = Rc::new(
+            texture::Texture::load(&gpu.device, &gpu.queue, "res/tonemap.png", false).unwrap(),
+        );
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
@@ -31,10 +36,11 @@ impl AppState {
             &mut gpu,
             &options,
             &mut entity_id_vendor,
+            tonemap.clone(),
             game_controller.current_checkpoint(),
             game_controller.lives_remaining(),
         );
-        let game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
+        let game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
