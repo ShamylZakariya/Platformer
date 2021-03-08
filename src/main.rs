@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use anyhow::*;
 use futures::executor::block_on;
 use gilrs::Gilrs;
 use state::constants::{ORIGINAL_WINDOW_HEIGHT, ORIGINAL_WINDOW_WIDTH};
@@ -36,7 +37,7 @@ pub struct Options {
     #[structopt(short, long)]
     pub gameboy: bool,
 
-    /// Checkpoint to start gameplay at
+    /// Starts gameplay at specified checkpoint
     #[structopt(short, long)]
     pub checkpoint: Option<u32>,
 
@@ -44,13 +45,14 @@ pub struct Options {
     #[structopt(short, long, default_value = "3")]
     pub lives: u32,
 
-    #[structopt(short, long, default_value = "nostalgia")]
+    /// Palette to use; options are "mist", "nostalgia", and "nymph"
+    #[structopt(short, long, default_value = "mist")]
     pub palette: String,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn main() {
+fn main() -> Result<()> {
     let opt = Options::from_args();
     let event_loop = EventLoop::new();
 
@@ -68,7 +70,7 @@ fn main() {
     let window = builder.build(&event_loop).unwrap();
 
     let gpu = block_on(state::gpu_state::GpuState::new(&window));
-    let mut app_state = state::app_state::AppState::new(&window, gpu, opt);
+    let mut app_state = state::app_state::AppState::new(&window, gpu, opt)?;
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {

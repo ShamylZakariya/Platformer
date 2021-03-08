@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use anyhow::*;
 use winit::{event::WindowEvent, window::Window};
 
 use crate::{entity, event_dispatch, texture, Options};
@@ -24,12 +25,14 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Self {
+    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
         let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
-        let tonemap =
-            Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false).unwrap());
+        let tonemap = Rc::new(
+            texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
+                .with_context(|| format!("Failed to load palette \"{}\"", tonemap_file))?,
+        );
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
@@ -48,7 +51,7 @@ impl AppState {
             None
         };
 
-        Self {
+        Ok(Self {
             options,
             gpu,
             game_controller,
@@ -58,7 +61,7 @@ impl AppState {
 
             entity_id_vendor,
             message_dispatcher: event_dispatch::Dispatcher::default(),
-        }
+        })
     }
 
     pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
