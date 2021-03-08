@@ -150,6 +150,7 @@ pub struct Uniforms {
     sprite_scale: Vector2<f32>,
     sprite_size_px: Vector2<f32>,
     tex_coord_offset: Vector2<f32>,
+    palette_shift: f32,
 }
 
 unsafe impl bytemuck::Pod for Uniforms {}
@@ -163,6 +164,7 @@ impl Default for Uniforms {
             sprite_scale: vec2(1.0, 1.0),
             sprite_size_px: vec2(1.0, 1.0),
             tex_coord_offset: vec2(0.0, 0.0),
+            palette_shift: 0.0,
         }
     }
 }
@@ -195,6 +197,11 @@ impl Uniforms {
 
     pub fn set_tex_coord_offset(&mut self, tex_coord_offset: Vector2<f32>) -> &mut Self {
         self.tex_coord_offset = tex_coord_offset;
+        self
+    }
+
+    pub fn set_palette_shift(&mut self, palette_shift: f32) -> &mut Self {
+        self.palette_shift = palette_shift.clamp(-1.0, 1.0);
         self
     }
 }

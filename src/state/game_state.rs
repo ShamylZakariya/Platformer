@@ -126,6 +126,7 @@ pub struct GameState {
     camera_shaker: Option<CameraShaker>,
     game_state_peek: GameStatePeek,
     sprite_size_px: Vector2<f32>,
+    palette_shift: f32,
 }
 
 impl GameState {
@@ -344,23 +345,22 @@ impl GameState {
 
         stage_uniforms
             .data
-            .set_model_position(point3(0.0, 0.0, 0.0));
-        stage_uniforms.data.set_color(vec4(1.0, 1.0, 1.0, 1.0));
+            .set_model_position(point3(0.0, 0.0, 0.0))
+            .set_sprite_size_px(sprite_size_px)
+            .set_color(vec4(1.0, 1.0, 1.0, 1.0));
         stage_uniforms.write(&mut gpu.queue);
 
         stage_debug_draw_overlap_uniforms
             .data
-            .set_model_position(point3(0.0, 0.0, -0.1)); // bring closer
-        stage_debug_draw_overlap_uniforms
-            .data
+            .set_model_position(point3(0.0, 0.0, -0.1)) // bring closer
+            .set_sprite_size_px(sprite_size_px)
             .set_color(vec4(0.0, 1.0, 0.0, 0.75));
         stage_debug_draw_overlap_uniforms.write(&mut gpu.queue);
 
         stage_debug_draw_contact_uniforms
             .data
-            .set_model_position(point3(0.0, 0.0, -0.2)); // bring closer
-        stage_debug_draw_contact_uniforms
-            .data
+            .set_model_position(point3(0.0, 0.0, -0.2)) // bring closer
+            .set_sprite_size_px(sprite_size_px)
             .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         stage_debug_draw_contact_uniforms.write(&mut gpu.queue);
 
@@ -398,6 +398,7 @@ impl GameState {
             camera_shaker: None,
             game_state_peek: GameStatePeek::default(),
             sprite_size_px,
+            palette_shift: 0.0,
         };
 
         for req in entity_add_requests {
@@ -428,6 +429,16 @@ impl GameState {
                     },
                 ..
             } => {
+                match (*key, *state) {
+                    (winit::event::VirtualKeyCode::LBracket, ElementState::Pressed) => {
+                        self.set_palette_shift(self.palette_shift - 0.25);
+                    }
+                    (winit::event::VirtualKeyCode::RBracket, ElementState::Pressed) => {
+                        self.set_palette_shift(self.palette_shift + 0.25);
+                    }
+                    _ => {}
+                }
+
                 let mut consumed = false;
                 if !is_paused {
                     for e in self.entities.values_mut() {
@@ -544,7 +555,10 @@ impl GameState {
                 );
                 if let Some(ref mut uniforms) = e.uniforms {
                     e.entity.update_uniforms(uniforms);
-                    uniforms.data.set_sprite_size_px(self.sprite_size_px);
+                    uniforms
+                        .data
+                        .set_sprite_size_px(self.sprite_size_px)
+                        .set_palette_shift(self.palette_shift);
                     uniforms.write(&mut gpu.queue);
                 }
 
@@ -561,13 +575,8 @@ impl GameState {
 
         self.stage_uniforms
             .data
-            .set_sprite_size_px(self.sprite_size_px);
-        self.stage_debug_draw_contact_uniforms
-            .data
-            .set_sprite_size_px(self.sprite_size_px);
-        self.stage_debug_draw_overlap_uniforms
-            .data
-            .set_sprite_size_px(self.sprite_size_px);
+            .set_palette_shift(self.palette_shift);
+        self.stage_uniforms.write(&mut gpu.queue);
 
         //
         //  Update flipbook animations
@@ -575,7 +584,10 @@ impl GameState {
 
         for a in &mut self.flipbook_animations {
             a.update(dt);
-            a.uniforms.data.set_sprite_size_px(self.sprite_size_px);
+            a.uniforms
+                .data
+                .set_sprite_size_px(self.sprite_size_px)
+                .set_palette_shift(self.palette_shift);
             a.uniforms.write(&mut gpu.queue);
         }
 
@@ -858,6 +870,10 @@ impl GameState {
                 _ => {}
             }
         }
+    }
+
+    pub fn set_palette_shift(&mut self, palette_shift: f32) {
+        self.palette_shift = palette_shift.clamp(-1.0, 1.0);
     }
 
     pub fn restart_game_at_checkpoint(
