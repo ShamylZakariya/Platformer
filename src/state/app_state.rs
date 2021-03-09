@@ -130,6 +130,7 @@ impl AppState {
             window,
             dt,
             &mut self.game_state,
+            &mut self.game_ui,
             &mut self.message_dispatcher,
         );
 

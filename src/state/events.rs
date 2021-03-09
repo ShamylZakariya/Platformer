@@ -10,8 +10,9 @@ use crate::{
 pub enum Event {
     /// Sent when Firebrand is created and game has started
     FirebrandCreated {
-        // the checkpoint Firebrand was creATED AT
+        // the checkpoint Firebrand was created at
         checkpoint: u32,
+        num_restarts: u32,
     },
 
     /// Received by an Entity when contacted by Firebrand

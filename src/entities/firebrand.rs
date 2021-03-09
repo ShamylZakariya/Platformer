@@ -935,7 +935,7 @@ impl Entity for Firebrand {
             Event::FirebrandPassedThroughExitDoor => {
                 self.did_pass_through_exit_door = true;
             }
-            Event::FirebrandCreated { checkpoint } => {
+            Event::FirebrandCreated { checkpoint, .. } => {
                 if checkpoint == 0 {
                     self.frozen = true;
                     self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);

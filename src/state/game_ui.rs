@@ -58,6 +58,7 @@ pub struct GameUi {
     start_message_blink_countdown: f32,
     game_over_message_visible: bool,
     sprite_size_px: Vector2<f32>,
+    palette_shift: f32,
 }
 
 impl GameUi {
@@ -206,6 +207,7 @@ impl GameUi {
             start_message_blink_countdown: 0.0,
             game_over_message_visible: false,
             sprite_size_px,
+            palette_shift: 0.0,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -257,6 +259,7 @@ impl GameUi {
         _entity_id_vendor: &mut entity::IdVendor,
     ) {
         let sprite_size_px = self.sprite_size_px;
+        let palette_shift = self.palette_shift();
         self.drawer_collision_space.update();
 
         self.time += dt.as_secs_f32();
@@ -279,6 +282,7 @@ impl GameUi {
             .data
             .set_sprite_size_px(sprite_size_px)
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
+            .set_palette_shift(palette_shift)
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
         self.drawer_uniforms.write(&mut gpu.queue);
 
@@ -297,13 +301,15 @@ impl GameUi {
                 uniforms
                     .data
                     .set_sprite_size_px(sprite_size_px)
+                    .set_palette_shift(palette_shift)
                     .offset_model_position(drawer_offset);
                 uniforms.write(&mut gpu.queue);
             }
         }
 
-        // update game over and game start uniforms to center their test strings
-        let mut center_drawable =
+        // update game over and game start uniforms to center their test strings.
+        // Note: We don't apply palette shift to text drawables
+        let mut center_text_drawable =
             |drawable: &rendering::Drawable,
              uniforms: &mut util::UniformWrapper<rendering::Uniforms>| {
                 let bounds = drawable
@@ -319,8 +325,8 @@ impl GameUi {
                 uniforms.write(&mut gpu.queue);
             };
 
-        center_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);
-        center_drawable(&self.game_start_drawable, &mut self.game_start_uniforms);
+        center_text_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);
+        center_text_drawable(&self.game_start_drawable, &mut self.game_start_uniforms);
 
         // update countdowns
         self.start_message_blink_countdown =
@@ -430,6 +436,13 @@ impl GameUi {
     }
 
     // MARK: Public
+    pub fn set_palette_shift(&mut self, palette_shift: f32) {
+        self.palette_shift = palette_shift.clamp(-1.0, 1.0);
+    }
+
+    pub fn palette_shift(&self) -> f32 {
+        (self.palette_shift * 4.0).round() / 4.0
+    }
 
     pub fn is_paused(&self) -> bool {
         self.drawer_open

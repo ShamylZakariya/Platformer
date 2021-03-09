@@ -127,6 +127,7 @@ pub struct GameState {
     game_state_peek: GameStatePeek,
     sprite_size_px: Vector2<f32>,
     palette_shift: f32,
+    num_restarts: u32,
 }
 
 impl GameState {
@@ -404,6 +405,7 @@ impl GameState {
             game_state_peek: GameStatePeek::default(),
             sprite_size_px,
             palette_shift: 0.0,
+            num_restarts: 0,
         };
 
         for req in entity_add_requests {
@@ -434,16 +436,6 @@ impl GameState {
                     },
                 ..
             } => {
-                match (*key, *state) {
-                    (winit::event::VirtualKeyCode::LBracket, ElementState::Pressed) => {
-                        self.set_palette_shift(self.palette_shift - 0.25);
-                    }
-                    (winit::event::VirtualKeyCode::RBracket, ElementState::Pressed) => {
-                        self.set_palette_shift(self.palette_shift + 0.25);
-                    }
-                    _ => {}
-                }
-
                 let mut consumed = false;
                 if !is_paused {
                     for e in self.entities.values_mut() {
@@ -533,6 +525,7 @@ impl GameState {
 
             message_dispatcher.broadcast(Event::FirebrandCreated {
                 checkpoint: self.firebrand_start_checkpoint,
+                num_restarts: self.num_restarts,
             });
         }
 
@@ -541,6 +534,7 @@ impl GameState {
         let firebrand = &self.get_firebrand().entity;
         self.game_state_peek.player_position = firebrand.position().xy();
         self.game_state_peek.current_map_bounds = current_map_bounds;
+        let palette_shift = self.palette_shift();
 
         //
         //  Update entities - if any are expired, remove them.
@@ -563,7 +557,7 @@ impl GameState {
                     uniforms
                         .data
                         .set_sprite_size_px(self.sprite_size_px)
-                        .set_palette_shift(self.palette_shift);
+                        .set_palette_shift(palette_shift);
                     uniforms.write(&mut gpu.queue);
                 }
 
@@ -578,9 +572,7 @@ impl GameState {
             }
         }
 
-        self.stage_uniforms
-            .data
-            .set_palette_shift(self.palette_shift);
+        self.stage_uniforms.data.set_palette_shift(palette_shift);
         self.stage_uniforms.write(&mut gpu.queue);
 
         //
@@ -592,7 +584,7 @@ impl GameState {
             a.uniforms
                 .data
                 .set_sprite_size_px(self.sprite_size_px)
-                .set_palette_shift(self.palette_shift);
+                .set_palette_shift(palette_shift);
             a.uniforms.write(&mut gpu.queue);
         }
 
@@ -881,6 +873,10 @@ impl GameState {
         self.palette_shift = palette_shift.clamp(-1.0, 1.0);
     }
 
+    pub fn palette_shift(&self) -> f32 {
+        (self.palette_shift * 4.0).round() / 4.0
+    }
+
     pub fn restart_game_at_checkpoint(
         &mut self,
         start_checkpoint: u32,
@@ -892,6 +888,7 @@ impl GameState {
             start_checkpoint, lives_remaining
         );
 
+        self.num_restarts += 1;
         self.firebrand_start_checkpoint = start_checkpoint;
         self.firebrand_start_lives_remaining = lives_remaining;
 
