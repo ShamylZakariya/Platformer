@@ -8,8 +8,8 @@ use super::{events::Event, game_state::GameState, game_ui::GameUi};
 
 const RESTART_GAME_DELAY: f32 = 4.0;
 const GAME_OVER_DELAY: f32 = 2.0;
-const FADE_IN_DURATION: f32 = 2.0;
-const FADE_OUT_DURATION: f32 = 2.0;
+const FADE_IN_DURATION: f32 = 1.0;
+const FADE_OUT_DURATION: f32 = 1.0;
 
 //---------------------------------------------------------------------------------------------------------------------
 
@@ -59,6 +59,7 @@ impl GameController {
             game_ui.set_palette_shift(palette_shift);
             if fade_in_countdown < 0.0 {
                 self.fade_in_countdown = None;
+                game_ui.show_start_message();
             } else {
                 self.fade_in_countdown = Some(fade_in_countdown);
             }
@@ -118,7 +119,6 @@ impl GameController {
             }
 
             Event::FirebrandDied => {
-                println!("Firebrand died!");
                 if self.lives_remaining > 0 {
                     self.lives_remaining -= 1;
                     self.restart_game_countdown = Some(RESTART_GAME_DELAY);

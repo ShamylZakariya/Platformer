@@ -883,11 +883,6 @@ impl GameState {
         lives_remaining: u32,
         message_dispatcher: &mut event_dispatch::Dispatcher,
     ) {
-        println!(
-            "GameState::restart_game_at_checkpoint checkpoint:{} lives_remaining: {}",
-            start_checkpoint, lives_remaining
-        );
-
         self.num_restarts += 1;
         self.firebrand_start_checkpoint = start_checkpoint;
         self.firebrand_start_lives_remaining = lives_remaining;

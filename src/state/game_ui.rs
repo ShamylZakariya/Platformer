@@ -426,11 +426,8 @@ impl GameUi {
                 }
             }
 
-            match &message.event {
-                Event::FirebrandCreated { .. } => self.show_start_message(),
-                Event::GameOver => self.show_game_over_message(),
-
-                _ => {}
+            if matches!(message.event, Event::GameOver) {
+                self.show_game_over_message();
             }
         }
     }
