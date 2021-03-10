@@ -45,8 +45,8 @@ pub struct Options {
     #[structopt(short, long, default_value = "3")]
     pub lives: u32,
 
-    /// Palette to use; options are "mist", "nostalgia", and "nymph"
-    #[structopt(short, long, default_value = "mist")]
+    /// Palette to use; options are "gameboy", "mist", "nostalgia", and "nymph"
+    #[structopt(short, long, default_value = "gameboy")]
     pub palette: String,
 }
 
