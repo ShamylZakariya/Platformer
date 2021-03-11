@@ -24,6 +24,7 @@ wgpu-subscriber = "0.1"
 winit = "0.22"
 xml-rs = "0.8"
 gilrs = "0.8.0"
+rodio = "0.13.0"
 
 [dependencies.cgmath]
 version = "0.18"

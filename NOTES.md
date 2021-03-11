@@ -6,6 +6,7 @@ CURRENTLY:
     - It has methods to play an "interrupting" music track (the drawer opening sound, the got a powerup sound)
 
 BUGS:
+    - Short flash of scene at game start as palette shift takes an update cycle to apply via game_controller::handle_message
     - Powerups stopped blinking!?
 
 TODO:

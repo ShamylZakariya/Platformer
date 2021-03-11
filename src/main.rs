@@ -12,6 +12,7 @@ use winit::{
     window::WindowBuilder,
 };
 
+mod audio;
 mod camera;
 mod collision;
 mod entities;

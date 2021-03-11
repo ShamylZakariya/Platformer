@@ -12,7 +12,7 @@ use winit::{
 };
 
 use crate::{
-    camera, collision,
+    audio, camera, collision,
     entities::{
         self,
         util::{CompassDir, HorizontalDir},
@@ -487,6 +487,7 @@ impl GameState {
         _window: &Window,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
+        _audio: &mut audio::Audio,
         message_dispatcher: &mut event_dispatch::Dispatcher,
         entity_id_vendor: &mut entity::IdVendor,
     ) {
@@ -717,6 +718,7 @@ impl GameState {
         message: &event_dispatch::Message,
         message_dispatcher: &mut event_dispatch::Dispatcher,
         entity_id_vendor: &mut entity::IdVendor,
+        _audio: &mut audio::Audio,
     ) {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             //

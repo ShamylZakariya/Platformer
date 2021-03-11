@@ -3,7 +3,7 @@ use std::rc::Rc;
 use anyhow::*;
 use winit::{event::WindowEvent, window::Window};
 
-use crate::{entity, event_dispatch, texture, Options};
+use crate::{audio::Audio, entity, event_dispatch, texture, Options};
 
 use super::{
     debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
@@ -15,6 +15,7 @@ use super::{
 pub struct AppState {
     options: Options,
     gpu: GpuState,
+    audio: Audio,
     game_controller: GameController,
     game_state: GameState,
     game_ui: GameUi,
@@ -28,6 +29,8 @@ impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
+        let audio = Audio::default();
+
         let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
         let tonemap = Rc::new(
             texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
@@ -36,7 +39,7 @@ impl AppState {
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
-        let game_state = GameState::new(
+        let mut game_state = GameState::new(
             &mut gpu,
             &options,
             &mut entity_id_vendor,
@@ -44,16 +47,23 @@ impl AppState {
             game_controller.current_checkpoint(),
             game_controller.lives_remaining(),
         );
-        let game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap);
+        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None
         };
 
+        // when game starts, palette is shifted to white, an Event::FirebrandCreated
+        // broadcast will be received by GameController which will animate palette
+        // shift from 1.0 to 0.0
+        game_state.set_palette_shift(1.0);
+        game_ui.set_palette_shift(1.0);
+
         Ok(Self {
             options,
             gpu,
+            audio,
             game_controller,
             game_state,
             game_ui,
@@ -109,10 +119,13 @@ impl AppState {
             dt
         };
 
+        self.audio.update(dt);
+
         self.game_state.update(
             window,
             game_dt,
             &mut self.gpu,
+            &mut self.audio,
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
         );
@@ -121,6 +134,7 @@ impl AppState {
             window,
             dt,
             &mut self.gpu,
+            &mut self.audio,
             &self.game_state,
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
@@ -129,6 +143,7 @@ impl AppState {
         self.game_controller.update(
             window,
             dt,
+            &mut self.audio,
             &mut self.game_state,
             &mut self.game_ui,
             &mut self.message_dispatcher,
@@ -172,17 +187,15 @@ impl event_dispatch::MessageHandler for AppState {
             message,
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
+            &mut self.audio,
             &mut self.game_state,
         );
         self.game_state.handle_message(
             message,
             &mut self.message_dispatcher,
             &mut self.entity_id_vendor,
+            &mut self.audio,
         );
-        self.game_ui.handle_message(
-            message,
-            &mut self.message_dispatcher,
-            &mut self.entity_id_vendor,
-        );
+        self.game_ui.handle_message(message);
     }
 }

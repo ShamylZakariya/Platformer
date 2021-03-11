@@ -1,8 +1,8 @@
 use winit::window::Window;
 
-use crate::{entity, event_dispatch};
+use crate::{audio, entity, event_dispatch};
 
-use super::{events::Event, game_state::GameState, game_ui::GameUi};
+use crate::state::{events::Event, game_state::GameState, game_ui::GameUi};
 
 //---------------------------------------------------------------------------------------------------------------------
 
@@ -46,6 +46,7 @@ impl GameController {
         &mut self,
         _window: &Window,
         dt: std::time::Duration,
+        _audio: &mut audio::Audio,
         game_state: &mut GameState,
         game_ui: &mut GameUi,
         message_dispatcher: &mut event_dispatch::Dispatcher,
@@ -107,6 +108,7 @@ impl GameController {
         message: &event_dispatch::Message,
         _message_dispatcher: &mut event_dispatch::Dispatcher,
         _entity_id_vendor: &mut entity::IdVendor,
+        audio: &mut audio::Audio,
         game_state: &mut GameState,
     ) {
         match &message.event {
@@ -132,6 +134,7 @@ impl GameController {
                 num_restarts,
             } if *checkpoint == 0 && *num_restarts == 0 => {
                 self.fade_in_countdown = Some(FADE_IN_DURATION);
+                audio.start_track(audio::Tracks::MainTheme);
             }
 
             Event::FirebrandPassedThroughExitDoor => {

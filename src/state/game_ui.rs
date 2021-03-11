@@ -6,7 +6,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{camera, sprite::rendering, state::gpu_state, texture::Texture};
+use crate::{audio, camera, sprite::rendering, state::gpu_state, texture::Texture};
 use crate::{
     collision,
     entity::{self, EntityComponents},
@@ -59,6 +59,7 @@ pub struct GameUi {
     game_over_message_visible: bool,
     sprite_size_px: Vector2<f32>,
     palette_shift: f32,
+    toggle_drawer_needed: bool,
 }
 
 impl GameUi {
@@ -208,6 +209,7 @@ impl GameUi {
             game_over_message_visible: false,
             sprite_size_px,
             palette_shift: 0.0,
+            toggle_drawer_needed: false,
         };
 
         game_ui.update_drawer_position(Duration::from_secs(0));
@@ -232,7 +234,7 @@ impl GameUi {
                 ..
             } => match (key, state) {
                 (VirtualKeyCode::F1, ElementState::Pressed) => {
-                    self.drawer_open = !self.drawer_open;
+                    self.toggle_drawer_needed = true;
                     true
                 }
                 _ => false,
@@ -244,7 +246,7 @@ impl GameUi {
     pub fn gamepad_input(&mut self, event: gilrs::Event) {
         if let gilrs::EventType::ButtonPressed(button, ..) = event.event {
             if matches!(button, gilrs::Button::Start) {
-                self.drawer_open = !self.drawer_open;
+                self.toggle_drawer_needed = true;
             }
         }
     }
@@ -254,6 +256,7 @@ impl GameUi {
         _window: &Window,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
+        audio: &mut audio::Audio,
         game: &game_state::GameState,
         message_dispatcher: &mut event_dispatch::Dispatcher,
         _entity_id_vendor: &mut entity::IdVendor,
@@ -263,6 +266,17 @@ impl GameUi {
         self.drawer_collision_space.update();
 
         self.time += dt.as_secs_f32();
+
+        if self.toggle_drawer_needed {
+            self.drawer_open = !self.drawer_open;
+            self.toggle_drawer_needed = false;
+            if self.drawer_open {
+                audio.play_sound(audio::Sounds::DrawerOpen);
+                audio.pause_current_track();
+            } else {
+                audio.resume_current_track();
+            }
+        }
 
         // Canter camera on window, and set projection scale
         self.camera_view.set_position(point3(0.0, 0.0, 0.0));
@@ -407,12 +421,7 @@ impl GameUi {
         }
     }
 
-    pub fn handle_message(
-        &mut self,
-        message: &event_dispatch::Message,
-        _message_dispatcher: &mut event_dispatch::Dispatcher,
-        _entity_id_vendor: &mut entity::IdVendor,
-    ) {
+    pub fn handle_message(&mut self, message: &event_dispatch::Message) {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             // if message has a destination entity, attempt to route it there
             if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
@@ -458,7 +467,8 @@ impl GameUi {
     fn update_drawer_position(&mut self, dt: Duration) -> f32 {
         let bounds = self.game_ui_map.bounds();
         let vp_units_high = self.camera_projection.viewport_size().y;
-        let drawer_closed_y = (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0;
+        let drawer_closed_y =
+            (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0 - (3.0 / self.sprite_size_px.y);
         let drawer_open_y = (-vp_units_high / 2.0) - 1.0;
 
         if dt > Duration::from_secs(0) {
