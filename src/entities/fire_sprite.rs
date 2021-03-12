@@ -2,7 +2,7 @@ use cgmath::*;
 use std::time::Duration;
 
 use crate::{
-    collision,
+    audio, collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
@@ -91,6 +91,7 @@ impl Entity for FireSprite {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
+        _audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {

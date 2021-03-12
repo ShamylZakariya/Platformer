@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    collision,
+    audio, collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map, sprite,
@@ -53,6 +53,7 @@ impl Entity for SpawnPoint {
         _dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
+        _audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {

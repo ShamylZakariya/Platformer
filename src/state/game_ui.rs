@@ -307,6 +307,7 @@ impl GameUi {
                 dt,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
+                audio,
                 message_dispatcher,
                 &game_state_peek,
             );

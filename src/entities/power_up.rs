@@ -3,6 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
+    audio::{self, Sounds},
     collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
@@ -104,6 +105,7 @@ impl Entity for PowerUp {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {
@@ -120,6 +122,7 @@ impl Entity for PowerUp {
             message_dispatcher.broadcast(Event::FirebrandContactedPowerUp {
                 powerup_type: self.powerup_type.unwrap(),
             });
+            audio.play_sound(audio::Sounds::PowerUp);
         } else if self.needs_collider && !self.is_collider_active {
             if let Some(id) = self.collider_id {
                 collision_space.activate_collider(id);

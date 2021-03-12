@@ -487,7 +487,7 @@ impl GameState {
         _window: &Window,
         dt: std::time::Duration,
         gpu: &mut gpu_state::GpuState,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut event_dispatch::Dispatcher,
         entity_id_vendor: &mut entity::IdVendor,
     ) {
@@ -550,6 +550,7 @@ impl GameState {
                     dt,
                     &self.map,
                     &mut self.collision_space,
+                    audio,
                     message_dispatcher,
                     &game_state_peek,
                 );

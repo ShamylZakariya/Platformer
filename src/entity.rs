@@ -4,7 +4,7 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    collision,
+    audio, collision,
     event_dispatch::*,
     map,
     sprite::{self, rendering},
@@ -107,6 +107,7 @@ pub trait Entity {
         _dt: Duration,
         _map: &map::Map,
         _collision_space: &mut collision::Space,
+        _audio: &mut audio::Audio,
         _message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {

@@ -9,7 +9,7 @@ use cgmath::*;
 use winit::event::{ElementState, VirtualKeyCode};
 
 use crate::{
-    collision,
+    audio, collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     input::*,
@@ -440,6 +440,7 @@ impl Entity for Firebrand {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
+        _audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
