@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use audio::Sounds;
 use cgmath::*;
 
 use crate::{
@@ -39,6 +40,8 @@ pub struct Fireball {
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
     damage: u32,
+    should_play_launch_sound: bool,
+    should_play_hit_sound: bool,
 }
 
 impl Fireball {
@@ -62,6 +65,8 @@ impl Fireball {
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             damage,
+            should_play_launch_sound: true,
+            should_play_hit_sound: true,
         }
     }
     pub fn new_firesprite(
@@ -83,6 +88,8 @@ impl Fireball {
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
             damage,
+            should_play_launch_sound: true,
+            should_play_hit_sound: true,
         }
     }
 }
@@ -100,10 +107,15 @@ impl Entity for Fireball {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {
+        if self.should_play_launch_sound {
+            audio.play_sound(audio::Sounds::FireballShoot);
+            self.should_play_launch_sound = false;
+        }
+
         let dt = dt.as_secs_f32();
         let mask = crate::state::constants::sprite_masks::SHOOTABLE;
 
@@ -119,6 +131,10 @@ impl Entity for Fireball {
             match collider.mode {
                 collision::Mode::Static { .. } => {
                     self.alive = false; // hit a wall
+                    if self.should_play_hit_sound {
+                        audio.play_sound(audio::Sounds::FireballHitsWall);
+                        self.should_play_hit_sound = false;
+                    }
                 }
                 collision::Mode::Dynamic { entity_id, .. } => {
                     if entity_id != self.sender_id {

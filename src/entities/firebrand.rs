@@ -359,6 +359,7 @@ pub struct Firebrand {
     did_send_death_message: bool,
     did_pass_through_exit_door: bool,
     walk_on_distance_remaining: Option<f32>,
+    sound_to_play: Option<audio::Sounds>,
 }
 
 impl Firebrand {
@@ -390,6 +391,7 @@ impl Firebrand {
             did_send_death_message: false,
             did_pass_through_exit_door: false,
             walk_on_distance_remaining: None,
+            sound_to_play: None,
         }
     }
 }
@@ -440,7 +442,7 @@ impl Entity for Firebrand {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
@@ -782,6 +784,15 @@ impl Entity for Firebrand {
         );
 
         //
+        //  Dispatch any queue'd sound
+        //
+
+        if let Some(sound) = self.sound_to_play {
+            audio.play_sound(sound);
+            self.sound_to_play = None;
+        }
+
+        //
         // Update overlapping/contacting sprites for debug rendering
         //
 
@@ -1066,6 +1077,7 @@ impl Firebrand {
                 // Flight time is reset whenever character touches ground or wallholds
                 Stance::Standing | Stance::WallHold(_) => {
                     self.flight_countdown = FLIGHT_DURATION;
+                    self.sound_to_play = Some(audio::Sounds::Bump);
                 }
                 Stance::Injury => {
                     self.injury_countdown = INJURY_DURATION;

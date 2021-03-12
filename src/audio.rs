@@ -15,6 +15,9 @@ pub enum Channel {
 pub enum Sounds {
     DrawerOpen,
     PowerUp,
+    Bump,
+    FireballShoot,
+    FireballHitsWall,
 }
 
 impl Sounds {
@@ -22,18 +25,29 @@ impl Sounds {
         std::fs::File::open(match self {
             Sounds::DrawerOpen => "res/audio/drawer_open.wav",
             Sounds::PowerUp => "res/audio/powerup.wav",
+            Sounds::Bump => "res/audio/bump.wav",
+            Sounds::FireballShoot => "res/audio/fireball.wav",
+            Sounds::FireballHitsWall => "res/audio/fireball_hit.wav",
         })
         .unwrap()
     }
 
-    pub fn buffer(&self) -> std::io::BufReader<File> {
+    fn buffer(&self) -> std::io::BufReader<File> {
         std::io::BufReader::new(self.file())
     }
 
-    pub fn should_pause_current_track(&self) -> bool {
+    fn should_pause_current_track(&self) -> bool {
+        // PowerUp interrupts audio track; all else can play simultaneously
+        matches!(self, Sounds::PowerUp)
+    }
+
+    fn volume(&self) -> f32 {
         match self {
-            Sounds::DrawerOpen => false,
-            Sounds::PowerUp => true,
+            Sounds::DrawerOpen => 1.0,
+            Sounds::PowerUp => 1.0,
+            Sounds::Bump => 0.25,
+            Sounds::FireballShoot => 0.375,
+            Sounds::FireballHitsWall => 0.675,
         }
     }
 }
@@ -139,6 +153,7 @@ impl Audio {
     pub fn play_sound(&mut self, sound: Sounds) {
         println!("Audio::play_sound {:?}", sound);
         let sink = self.stream_handle.play_once(sound.buffer()).unwrap();
+        sink.set_volume(sound.volume());
         if sound.should_pause_current_track() {
             self.interrupting_sinks.push(sink);
         } else {

@@ -1,13 +1,16 @@
 CURRENTLY:
     Audio
-    We probably want some kind of audio controller object, created in AppState and passed down to GameState, GameUi, etc like GpuState
-    - It has methods to play single shot sounds (fire, bump, ting, etc) on left/center/right stereo
-    - It has methods to play/pause/resume music track
-    - It has methods to play an "interrupting" music track (the drawer opening sound, the got a powerup sound)
+    Need to implement the left/center/right stereo effect - make it a field on Audio::play_sound
+    Missing Sounds:
+        - Enemy Injury
+        - Enemy Death
+        - Boss Injury
+        - Boss Death
+        - Firebrand Injury
+        - Firebrand Death
+
 
 BUGS:
-    - Short flash of scene at game start as palette shift takes an update cycle to apply via game_controller::handle_message
-    - Powerups stopped blinking!?
 
 TODO:
     - Postprocessing shader to make Gameboy looking graphics
