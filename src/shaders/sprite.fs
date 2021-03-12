@@ -42,8 +42,9 @@ void main() {
 
   // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
   // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
-  object_color =
-      texture(sampler2D(t_tonemap, s_diffuse), vec2(object_color.r + 0.125, 0));
+  float ramp = mix(object_color.r, 1.0, 1.0 - object_color.a);
+  vec4 palettized_color =
+      texture(sampler2D(t_tonemap, s_diffuse), vec2(ramp + 0.125, 0));
 
-  f_color = object_color;
+  f_color = palettized_color;
 }
