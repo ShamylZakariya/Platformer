@@ -458,6 +458,9 @@ impl Entity for Firebrand {
                 self.collider_id = None;
                 message_dispatcher.broadcast(Event::FirebrandDied);
                 self.did_send_death_message = true;
+
+                audio.play_sound(audio::Sounds::FirebrandDeath);
+                audio.stop_current_track();
             }
             return;
         }
@@ -947,11 +950,9 @@ impl Entity for Firebrand {
             Event::FirebrandPassedThroughExitDoor => {
                 self.did_pass_through_exit_door = true;
             }
-            Event::FirebrandCreated { checkpoint, .. } => {
-                if checkpoint == 0 {
-                    self.frozen = true;
-                    self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
-                }
+            Event::FirebrandCreated { checkpoint, .. } if checkpoint == 0 => {
+                self.frozen = true;
+                self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
             }
             _ => {}
         }
@@ -1594,6 +1595,7 @@ impl Firebrand {
                 self.character_state.alive = false;
             } else {
                 self.set_stance(Stance::Injury);
+                self.sound_to_play = Some(audio::Sounds::FirebrandInjury);
             }
         }
     }

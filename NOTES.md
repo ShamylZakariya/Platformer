@@ -1,16 +1,14 @@
 CURRENTLY:
     Audio
-    Need to implement the left/center/right stereo effect - make it a field on Audio::play_sound
-    Missing Sounds:
-        - Enemy Injury
+    - Need to implement the left/center/right stereo effect - make it a field on Audio::play_sound
+    - Missing Sounds:
         - Enemy Death
-        - Boss Injury
-        - Boss Death
+    - Fake Sounds
         - Firebrand Injury
-        - Firebrand Death
-
+            - If I can beat the bossfish with zero hitpoint losses I can then use the silence afterwards to jump into spikes and hear the FirebrandInjured sound
 
 BUGS:
+    - enemies can march across thorns and water!
 
 TODO:
     - Postprocessing shader to make Gameboy looking graphics

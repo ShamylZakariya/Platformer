@@ -719,7 +719,7 @@ impl GameState {
         message: &event_dispatch::Message,
         message_dispatcher: &mut event_dispatch::Dispatcher,
         entity_id_vendor: &mut entity::IdVendor,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
     ) {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             //
@@ -827,11 +827,11 @@ impl GameState {
                 }
 
                 Event::BossDefeated => {
-                    self.on_boss_was_defeated(message_dispatcher);
+                    self.on_boss_was_defeated(audio, message_dispatcher);
                 }
 
                 Event::BossDied => {
-                    self.on_boss_died(message_dispatcher);
+                    self.on_boss_died(audio, message_dispatcher);
                 }
 
                 Event::StartCameraShake { pattern } => {
@@ -1135,7 +1135,11 @@ impl GameState {
             Some(self.camera_controller.viewport_bounds(0.0).left());
     }
 
-    fn on_boss_was_defeated(&mut self, _message_dispatcher: &mut event_dispatch::Dispatcher) {
+    fn on_boss_was_defeated(
+        &mut self,
+        audio: &mut audio::Audio,
+        _message_dispatcher: &mut event_dispatch::Dispatcher,
+    ) {
         println!("\n\nBOSS DEFEATED!!\n\n");
 
         // Clear enemies and projectiles from stage
@@ -1150,11 +1154,19 @@ impl GameState {
         }
 
         self.entities.retain(|_, ec| should_retain(ec));
+        audio.play_sound(audio::Sounds::BossDied);
+        audio.stop_current_track();
     }
 
-    fn on_boss_died(&mut self, message_dispatcher: &mut event_dispatch::Dispatcher) {
+    fn on_boss_died(
+        &mut self,
+        audio: &mut audio::Audio,
+        message_dispatcher: &mut event_dispatch::Dispatcher,
+    ) {
         //  Kick off the floor raise.
         message_dispatcher.broadcast(Event::RaiseExitFloor);
+
+        audio.play_sound(audio::Sounds::FloorRaise);
     }
 
     fn on_player_dead(

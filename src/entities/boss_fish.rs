@@ -67,6 +67,7 @@ pub struct BossFish {
     shoot_countdown: Option<f32>,
     post_shoot_countdown: Option<f32>,
     injury_flash_countdown: Option<f32>,
+    sound_to_play: Option<audio::Sounds>,
 }
 
 impl Default for BossFish {
@@ -94,6 +95,7 @@ impl Default for BossFish {
             shoot_countdown: None,
             post_shoot_countdown: None,
             injury_flash_countdown: None,
+            sound_to_play: None,
         }
     }
 }
@@ -150,7 +152,7 @@ impl Entity for BossFish {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
@@ -188,7 +190,7 @@ impl Entity for BossFish {
             }
 
             if !self.sent_defeated_message {
-                message_dispatcher.entity_to_global(self.entity_id, Event::BossDefeated);
+                message_dispatcher.broadcast(Event::BossDefeated);
                 self.sent_defeated_message = true;
             }
 
@@ -197,7 +199,7 @@ impl Entity for BossFish {
                 self.death_animation_countdown -= dt;
                 if self.death_animation_countdown < 0.0 {
                     // Send the death message to clear stage and kick off the ending changes to the level
-                    message_dispatcher.entity_to_global(self.entity_id, Event::BossDied);
+                    message_dispatcher.broadcast(Event::BossDied);
                     self.alive = false;
                 }
             }
@@ -210,6 +212,11 @@ impl Entity for BossFish {
             } else {
                 self.injury_flash_countdown = None;
             }
+        }
+
+        if let Some(sound) = self.sound_to_play {
+            audio.play_sound(sound);
+            self.sound_to_play = None;
         }
     }
 
@@ -318,6 +325,7 @@ impl Entity for BossFish {
             } => {
                 self.hit_points = (self.hit_points - (damage as i32)).max(0);
                 self.injury_flash_countdown = Some(INJURY_FLASH_DURATION);
+                self.sound_to_play = Some(audio::Sounds::BossInjured);
             }
             Event::BossFightMayStart => {
                 println!(

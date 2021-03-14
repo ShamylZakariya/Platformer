@@ -120,20 +120,31 @@ impl GameController {
                 }
             }
 
+            Event::BossFightMayStart => {
+                audio.start_track(audio::Tracks::BossFight);
+            }
+
+            Event::OpenExitDoor => {
+                audio.start_track(audio::Tracks::AreaClear);
+            }
+
             Event::FirebrandDied => {
                 if self.lives_remaining > 0 {
                     self.lives_remaining -= 1;
                     self.restart_game_countdown = Some(RESTART_GAME_DELAY);
                 } else {
                     self.game_over_countdown = Some(GAME_OVER_DELAY);
+                    audio.start_track(audio::Tracks::GameOver);
                 }
             }
 
             Event::FirebrandCreated {
                 checkpoint,
                 num_restarts,
-            } if *checkpoint == 0 && *num_restarts == 0 => {
-                self.fade_in_countdown = Some(FADE_IN_DURATION);
+            } => {
+                if *checkpoint == 0 && *num_restarts == 0 {
+                    self.fade_in_countdown = Some(FADE_IN_DURATION);
+                }
                 audio.start_track(audio::Tracks::MainTheme);
             }
 

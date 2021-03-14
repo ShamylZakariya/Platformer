@@ -54,11 +54,13 @@ impl AppState {
             None
         };
 
-        // when game starts, palette is shifted to white, an Event::FirebrandCreated
-        // broadcast will be received by GameController which will animate palette
-        // shift from 1.0 to 0.0
-        game_state.set_palette_shift(1.0);
-        game_ui.set_palette_shift(1.0);
+        if options.checkpoint == Some(0) {
+            // when game starts, palette is shifted to white, an Event::FirebrandCreated
+            // broadcast will be received by GameController which will animate palette
+            // shift from 1.0 to 0.0
+            game_state.set_palette_shift(1.0);
+            game_ui.set_palette_shift(1.0);
+        }
 
         Ok(Self {
             options,

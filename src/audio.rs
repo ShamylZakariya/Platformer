@@ -13,21 +13,34 @@ pub enum Channel {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Sounds {
-    DrawerOpen,
-    PowerUp,
+    BossInjured,
+    BossDied,
     Bump,
+    DrawerOpen,
+    EnemyDeath,
+    FloorRaise,
     FireballShoot,
     FireballHitsWall,
+    FirebrandInjury,
+    FirebrandDeath,
+    PowerUp,
 }
 
 impl Sounds {
     fn file(&self) -> File {
+        use Sounds::*;
         std::fs::File::open(match self {
-            Sounds::DrawerOpen => "res/audio/drawer_open.wav",
-            Sounds::PowerUp => "res/audio/powerup.wav",
-            Sounds::Bump => "res/audio/bump.wav",
-            Sounds::FireballShoot => "res/audio/fireball.wav",
-            Sounds::FireballHitsWall => "res/audio/fireball_hit.wav",
+            BossInjured => "res/audio/boss_injury.wav",
+            BossDied => "res/audio/boss_death.wav",
+            Bump => "res/audio/bump.wav",
+            DrawerOpen => "res/audio/drawer_open.wav",
+            EnemyDeath => "res/audio/enemy_death.wav",
+            FloorRaise => "res/audio/floor_raise.wav",
+            FireballShoot => "res/audio/fireball.wav",
+            FireballHitsWall => "res/audio/fireball_hit.wav",
+            FirebrandInjury => "res/audio/fb_injury.wav",
+            FirebrandDeath => "res/audio/fb_death.wav",
+            PowerUp => "res/audio/powerup.wav",
         })
         .unwrap()
     }
@@ -37,17 +50,18 @@ impl Sounds {
     }
 
     fn should_pause_current_track(&self) -> bool {
+        use Sounds::*;
         // PowerUp interrupts audio track; all else can play simultaneously
-        matches!(self, Sounds::PowerUp)
+        matches!(self, PowerUp | FirebrandDeath)
     }
 
     fn volume(&self) -> f32 {
+        use Sounds::*;
         match self {
-            Sounds::DrawerOpen => 1.0,
-            Sounds::PowerUp => 1.0,
-            Sounds::Bump => 0.25,
-            Sounds::FireballShoot => 0.375,
-            Sounds::FireballHitsWall => 0.675,
+            FireballShoot => 0.5,
+            FireballHitsWall => 0.675,
+            FirebrandInjury => 0.3,
+            _ => 1.0,
         }
     }
 }
@@ -57,17 +71,37 @@ impl Sounds {
 #[derive(Debug, Clone, Copy)]
 pub enum Tracks {
     MainTheme,
+    BossFight,
+    AreaClear,
+    GameOver,
 }
 
 impl Tracks {
     fn file(&self) -> File {
+        use Tracks::*;
         std::fs::File::open(match self {
-            Tracks::MainTheme => "res/audio/theme.wav",
+            MainTheme => "res/audio/main_theme.ogg",
+            BossFight => "res/audio/boss_fight.ogg",
+            AreaClear => "res/audio/area_clear.ogg",
+            GameOver => "res/audio/game_over.ogg",
         })
         .unwrap()
     }
-    pub fn buffer(&self) -> std::io::BufReader<File> {
+
+    fn buffer(&self) -> std::io::BufReader<File> {
         std::io::BufReader::new(self.file())
+    }
+
+    fn volume(&self) -> f32 {
+        0.5
+    }
+
+    fn loops(&self) -> bool {
+        use Tracks::*;
+        match self {
+            MainTheme => true,
+            _ => false,
+        }
     }
 }
 
@@ -119,9 +153,15 @@ impl Audio {
         self.stop_current_track();
         println!("Audio::play_track {:?}", track);
         let sink = rodio::Sink::try_new(&self.stream_handle).unwrap();
+        sink.set_volume(track.volume());
+
         let source = rodio::Decoder::new(track.buffer()).unwrap();
-        let source = source.repeat_infinite();
-        sink.append(source);
+        if track.loops() {
+            sink.append(source.repeat_infinite());
+        } else {
+            sink.append(source);
+        }
+
         self.current_track = Some(sink);
         self.current_track_explicitly_paused = false;
     }
