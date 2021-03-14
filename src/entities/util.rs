@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
-use crate::{collision, state::events::Event};
+use crate::{audio, collision, state::events::Event};
 use crate::{
     event_dispatch::*,
     state::constants::sprite_masks::{CONTACT_DAMAGE, GROUND},
@@ -228,6 +228,7 @@ impl HitPointState {
         spawn_point_id: u32,
         position: Point3<f32>,
         _collision_space: &mut collision::Space,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
     ) -> bool {
         if self.terminated || self.hit_points <= 0 {
@@ -240,8 +241,10 @@ impl HitPointState {
                 Event::SpawnedEntityDidDie,
             );
 
+
             if self.hit_points <= 0 && !self.terminated {
                 // send death animation message
+                audio.play_sound(audio::Sounds::EnemyDeath);
                 message_dispatcher.entity_to_global(
                     entity_id,
                     Event::PlayEntityDeathAnimation {

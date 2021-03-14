@@ -3,7 +3,7 @@ use std::time::Duration;
 use cgmath::*;
 
 use crate::{
-    audio::{self, Sounds},
+    audio,
     collision,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,

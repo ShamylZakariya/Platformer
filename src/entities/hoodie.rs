@@ -83,7 +83,7 @@ impl Entity for Hoodie {
         dt: Duration,
         _map: &map::Map,
         collision_space: &mut collision::Space,
-        _audio: &mut audio::Audio,
+        audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
         _game_state_peek: &GameStatePeek,
     ) {
@@ -96,6 +96,7 @@ impl Entity for Hoodie {
             self.spawn_point_id,
             self.position(),
             collision_space,
+            audio,
             message_dispatcher,
         ) {
             //
