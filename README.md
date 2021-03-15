@@ -28,7 +28,7 @@ cargo run -- --gameboy
 
 ## TODO:
 
-1. Sound effects and music
+1. Clippy warnings
 2. Update to `wgpu-rs` 0.7
 3. Postprocessing for grimy LCD effects
 
