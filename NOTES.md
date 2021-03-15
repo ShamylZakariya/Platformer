@@ -1,6 +1,4 @@
 CURRENTLY:
-    Audio
-    - Need to implement the left/center/right stereo effect - make it a field on Audio::play_sound
 
 BUGS:
     - enemies can march across thorns and water!
