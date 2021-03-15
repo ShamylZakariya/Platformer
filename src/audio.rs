@@ -58,6 +58,8 @@ impl Sounds {
     fn volume(&self) -> f32 {
         use Sounds::*;
         match self {
+            Bump => 0.75,
+            EnemyDeath => 0.5,
             FireballShoot => 0.5,
             FireballHitsWall => 0.675,
             FirebrandInjury => 0.3,
@@ -107,13 +109,28 @@ impl Tracks {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+enum SinkHolder {
+    Sink(rodio::Sink),
+    SpatialSink(rodio::SpatialSink),
+}
+
+impl SinkHolder {
+    fn empty(&self) -> bool {
+        match self {
+            SinkHolder::Sink(s) => s.empty(),
+            SinkHolder::SpatialSink(s) => s.empty(),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 pub struct Audio {
     stream: rodio::OutputStream,
     stream_handle: rodio::OutputStreamHandle,
     current_track: Option<rodio::Sink>,
     current_track_explicitly_paused: bool,
-    sinks: Vec<rodio::Sink>,
-    interrupting_sinks: Vec<rodio::Sink>,
+    interrupting_sinks: Vec<SinkHolder>,
 }
 
 impl Default for Audio {
@@ -125,7 +142,6 @@ impl Default for Audio {
             stream_handle,
             current_track: None,
             current_track_explicitly_paused: false,
-            sinks: Vec::new(),
             interrupting_sinks: Vec::new(),
         }
     }
@@ -134,7 +150,6 @@ impl Default for Audio {
 impl Audio {
     pub fn update(&mut self, _dt: std::time::Duration) {
         // prune sinks
-        self.sinks.retain(|s| !s.empty());
         self.interrupting_sinks.retain(|s| !s.empty());
 
         let pause_current_track =
@@ -151,7 +166,6 @@ impl Audio {
 
     pub fn start_track(&mut self, track: Tracks) {
         self.stop_current_track();
-        println!("Audio::play_track {:?}", track);
         let sink = rodio::Sink::try_new(&self.stream_handle).unwrap();
         sink.set_volume(track.volume());
 
@@ -184,21 +198,45 @@ impl Audio {
 
     pub fn stop_current_track(&mut self) {
         if let Some(sink) = self.current_track.borrow_mut() {
-            println!("Audio::stop_current_track");
             sink.stop();
         }
         self.current_track = None;
     }
 
     pub fn play_sound(&mut self, sound: Sounds) {
-        println!("Audio::play_sound {:?}", sound);
         let sink = self.stream_handle.play_once(sound.buffer()).unwrap();
         sink.set_volume(sound.volume());
         if sound.should_pause_current_track() {
-            self.interrupting_sinks.push(sink);
+            self.interrupting_sinks.push(SinkHolder::Sink(sink));
         } else {
-            // TODO: Can probably just use sink::detach and lose these single-shot deals
-            self.sinks.push(sink);
+            sink.detach();
+        }
+    }
+
+    pub fn play_stereo_sound(&mut self, sound: Sounds, channel: Channel) {
+        let x = match channel {
+            Channel::Center => 0.0,
+            Channel::Left => -1.0,
+            Channel::Right => 1.0,
+        };
+
+        // note: rodio's spatial sink seems to be inverted from what I'd expect;
+        // So, inverting x seems to produce expected results.
+        let sink = rodio::SpatialSink::try_new(
+            &self.stream_handle,
+            [-x, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        )
+        .unwrap();
+
+        sink.append(rodio::Decoder::new(sound.buffer()).unwrap());
+        sink.set_volume(sound.volume());
+
+        if sound.should_pause_current_track() {
+            self.interrupting_sinks.push(SinkHolder::SpatialSink(sink));
+        } else {
+            sink.detach();
         }
     }
 }

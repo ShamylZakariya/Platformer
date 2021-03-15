@@ -49,6 +49,7 @@ pub struct GameStatePeek {
     pub player_vials: u32,         // number of vials the player has
     pub player_lives: u32,         // number of lives remaining
     pub current_map_bounds: Bounds,
+    pub camera_position: Point2<f32>,
 }
 
 impl Default for GameStatePeek {
@@ -60,6 +61,7 @@ impl Default for GameStatePeek {
             player_vials: 0,
             player_lives: 0,
             current_map_bounds: Bounds::default(),
+            camera_position: point2(0.0, 0.0),
         }
     }
 }

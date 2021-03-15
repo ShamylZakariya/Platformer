@@ -535,6 +535,7 @@ impl GameState {
         let firebrand = &self.get_firebrand().entity;
         self.game_state_peek.player_position = firebrand.position().xy();
         self.game_state_peek.current_map_bounds = current_map_bounds;
+        self.game_state_peek.camera_position = self.camera_controller.camera.position().xy();
         let palette_shift = self.palette_shift();
 
         //

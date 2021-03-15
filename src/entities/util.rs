@@ -241,7 +241,6 @@ impl HitPointState {
                 Event::SpawnedEntityDidDie,
             );
 
-
             if self.hit_points <= 0 && !self.terminated {
                 // send death animation message
                 audio.play_sound(audio::Sounds::EnemyDeath);

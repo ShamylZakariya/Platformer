@@ -108,7 +108,7 @@ impl Entity for Fireball {
         collision_space: &mut collision::Space,
         audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
     ) {
         if self.should_play_launch_sound {
             audio.play_sound(audio::Sounds::FireballShoot);
@@ -131,7 +131,12 @@ impl Entity for Fireball {
                 collision::Mode::Static { .. } => {
                     self.alive = false; // hit a wall
                     if self.should_play_hit_sound {
-                        audio.play_sound(audio::Sounds::FireballHitsWall);
+                        let channel = if next_position.x > game_state_peek.camera_position.x {
+                            audio::Channel::Right
+                        } else {
+                            audio::Channel::Left
+                        };
+                        audio.play_stereo_sound(audio::Sounds::FireballHitsWall, channel);
                         self.should_play_hit_sound = false;
                     }
                 }

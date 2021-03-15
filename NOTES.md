@@ -1,11 +1,6 @@
 CURRENTLY:
     Audio
     - Need to implement the left/center/right stereo effect - make it a field on Audio::play_sound
-    - Missing Sounds:
-        - Enemy Death
-    - Fake Sounds
-        - Firebrand Injury
-            - If I can beat the bossfish with zero hitpoint losses I can then use the silence afterwards to jump into spikes and hear the FirebrandInjured sound
 
 BUGS:
     - enemies can march across thorns and water!
