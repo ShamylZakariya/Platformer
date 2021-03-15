@@ -85,7 +85,7 @@ impl Entity for Hoodie {
         collision_space: &mut collision::Space,
         audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
     ) {
         //
         // Update life state
@@ -95,9 +95,9 @@ impl Entity for Hoodie {
             self.entity_id(),
             self.spawn_point_id,
             self.position(),
-            collision_space,
             audio,
             message_dispatcher,
+            game_state_peek,
         ) {
             //
             // Perform basic march behavior

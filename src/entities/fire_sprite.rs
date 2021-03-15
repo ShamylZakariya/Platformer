@@ -7,7 +7,10 @@ use crate::{
     event_dispatch::*,
     map,
     sprite::{self, rendering},
-    state::constants::{layers, sprite_masks},
+    state::{
+        constants::{layers, sprite_masks},
+        game_state,
+    },
     tileset, util,
 };
 
@@ -93,7 +96,7 @@ impl Entity for FireSprite {
         collision_space: &mut collision::Space,
         audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
     ) {
         let entity_id = self.entity_id;
         let spawn_point_id = self.spawn_point_id;
@@ -103,9 +106,9 @@ impl Entity for FireSprite {
             entity_id,
             spawn_point_id,
             position,
-            collision_space,
             audio,
             message_dispatcher,
+            game_state_peek,
         );
 
         if alive {

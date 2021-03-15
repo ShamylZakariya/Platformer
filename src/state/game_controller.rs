@@ -120,7 +120,7 @@ impl GameController {
                 }
             }
 
-            Event::BossFightMayStart => {
+            Event::BossArenaEncountered { arena_left: _ } => {
                 audio.start_track(audio::Tracks::BossFight);
             }
 

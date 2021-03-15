@@ -94,9 +94,9 @@ impl Entity for Bat {
             self.entity_id(),
             self.spawn_point_id,
             self.position(),
-            collision_space,
             audio,
             message_dispatcher,
+            game_state_peek,
         ) {
             // Determine if the player is close enough for bat to wakeup
             if self.chase_dir.is_none()

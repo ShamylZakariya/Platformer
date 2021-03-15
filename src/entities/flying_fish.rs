@@ -97,7 +97,7 @@ impl Entity for FlyingFish {
         collision_space: &mut collision::Space,
         audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
-        _game_state_peek: &GameStatePeek,
+        game_state_peek: &GameStatePeek,
     ) {
         let dt = dt.as_secs_f32();
 
@@ -105,9 +105,9 @@ impl Entity for FlyingFish {
             self.entity_id(),
             self.spawn_point_id,
             self.position(),
-            collision_space,
             audio,
             message_dispatcher,
+            game_state_peek,
         ) {
             return;
         }

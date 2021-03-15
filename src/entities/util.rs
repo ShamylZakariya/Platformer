@@ -1,6 +1,6 @@
 use std::{f32::consts::PI, time::Duration};
 
-use crate::{audio, collision, state::events::Event};
+use crate::{audio, collision, entity::GameStatePeek, state::events::Event};
 use crate::{
     event_dispatch::*,
     state::constants::sprite_masks::{CONTACT_DAMAGE, GROUND},
@@ -227,9 +227,9 @@ impl HitPointState {
         entity_id: u32,
         spawn_point_id: u32,
         position: Point3<f32>,
-        _collision_space: &mut collision::Space,
         audio: &mut audio::Audio,
         message_dispatcher: &mut Dispatcher,
+        game_state_peek: &GameStatePeek,
     ) -> bool {
         if self.terminated || self.hit_points <= 0 {
             self.alive = false;
@@ -242,8 +242,14 @@ impl HitPointState {
             );
 
             if self.hit_points <= 0 && !self.terminated {
-                // send death animation message
-                audio.play_sound(audio::Sounds::EnemyDeath);
+                // play death sound and kick off death animation
+
+                let channel = if position.x < game_state_peek.camera_position.x {
+                    audio::Channel::Left
+                } else {
+                    audio::Channel::Right
+                };
+                audio.play_stereo_sound(audio::Sounds::EnemyDeath, channel);
                 message_dispatcher.entity_to_global(
                     entity_id,
                     Event::PlayEntityDeathAnimation {

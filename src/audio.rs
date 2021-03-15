@@ -95,7 +95,11 @@ impl Tracks {
     }
 
     fn volume(&self) -> f32 {
-        0.5
+        use Tracks::*;
+        match self {
+            MainTheme => 0.5,
+            _ => 0.25,
+        }
     }
 
     fn loops(&self) -> bool {
