@@ -1,7 +1,6 @@
 CURRENTLY:
 
 BUGS:
-    - enemies can march across thorns and water!
 
 TODO:
     - Postprocessing shader to make Gameboy looking graphics

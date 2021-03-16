@@ -1,12 +1,14 @@
+use cgmath::*;
 use std::{f32::consts::PI, time::Duration};
 
-use crate::{audio, collision, entity::GameStatePeek, state::events::Event};
 use crate::{
+    audio, collision,
+    collision::Space,
+    entity::GameStatePeek,
     event_dispatch::*,
-    state::constants::sprite_masks::{CONTACT_DAMAGE, GROUND},
+    state::constants::sprite_masks::{GROUND, WATER},
+    state::events::Event,
 };
-use cgmath::*;
-use collision::Space;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HorizontalDir {
@@ -324,11 +326,12 @@ impl MarchState {
 
         let mut should_reverse_direction = false;
 
+        let mask = GROUND | WATER;
         match self.current_movement_dir {
             HorizontalDir::East => {
                 // check for obstacle to right
                 if let Some(sprite_to_right) =
-                    collision_space.get_collider_at(snapped_next_position + vec2(1, 0), GROUND)
+                    collision_space.get_collider_at(snapped_next_position + vec2(1, 0), mask)
                 {
                     if sprite_to_right.intersects_rect(&next_position, &vec2(1.0, 1.0), 0.0, true) {
                         should_reverse_direction = true
@@ -336,11 +339,9 @@ impl MarchState {
                 }
                 // check if the platform falls away to right
                 let to_right = collision_space
-                    .get_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
+                    .get_collider_at(snapped_next_position_center + vec2(0, -1), mask);
                 if let Some(to_right) = to_right {
-                    if to_right.shape != collision::Shape::Square
-                        || to_right.mask & CONTACT_DAMAGE != 0
-                    {
+                    if to_right.shape != collision::Shape::Square {
                         should_reverse_direction = true;
                     }
                 } else {
@@ -350,7 +351,7 @@ impl MarchState {
             HorizontalDir::West => {
                 // check for obstacle to left
                 if let Some(sprite_to_left) =
-                    collision_space.get_collider_at(snapped_next_position, GROUND)
+                    collision_space.get_collider_at(snapped_next_position, mask)
                 {
                     if sprite_to_left.intersects_rect(&next_position, &vec2(1.0, 1.0), 0.0, true) {
                         should_reverse_direction = true
@@ -358,11 +359,9 @@ impl MarchState {
                 }
                 // check if the platform falls away to left
                 let to_left = collision_space
-                    .get_collider_at(snapped_next_position_center + vec2(0, -1), GROUND);
+                    .get_collider_at(snapped_next_position_center + vec2(0, -1), mask);
                 if let Some(to_left) = to_left {
-                    if to_left.shape != collision::Shape::Square
-                        || to_left.mask & CONTACT_DAMAGE != 0
-                    {
+                    if to_left.shape != collision::Shape::Square {
                         should_reverse_direction = true;
                     }
                 } else {
