@@ -8,7 +8,7 @@ use crate::{
     map,
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks, ORIGINAL_VIEWPORT_TILES_WIDE},
-    tileset, util,
+    tileset,
 };
 
 use super::util::{CompassDir, HitPointState};
@@ -135,7 +135,7 @@ impl Entity for Bat {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         uniforms.data.set_model_position(self.position);
     }
 

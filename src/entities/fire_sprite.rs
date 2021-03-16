@@ -3,18 +3,14 @@ use std::time::Duration;
 
 use crate::{
     audio, collision,
+    entities::util::{HitPointState, HorizontalDir, MarchState},
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, rendering},
-    state::{
-        constants::{layers, sprite_masks},
-        game_state,
-    },
-    tileset, util,
+    state::constants::{layers, sprite_masks},
+    tileset,
 };
-
-use super::util::{HitPointState, HorizontalDir, MarchState};
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -142,7 +138,7 @@ impl Entity for FireSprite {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = if self.animation_cycle_tick / 2 % 2 == 0 {
             (1.0, 0.0)
         } else {

@@ -9,7 +9,7 @@ use crate::{
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
     tileset,
-    util::{self, Bounds},
+    util::Bounds,
 };
 
 use super::util::{HitPointState, HorizontalDir, MarchState};
@@ -128,7 +128,7 @@ impl Entity for Hoodie {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let one_px = 1.0 / self.sprite_size_px.x;
 
         let (xscale, xoffset) = match self.march.current_movement_dir() {

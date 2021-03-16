@@ -9,7 +9,7 @@ use crate::{
     map,
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
-    tileset, util,
+    tileset,
 };
 
 pub struct UiHealthDot {
@@ -71,7 +71,7 @@ impl Entity for UiHealthDot {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         uniforms.data.set_model_position(self.position);
     }
 

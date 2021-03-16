@@ -12,7 +12,7 @@ use crate::{
         constants::{layers, sprite_masks},
         events::Event,
     },
-    tileset, util,
+    tileset,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ impl Entity for PowerUp {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let cycle = ((self.time / FLICKER_PERIOD).round() as i32) % 2;
         let alpha = if cycle == 0 { 1.0 } else { 0.5 };
         uniforms

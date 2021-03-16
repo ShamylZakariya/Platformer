@@ -13,7 +13,7 @@ use crate::{
         events::Event,
     },
     tileset,
-    util::{self, Bounds},
+    util::Bounds,
 };
 
 use super::util::{Axis, CompassDir, HorizontalDir};
@@ -220,7 +220,7 @@ impl Entity for BossFish {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.facing {
             HorizontalDir::East => (1.0, 0.0),
             HorizontalDir::West => (-1.0, 1.0),

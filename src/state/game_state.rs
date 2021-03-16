@@ -88,9 +88,9 @@ pub struct GameState {
 
     // Stage rendering
     stage_material: Rc<rendering::Material>,
-    stage_uniforms: util::UniformWrapper<rendering::Uniforms>,
-    stage_debug_draw_overlap_uniforms: util::UniformWrapper<rendering::Uniforms>,
-    stage_debug_draw_contact_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    stage_uniforms: rendering::Uniforms,
+    stage_debug_draw_overlap_uniforms: rendering::Uniforms,
+    stage_debug_draw_contact_uniforms: rendering::Uniforms,
     stage_sprite_drawable: rendering::Drawable,
 
     // Collision detection and dispatch
@@ -270,17 +270,16 @@ impl GameState {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-        let camera_uniforms: util::UniformWrapper<camera::Uniforms> =
-            util::UniformWrapper::new(&gpu.device);
+        let camera_uniforms: camera::Uniforms = util::UniformWrapper::new(&gpu.device);
         let camera_controller = camera::CameraController::new(camera, projection, camera_uniforms);
 
         // Build the sprite render pipeline
 
-        let mut stage_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+        let mut stage_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
         let mut stage_debug_draw_overlap_uniforms =
-            util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+            util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
         let mut stage_debug_draw_contact_uniforms =
-            util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+            util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
 
         let sprite_render_pipeline_layout =
             gpu.device
@@ -340,7 +339,7 @@ impl GameState {
                 )
             })
             .map(|a| {
-                let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+                let uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
                 rendering::FlipbookAnimationComponents::new(a, uniforms)
             })
             .collect::<Vec<_>>();
@@ -1086,7 +1085,7 @@ impl GameState {
             let sprite_name = req.entity.sprite_name().to_string();
             // The Entity has specified a sprite name, which means it's using
             // an EntityDrawable to render.
-            let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+            let uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
             EntityComponents::with_entity_drawable(
                 req.entity,
                 rendering::EntityDrawable::load(
@@ -1101,7 +1100,7 @@ impl GameState {
         } else if let Some(sprites) = req.entity.stage_sprites() {
             // The Entity has specified sprites to render, which means its using a
             // sprite::Drawable using the stage material to render.
-            let uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+            let uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
             EntityComponents::with_sprite_drawable(
                 req.entity,
                 rendering::Drawable::with(

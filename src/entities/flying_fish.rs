@@ -4,15 +4,14 @@ use std::{f32::consts::PI, time::Duration};
 
 use crate::{
     audio, collision,
+    entities::util::HitPointState,
     entity::{Entity, GameStatePeek},
     event_dispatch::*,
     map,
     sprite::{self, rendering},
     state::constants::{layers, sprite_masks},
-    tileset, util,
+    tileset,
 };
-
-use super::util::HitPointState;
 
 // --------------------------------------------------------------------------------------------------------------------
 
@@ -153,7 +152,7 @@ impl Entity for FlyingFish {
         }
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.phase % 2 {
             0 => (-1.0, 1.0 - 1.0 / self.sprite_size_px.x),
             _ => (1.0, 0.0),

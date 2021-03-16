@@ -37,18 +37,18 @@ pub struct GameUi {
 
     camera_view: camera::Camera,
     camera_projection: camera::Projection,
-    camera_uniforms: util::UniformWrapper<camera::Uniforms>,
+    camera_uniforms: camera::Uniforms,
 
     // drawer tile map, entities, and associated gfx state for drawing sprites
     drawer_collision_space: collision::Space,
     game_ui_map: map::Map,
     sprite_material: Rc<rendering::Material>,
     drawer_drawable: rendering::Drawable,
-    drawer_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    drawer_uniforms: rendering::Uniforms,
     game_start_drawable: rendering::Drawable,
-    game_start_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    game_start_uniforms: rendering::Uniforms,
     game_over_drawable: rendering::Drawable,
-    game_over_uniforms: util::UniformWrapper<rendering::Uniforms>,
+    game_over_uniforms: rendering::Uniforms,
     entities: HashMap<u32, entity::EntityComponents>,
 
     // state
@@ -71,8 +71,7 @@ impl GameUi {
     ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
-        let camera_uniforms: util::UniformWrapper<camera::Uniforms> =
-            util::UniformWrapper::new(&gpu.device);
+        let camera_uniforms: camera::Uniforms = util::UniformWrapper::new(&gpu.device);
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
             gpu.sc_desc.height,
@@ -105,7 +104,7 @@ impl GameUi {
         };
 
         let sprite_size_px = game_ui_map.tileset.get_sprite_size().cast().unwrap();
-        let drawer_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+        let drawer_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
 
         let pipeline_layout = gpu
             .device
@@ -175,14 +174,14 @@ impl GameUi {
                         &sprite_name,
                         0,
                     ),
-                    util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device),
+                    util::UniformWrapper::<rendering::UniformData>::new(&gpu.device),
                 );
                 (ec.id(), ec)
             })
             .collect::<HashMap<_, _>>();
 
-        let game_over_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
-        let game_start_uniforms = util::UniformWrapper::<rendering::Uniforms>::new(&gpu.device);
+        let game_over_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
+        let game_start_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
 
         let mut game_ui = Self {
             pipeline,
@@ -325,8 +324,7 @@ impl GameUi {
         // update game over and game start uniforms to center their test strings.
         // Note: We don't apply palette shift to text drawables
         let mut center_text_drawable =
-            |drawable: &rendering::Drawable,
-             uniforms: &mut util::UniformWrapper<rendering::Uniforms>| {
+            |drawable: &rendering::Drawable, uniforms: &mut rendering::Uniforms| {
                 let bounds = drawable
                     .meshes
                     .first()

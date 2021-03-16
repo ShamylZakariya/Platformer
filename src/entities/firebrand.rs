@@ -22,7 +22,7 @@ use crate::{
         },
         events::Event,
     },
-    util::{self, clamp, lerp, Bounds},
+    util::{clamp, lerp, Bounds},
 };
 
 use super::{power_up, util::HorizontalDir};
@@ -834,7 +834,7 @@ impl Entity for Firebrand {
             .collect();
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         //
         //  Write state into uniform storage
         //

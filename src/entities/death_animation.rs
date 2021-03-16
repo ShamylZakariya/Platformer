@@ -9,7 +9,7 @@ use crate::{
     map,
     sprite::rendering,
     state::constants::layers,
-    util::{self, Bounds},
+    util::Bounds,
 };
 
 use super::util::{CompassDir, HorizontalDir};
@@ -114,7 +114,7 @@ impl Entity for DeathAnimation {
         self.position.y = next_position.y;
     }
 
-    fn update_uniforms(&self, uniforms: &mut util::UniformWrapper<rendering::Uniforms>) {
+    fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         if let Mode::EnemyDeath = self.mode {
             let (xscale, xoffset) = match self.direction {
                 CompassDir::East => (-1.0, 1.0),
