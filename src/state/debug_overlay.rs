@@ -90,10 +90,10 @@ impl DebugOverlay {
     pub fn render(
         &mut self,
         window: &Window,
-        game_state: &mut GameState,
         gpu: &mut GpuState,
         frame: &wgpu::SwapChainFrame,
         encoder: &mut wgpu::CommandEncoder,
+        game_state: &mut GameState,
     ) {
         self.winit_platform
             .prepare_frame(self.imgui.io_mut(), window)

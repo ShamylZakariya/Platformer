@@ -12,6 +12,7 @@ use super::{
 
 // --------------------------------------------------------------------------------------------------------------------
 
+/// Holder for various AppState fields to pass in to GameController, GameUi, GameState update() methods
 pub struct AppContext<'a> {
     pub window: &'a Window,
     pub gpu: &'a mut GpuState,
@@ -133,20 +134,22 @@ impl AppState {
 
         self.audio.update(dt);
 
-        let mut ctx = AppContext {
-            window,
-            gpu: &mut self.gpu,
-            audio: &mut self.audio,
-            message_dispatcher: &mut self.message_dispatcher,
-            entity_id_vendor: &mut self.entity_id_vendor,
-        };
+        {
+            let mut ctx = AppContext {
+                window,
+                gpu: &mut self.gpu,
+                audio: &mut self.audio,
+                message_dispatcher: &mut self.message_dispatcher,
+                entity_id_vendor: &mut self.entity_id_vendor,
+            };
 
-        self.game_state.update(game_dt, &mut ctx);
+            self.game_state.update(game_dt, &mut ctx);
 
-        self.game_ui.update(dt, &mut ctx, &self.game_state);
+            self.game_ui.update(dt, &mut ctx, &self.game_state);
 
-        self.game_controller
-            .update(dt, &mut ctx, &mut self.game_state, &mut self.game_ui);
+            self.game_controller
+                .update(dt, &mut ctx, &mut self.game_state, &mut self.game_ui);
+        }
 
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
@@ -168,10 +171,10 @@ impl AppState {
         if let Some(ref mut overlay) = self.overlay {
             overlay.render(
                 window,
-                &mut self.game_state,
                 &mut self.gpu,
                 &frame,
                 &mut encoder,
+                &mut self.game_state,
             );
         }
 
