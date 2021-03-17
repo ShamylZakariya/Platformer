@@ -1,4 +1,5 @@
 CURRENTLY:
+    Create a Context struct which has mutable otional refs to things like MessageDispatcher, GameState, etc.
 
 BUGS:
 

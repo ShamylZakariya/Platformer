@@ -167,7 +167,7 @@ impl GameState {
                 Rc::new(rendering::Material::new(
                     &gpu.device,
                     "Sprite Material",
-                    spritesheet.clone(),
+                    spritesheet,
                     tonemap.clone(),
                     &material_bind_group_layout,
                 ))
@@ -314,8 +314,8 @@ impl GameState {
             rendering::Material::new(
                 &gpu.device,
                 "Sprite Material",
-                spritesheet.clone(),
-                tonemap.clone(),
+                spritesheet,
+                tonemap,
                 &material_bind_group_layout,
             )
         });

@@ -103,11 +103,7 @@ impl Tracks {
     }
 
     fn loops(&self) -> bool {
-        use Tracks::*;
-        match self {
-            MainTheme => true,
-            _ => false,
-        }
+        matches!(self, Tracks::MainTheme)
     }
 }
 
