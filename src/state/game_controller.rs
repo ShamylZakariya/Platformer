@@ -1,8 +1,8 @@
-use winit::window::Window;
-
 use crate::{audio, entity, event_dispatch};
 
 use crate::state::{events::Event, game_state::GameState, game_ui::GameUi};
+
+use super::app_state::AppContext;
 
 //---------------------------------------------------------------------------------------------------------------------
 
@@ -44,12 +44,10 @@ impl GameController {
 
     pub fn update(
         &mut self,
-        _window: &Window,
         dt: std::time::Duration,
-        _audio: &mut audio::Audio,
+        ctx: &mut AppContext,
         game_state: &mut GameState,
         game_ui: &mut GameUi,
-        message_dispatcher: &mut event_dispatch::Dispatcher,
     ) {
         let dt = dt.as_secs_f32();
 
@@ -85,7 +83,7 @@ impl GameController {
                 game_state.restart_game_at_checkpoint(
                     self.current_checkpoint,
                     self.lives_remaining,
-                    message_dispatcher,
+                    ctx.message_dispatcher,
                 );
             } else {
                 self.restart_game_countdown = Some(restart_game_countdown);
@@ -96,7 +94,7 @@ impl GameController {
             let game_over_countdown = game_over_countdown - dt;
             if game_over_countdown < 0.0 {
                 self.game_over_countdown = None;
-                game_state.game_over(message_dispatcher);
+                game_state.game_over(ctx.message_dispatcher);
             } else {
                 self.game_over_countdown = Some(game_over_countdown);
             }

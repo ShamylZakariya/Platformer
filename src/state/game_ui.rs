@@ -19,6 +19,7 @@ use crate::{
 };
 
 use super::{
+    app_state::AppContext,
     constants::{layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE},
     events::Event,
     game_state,
@@ -252,13 +253,9 @@ impl GameUi {
 
     pub fn update(
         &mut self,
-        _window: &Window,
         dt: std::time::Duration,
-        gpu: &mut gpu_state::GpuState,
-        audio: &mut audio::Audio,
+        ctx: &mut AppContext,
         game: &game_state::GameState,
-        message_dispatcher: &mut event_dispatch::Dispatcher,
-        _entity_id_vendor: &mut entity::IdVendor,
     ) {
         let sprite_size_px = self.sprite_size_px;
         let palette_shift = self.palette_shift();
@@ -270,10 +267,10 @@ impl GameUi {
             self.drawer_open = !self.drawer_open;
             self.toggle_drawer_needed = false;
             if self.drawer_open {
-                audio.play_sound(audio::Sounds::DrawerOpen);
-                audio.pause_current_track();
+                ctx.audio.play_sound(audio::Sounds::DrawerOpen);
+                ctx.audio.pause_current_track();
             } else {
-                audio.resume_current_track();
+                ctx.audio.resume_current_track();
             }
         }
 
@@ -285,7 +282,7 @@ impl GameUi {
         self.camera_uniforms
             .data
             .update_view_proj(&self.camera_view, &self.camera_projection);
-        self.camera_uniforms.write(&mut gpu.queue);
+        self.camera_uniforms.write(&mut ctx.gpu.queue);
 
         // update drawer uniforms
         let bounds = self.game_ui_map.bounds();
@@ -297,7 +294,7 @@ impl GameUi {
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_palette_shift(palette_shift)
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
-        self.drawer_uniforms.write(&mut gpu.queue);
+        self.drawer_uniforms.write(&mut ctx.gpu.queue);
 
         // update entity uniforms - note we have to apply drawer position offset
         let game_state_peek = game.game_state_peek();
@@ -306,8 +303,8 @@ impl GameUi {
                 dt,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
-                audio,
-                message_dispatcher,
+                ctx.audio,
+                ctx.message_dispatcher,
                 &game_state_peek,
             );
             if let Some(ref mut uniforms) = e.uniforms {
@@ -317,7 +314,7 @@ impl GameUi {
                     .set_sprite_size_px(sprite_size_px)
                     .set_palette_shift(palette_shift)
                     .offset_model_position(drawer_offset);
-                uniforms.write(&mut gpu.queue);
+                uniforms.write(&mut ctx.gpu.queue);
             }
         }
 
@@ -335,7 +332,7 @@ impl GameUi {
                     .set_sprite_size_px(sprite_size_px)
                     .set_color(vec4(1.0, 1.0, 1.0, 1.0))
                     .set_model_position(point3(-bounds.width() / 2.0, -bounds.height() / 2.0, 0.0));
-                uniforms.write(&mut gpu.queue);
+                uniforms.write(&mut ctx.gpu.queue);
             };
 
         center_text_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);

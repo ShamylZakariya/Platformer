@@ -27,6 +27,7 @@ use crate::{
 };
 
 use super::{
+    app_state::AppContext,
     constants::{
         layers, CAMERA_FAR_PLANE, CAMERA_NEAR_PLANE, DEFAULT_CAMERA_SCALE, MIN_CAMERA_SCALE,
         ORIGINAL_VIEWPORT_TILES_WIDE,
@@ -481,22 +482,14 @@ impl GameState {
         }
     }
 
-    pub fn update(
-        &mut self,
-        _window: &Window,
-        dt: std::time::Duration,
-        gpu: &mut gpu_state::GpuState,
-        audio: &mut audio::Audio,
-        message_dispatcher: &mut event_dispatch::Dispatcher,
-        entity_id_vendor: &mut entity::IdVendor,
-    ) {
+    pub fn update(&mut self, dt: std::time::Duration, ctx: &mut AppContext) {
         self.collision_space.update();
 
         //
         //  Process pending entity additions
         //
 
-        self.process_entity_additions(gpu);
+        self.process_entity_additions(ctx.gpu);
 
         //
         // If firebrand hasn't been constructed yet, we need to instantiate him at the assigned checkpoint
@@ -515,15 +508,15 @@ impl GameState {
             // create firebrand and immediately process addition request since update()
             // depends on firebrand's location.
             self.firebrand_entity_id = Some(self.request_add_entity(
-                entity_id_vendor,
+                ctx.entity_id_vendor,
                 Box::new(entities::firebrand::Firebrand::new(
                     position.xy(),
                     self.firebrand_start_lives_remaining,
                 )),
             ));
-            self.process_entity_additions(gpu);
+            self.process_entity_additions(ctx.gpu);
 
-            message_dispatcher.broadcast(Event::FirebrandCreated {
+            ctx.message_dispatcher.broadcast(Event::FirebrandCreated {
                 checkpoint: self.firebrand_start_checkpoint,
                 num_restarts: self.num_restarts,
             });
@@ -550,8 +543,8 @@ impl GameState {
                     dt,
                     &self.map,
                     &mut self.collision_space,
-                    audio,
-                    message_dispatcher,
+                    ctx.audio,
+                    ctx.message_dispatcher,
                     &game_state_peek,
                 );
                 if let Some(ref mut uniforms) = e.uniforms {
@@ -560,7 +553,7 @@ impl GameState {
                         .data
                         .set_sprite_size_px(self.sprite_size_px)
                         .set_palette_shift(palette_shift);
-                    uniforms.write(&mut gpu.queue);
+                    uniforms.write(&mut ctx.gpu.queue);
                 }
 
                 if !e.entity.is_alive() {
@@ -575,7 +568,7 @@ impl GameState {
         }
 
         self.stage_uniforms.data.set_palette_shift(palette_shift);
-        self.stage_uniforms.write(&mut gpu.queue);
+        self.stage_uniforms.write(&mut ctx.gpu.queue);
 
         //
         //  Update flipbook animations
@@ -587,7 +580,7 @@ impl GameState {
                 .data
                 .set_sprite_size_px(self.sprite_size_px)
                 .set_palette_shift(palette_shift);
-            a.uniforms.write(&mut gpu.queue);
+            a.uniforms.write(&mut ctx.gpu.queue);
         }
 
         //
@@ -608,7 +601,7 @@ impl GameState {
 
         self.camera_controller
             .update(dt, tracking, offset, Some(current_map_bounds));
-        self.camera_controller.uniforms.write(&mut gpu.queue);
+        self.camera_controller.uniforms.write(&mut ctx.gpu.queue);
 
         //
         //  Notify entities of their visibility

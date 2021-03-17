@@ -12,6 +12,16 @@ use super::{
 
 // --------------------------------------------------------------------------------------------------------------------
 
+pub struct AppContext<'a> {
+    pub window: &'a Window,
+    pub gpu: &'a mut GpuState,
+    pub audio: &'a mut Audio,
+    pub message_dispatcher: &'a mut event_dispatch::Dispatcher,
+    pub entity_id_vendor: &'a mut entity::IdVendor,
+}
+
+// --------------------------------------------------------------------------------------------------------------------
+
 pub struct AppState {
     options: Options,
     gpu: GpuState,
@@ -123,33 +133,20 @@ impl AppState {
 
         self.audio.update(dt);
 
-        self.game_state.update(
+        let mut ctx = AppContext {
             window,
-            game_dt,
-            &mut self.gpu,
-            &mut self.audio,
-            &mut self.message_dispatcher,
-            &mut self.entity_id_vendor,
-        );
+            gpu: &mut self.gpu,
+            audio: &mut self.audio,
+            message_dispatcher: &mut self.message_dispatcher,
+            entity_id_vendor: &mut self.entity_id_vendor,
+        };
 
-        self.game_ui.update(
-            window,
-            dt,
-            &mut self.gpu,
-            &mut self.audio,
-            &self.game_state,
-            &mut self.message_dispatcher,
-            &mut self.entity_id_vendor,
-        );
+        self.game_state.update(game_dt, &mut ctx);
 
-        self.game_controller.update(
-            window,
-            dt,
-            &mut self.audio,
-            &mut self.game_state,
-            &mut self.game_ui,
-            &mut self.message_dispatcher,
-        );
+        self.game_ui.update(dt, &mut ctx, &self.game_state);
+
+        self.game_controller
+            .update(dt, &mut ctx, &mut self.game_state, &mut self.game_ui);
 
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
