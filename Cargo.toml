@@ -10,21 +10,21 @@ default = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0"
-bytemuck = { version = "1.4", features = ["derive"] }
-futures = "0.3"
-image = "0.23"
+anyhow = "1.0.38"
+bytemuck = { version = "1.5.1", features = ["derive"] }
+futures = "0.3.13"
+image = "0.23.14"
 imgui = "0.5"
-imgui-wgpu = "0.11.0"
-rand = '0.8'
-raw-window-handle = "0.3"
-structopt = "0.3"
+imgui-wgpu = "0.11"
+rand = "0.8.3"
+raw-window-handle = "0.3.3"
+structopt = "0.3.21"
 wgpu = "0.6"
 wgpu-subscriber = "0.1"
 winit = "0.22"
-xml-rs = "0.8"
-gilrs = "0.8.0"
-rodio = "0.13.0"
+xml-rs = "0.8.3"
+gilrs = "0.8"
+rodio = "0.13"
 
 [dependencies.cgmath]
 version = "0.18"
@@ -37,9 +37,9 @@ default-features = false
 features = ["winit-22"]
 
 [build-dependencies]
-anyhow = "1.0"
-fs_extra = "1.1"
+anyhow = "1.0.38"
+fs_extra = "1.2"
 glob = "0.3"
-rayon = "1.4"
-shaderc = "0.6"
+rayon = "1.5"
+shaderc = "0.7.2"
 

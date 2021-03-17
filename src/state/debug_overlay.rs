@@ -46,7 +46,7 @@ impl DebugOverlay {
         let mut winit_platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
         winit_platform.attach_window(
             imgui.io_mut(),
-            &window,
+            window,
             imgui_winit_support::HiDpiMode::Default,
         );
         imgui.set_ini_filename(None);
@@ -80,7 +80,7 @@ impl DebugOverlay {
 
     pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
         self.winit_platform
-            .handle_event(self.imgui.io_mut(), &window, &event);
+            .handle_event(self.imgui.io_mut(), window, event);
     }
 
     pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {

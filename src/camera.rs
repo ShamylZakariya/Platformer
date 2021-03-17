@@ -1,6 +1,6 @@
 use cgmath::*;
 use std::time::Duration;
-use winit::dpi::LogicalPosition;
+use winit::dpi::{LogicalPosition, PhysicalPosition};
 use winit::event::*;
 
 use crate::{
