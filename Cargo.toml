@@ -16,6 +16,7 @@ futures = "0.3.13"
 image = "0.23.14"
 imgui = "0.7.0"
 imgui-wgpu = "0.14.0"
+imgui-winit-support = "0.7"
 rand = "0.8.3"
 raw-window-handle = "0.3.3"
 structopt = "0.3.21"
@@ -29,11 +30,6 @@ rodio = "0.13.0"
 [dependencies.cgmath]
 version = "0.18.0"
 features = ["swizzle"]
-
-
-[dependencies.imgui-winit-support]
-version = "0.7.0"
-features = ["winit-24"]
 
 [build-dependencies]
 anyhow = "1.0.38"
