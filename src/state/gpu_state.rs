@@ -19,7 +19,7 @@ impl GpuState {
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
             })
             .await
@@ -28,9 +28,9 @@ impl GpuState {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
+                    label: None,
                     features: wgpu::Features::empty(),
                     limits: wgpu::Limits::default(),
-                    shader_validation: true,
                 },
                 None,
             )
@@ -38,7 +38,7 @@ impl GpuState {
             .unwrap();
 
         let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8UnormSrgb,
             width: size.width,
             height: size.height,
@@ -68,19 +68,6 @@ impl GpuState {
         self.depth_texture =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-    }
-
-    /// Returns a new swap chain frame for rendering into
-    pub fn next_frame(&mut self) -> wgpu::SwapChainFrame {
-        match self.swap_chain.get_current_frame() {
-            Ok(frame) => frame,
-            Err(_) => {
-                self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-                self.swap_chain
-                    .get_current_frame()
-                    .expect("Failed to acquire next swap chain texture!")
-            }
-        }
     }
 
     pub fn encoder(&self) -> wgpu::CommandEncoder {

@@ -88,7 +88,17 @@ fn main() -> Result<()> {
                 last_render_time = now;
 
                 app_state.update(&window, dt);
-                app_state.render(&window);
+                match app_state.render(&window) {
+                    Ok(_) => {}
+                    // Recreate the swap_chain if lost
+                    Err(wgpu::SwapChainError::Lost) => {
+                        app_state.resize(&window, app_state.gpu.size)
+                    }
+                    // The system is out of memory, we should probably quit
+                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    // All other errors (Outdated, Timeout) should be resolved by the next frame
+                    Err(e) => eprintln!("{:?}", e),
+                }
             }
             Event::MainEventsCleared => {
                 // we have to explicitly request a redraw

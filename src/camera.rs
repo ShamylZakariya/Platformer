@@ -1,6 +1,6 @@
 use cgmath::*;
 use std::time::Duration;
-use winit::dpi::{LogicalPosition, PhysicalPosition};
+use winit::dpi::PhysicalPosition;
 use winit::event::*;
 
 use crate::{
@@ -202,7 +202,7 @@ impl CameraController {
     pub fn process_scroll(&mut self, delta: &MouseScrollDelta) {
         let delta_scale = match delta {
             MouseScrollDelta::LineDelta(_, scroll) => *scroll * 0.05,
-            MouseScrollDelta::PixelDelta(LogicalPosition { y: scroll, .. }) => {
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => {
                 *scroll as f32 * -0.05
             }
         };

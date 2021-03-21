@@ -22,56 +22,57 @@ pub fn create_render_pipeline(
     let vs_src = wgpu::include_spirv!("../shaders/sprite.vs.spv");
     let fs_src = wgpu::include_spirv!("../shaders/sprite.fs.spv");
 
-    let vs_module = device.create_shader_module(vs_src);
-    let fs_module = device.create_shader_module(fs_src);
+    let vs_module = device.create_shader_module(&vs_src);
+    let fs_module = device.create_shader_module(&fs_src);
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render Pipeline"),
         layout: Some(&layout),
-        vertex_stage: wgpu::ProgrammableStageDescriptor {
+
+        vertex: wgpu::VertexState {
             module: &vs_module,
             entry_point: "main",
+            buffers: vertex_descs,
         },
-        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+
+        fragment: Some(wgpu::FragmentState {
             module: &fs_module,
             entry_point: "main",
+            targets: &[wgpu::ColorTargetState {
+                format: color_format,
+                alpha_blend: wgpu::BlendState::REPLACE,
+                color_blend: wgpu::BlendState {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                write_mask: wgpu::ColorWrite::ALL,
+            }],
         }),
-        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-            // Since we're rendering sprites, we don't care about backface culling
+
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
             front_face: wgpu::FrontFace::Cw,
             cull_mode: wgpu::CullMode::None,
-            depth_bias: 0,
-            depth_bias_slope_scale: 0.0,
-            depth_bias_clamp: 0.0,
-            clamp_depth: false,
-        }),
-        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-        color_states: &[wgpu::ColorStateDescriptor {
-            format: color_format,
-            color_blend: wgpu::BlendDescriptor {
-                src_factor: wgpu::BlendFactor::SrcAlpha,
-                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                operation: wgpu::BlendOperation::Add,
-            },
-            alpha_blend: wgpu::BlendDescriptor {
-                src_factor: wgpu::BlendFactor::One,
-                dst_factor: wgpu::BlendFactor::One,
-                operation: wgpu::BlendOperation::Add,
-            },
-            write_mask: wgpu::ColorWrite::ALL,
-        }],
-        depth_stencil_state: depth_format.map(|format| wgpu::DepthStencilStateDescriptor {
+            // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+            polygon_mode: wgpu::PolygonMode::Fill,
+        },
+
+        depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
             format,
             depth_write_enabled: true,
             depth_compare: wgpu::CompareFunction::Less,
-            stencil: wgpu::StencilStateDescriptor::default(),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+            // Setting this to true requires Features::DEPTH_CLAMPING
+            clamp_depth: false,
         }),
-        sample_count: 1,
-        sample_mask: !0,
-        alpha_to_coverage_enabled: false,
-        vertex_state: wgpu::VertexStateDescriptor {
-            index_format: wgpu::IndexFormat::Uint32,
-            vertex_buffers: vertex_descs,
+
+        multisample: wgpu::MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
         },
     })
 }
@@ -79,7 +80,7 @@ pub fn create_render_pipeline(
 // --------------------------------------------------------------------------------------------------------------------
 
 pub trait VertexBufferDescription {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a>;
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
 }
 
 #[repr(C)]
@@ -110,27 +111,27 @@ impl Vertex {
 }
 
 impl VertexBufferDescription for Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::InputStepMode::Vertex,
             attributes: &[
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
                     format: wgpu::VertexFormat::Float3,
                 },
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float2,
                 },
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
                     shader_location: 2,
                     format: wgpu::VertexFormat::Float2,
                 },
-                wgpu::VertexAttributeDescriptor {
+                wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
                     shader_location: 3,
                     format: wgpu::VertexFormat::Float4,
@@ -260,10 +261,10 @@ impl Material {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        dimension: wgpu::TextureViewDimension::D2,
-                        component_type: wgpu::TextureComponentType::Uint,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                     count: None,
                 },
@@ -271,18 +272,21 @@ impl Material {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        dimension: wgpu::TextureViewDimension::D2,
-                        component_type: wgpu::TextureComponentType::Uint,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                     count: None,
                 },
-                // diffuse texture sampler
+                // diffuse texture & tonemap sampler
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    ty: wgpu::BindingType::Sampler {
+                        comparison: false,
+                        filtering: false,
+                    },
                     count: None,
                 },
             ],
@@ -451,7 +455,7 @@ impl Mesh {
         sprite_uniforms: &'a Uniforms,
     ) {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, &material.bind_group, &[]);
         render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
         render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
@@ -476,7 +480,7 @@ impl Mesh {
         I: IntoIterator<Item = &'a Sprite>,
     {
         render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, &material.bind_group, &[]);
         render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
         render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
@@ -676,7 +680,7 @@ impl EntityDrawable {
     {
         if let Some(mesh) = self.meshes_by_cycle.get(cycle) {
             render_pass.set_vertex_buffer(0, mesh.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(mesh.index_buffer.slice(..));
+            render_pass.set_index_buffer(mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.set_bind_group(0, &self.material.bind_group, &[]);
             render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
             render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);
@@ -731,7 +735,7 @@ impl FlipbookAnimationDrawable {
         'a: 'b,
     {
         render_pass.set_vertex_buffer(0, self.mesh.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.mesh.index_buffer.slice(..));
+        render_pass.set_index_buffer(self.mesh.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_pass.set_bind_group(0, &self.material.bind_group, &[]);
         render_pass.set_bind_group(1, &camera_uniforms.bind_group, &[]);
         render_pass.set_bind_group(2, &sprite_uniforms.bind_group, &[]);

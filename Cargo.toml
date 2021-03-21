@@ -14,32 +14,32 @@ anyhow = "1.0.38"
 bytemuck = { version = "1.5.1", features = ["derive"] }
 futures = "0.3.13"
 image = "0.23.14"
-imgui = "0.5"
-imgui-wgpu = "0.11"
+imgui = "0.7.0"
+imgui-wgpu = "0.14.0"
 rand = "0.8.3"
 raw-window-handle = "0.3.3"
 structopt = "0.3.21"
-wgpu = "0.6"
-wgpu-subscriber = "0.1"
-winit = "0.22"
+wgpu = "0.7.0"
+wgpu-subscriber = "0.1.0"
+winit = "0.24.0"
 xml-rs = "0.8.3"
-gilrs = "0.8"
-rodio = "0.13"
+gilrs = "0.8.0"
+rodio = "0.13.0"
 
 [dependencies.cgmath]
-version = "0.18"
+version = "0.18.0"
 features = ["swizzle"]
 
 
 [dependencies.imgui-winit-support]
-version = "0.5"
+version = "0.7.0"
 default-features = false
 features = ["winit-22"]
 
 [build-dependencies]
 anyhow = "1.0.38"
-fs_extra = "1.2"
-glob = "0.3"
-rayon = "1.5"
+fs_extra = "1.2.0"
+glob = "0.3.0"
+rayon = "1.5.0"
 shaderc = "0.7.2"
 

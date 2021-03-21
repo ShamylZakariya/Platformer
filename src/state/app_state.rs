@@ -25,7 +25,7 @@ pub struct AppContext<'a> {
 
 pub struct AppState {
     options: Options,
-    gpu: GpuState,
+    pub gpu: GpuState,
     audio: Audio,
     game_controller: GameController,
     game_state: GameState,
@@ -154,8 +154,8 @@ impl AppState {
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
-    pub fn render(&mut self, window: &Window) {
-        let frame = self.gpu.next_frame();
+    pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {
+        let frame = self.gpu.swap_chain.get_current_frame()?;
         let mut encoder = self.gpu.encoder();
 
         //
@@ -168,18 +168,20 @@ impl AppState {
         self.game_ui
             .render(window, &mut self.gpu, &frame, &mut encoder);
 
-        if let Some(ref mut overlay) = self.overlay {
-            overlay.render(
-                window,
-                &mut self.gpu,
-                &frame,
-                &mut encoder,
-                &mut self.game_state,
-            );
-        }
+        // if let Some(ref mut overlay) = self.overlay {
+        //     overlay.render(
+        //         window,
+        //         &mut self.gpu,
+        //         &frame,
+        //         &mut encoder,
+        //         &mut self.game_state,
+        //     );
+        // }
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
+
+        Ok(())
     }
 }
 
