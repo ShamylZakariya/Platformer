@@ -168,15 +168,15 @@ impl AppState {
         self.game_ui
             .render(window, &mut self.gpu, &frame, &mut encoder);
 
-        // if let Some(ref mut overlay) = self.overlay {
-        //     overlay.render(
-        //         window,
-        //         &mut self.gpu,
-        //         &frame,
-        //         &mut encoder,
-        //         &mut self.game_state,
-        //     );
-        // }
+        if let Some(ref mut overlay) = self.overlay {
+            overlay.render(
+                window,
+                &mut self.gpu,
+                &frame,
+                &mut encoder,
+                &mut self.game_state,
+            );
+        }
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));

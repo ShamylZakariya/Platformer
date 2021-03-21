@@ -33,8 +33,7 @@ features = ["swizzle"]
 
 [dependencies.imgui-winit-support]
 version = "0.7.0"
-default-features = false
-features = ["winit-22"]
+features = ["winit-24"]
 
 [build-dependencies]
 anyhow = "1.0.38"

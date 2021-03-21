@@ -466,7 +466,7 @@ impl GameUi {
         let vp_units_high = self.camera_projection.viewport_size().y;
         let drawer_closed_y =
             (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0 - (3.0 / self.sprite_size_px.y);
-        let drawer_open_y = (-vp_units_high / 2.0) - 1.0 - 1.0/self.sprite_size_px.y;
+        let drawer_open_y = (-vp_units_high / 2.0) - 1.0 - 1.0 / self.sprite_size_px.y;
 
         if dt > Duration::from_secs(0) {
             if self.drawer_open {
