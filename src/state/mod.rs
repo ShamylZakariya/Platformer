@@ -6,3 +6,4 @@ pub mod game_controller;
 pub mod game_state;
 pub mod game_ui;
 pub mod gpu_state;
+pub mod lcd_filter;

@@ -7,7 +7,7 @@ use crate::{audio::Audio, entity, event_dispatch, texture, Options};
 
 use super::{
     debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
-    game_ui::GameUi, gpu_state::GpuState,
+    game_ui::GameUi, gpu_state::GpuState, lcd_filter::LcdFilter,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -31,6 +31,7 @@ pub struct AppState {
     game_state: GameState,
     game_ui: GameUi,
     overlay: Option<DebugOverlay>,
+    lcd_filter: LcdFilter,
 
     entity_id_vendor: entity::IdVendor,
     message_dispatcher: event_dispatch::Dispatcher,
@@ -58,12 +59,14 @@ impl AppState {
             game_controller.current_checkpoint(),
             game_controller.lives_remaining(),
         );
-        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap);
+        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap.clone());
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None
         };
+
+        let lcd_filter = LcdFilter::new(&mut gpu, &options, tonemap);
 
         if options.checkpoint == Some(0) {
             // when game starts, palette is shifted to white, an Event::FirebrandCreated
@@ -81,6 +84,7 @@ impl AppState {
             game_state,
             game_ui,
             overlay: overlay_ui,
+            lcd_filter,
 
             entity_id_vendor,
             message_dispatcher: event_dispatch::Dispatcher::default(),
@@ -96,7 +100,8 @@ impl AppState {
     pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
         self.gpu.resize(window, new_size);
         self.game_state.resize(window, new_size);
-        self.game_ui.resize(window, new_size)
+        self.game_ui.resize(window, new_size);
+        self.lcd_filter.resize(window, new_size);
     }
 
     pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {
@@ -143,6 +148,8 @@ impl AppState {
                 entity_id_vendor: &mut self.entity_id_vendor,
             };
 
+            self.lcd_filter.update(dt, &mut ctx);
+
             self.game_state.update(game_dt, &mut ctx);
 
             self.game_ui.update(dt, &mut ctx, &self.game_state);
@@ -177,6 +184,9 @@ impl AppState {
                 &mut self.game_state,
             );
         }
+
+        self.lcd_filter
+            .render(window, &mut self.gpu, &frame, &mut encoder);
 
         let commands = encoder.finish();
         self.gpu.queue.submit(std::iter::once(commands));
