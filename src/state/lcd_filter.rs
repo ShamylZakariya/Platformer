@@ -97,6 +97,6 @@ impl LcdFilter {
         });
 
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.draw(0..4, 0..1);
+        render_pass.draw(0..3, 0..1);
     }
 }
