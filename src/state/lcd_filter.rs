@@ -6,19 +6,77 @@ use crate::{texture::Texture, Options};
 use super::{app_state::AppContext, gpu_state};
 
 pub struct LcdFilter {
+    bind_group_layout: wgpu::BindGroupLayout,
+    bind_group: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
 }
 
 impl LcdFilter {
     pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options, _tonemap: Rc<Texture>) -> Self {
+        let bind_group_layout =
+            gpu.device
+                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("LcdFilter Bind Group Layout"),
+                    entries: &[
+                        // Color attachment
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 0,
+                            visibility: wgpu::ShaderStage::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                multisampled: false,
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                            },
+                            count: None,
+                        },
+                        // Sampler
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 1,
+                            visibility: wgpu::ShaderStage::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler {
+                                comparison: false,
+                                filtering: false,
+                            },
+                            count: None,
+                        },
+                    ],
+                });
+
+        let bind_group = Self::create_bind_group(&gpu, &bind_group_layout);
+        let pipeline =
+            Self::create_render_pipeline(&gpu.device, gpu.sc_desc.format, &bind_group_layout);
+
         Self {
-            pipeline: LcdFilter::create_render_pipeline(&gpu.device, gpu.sc_desc.format),
+            bind_group_layout,
+            bind_group,
+            pipeline,
         }
+    }
+
+    fn create_bind_group(
+        gpu: &gpu_state::GpuState,
+        layout: &wgpu::BindGroupLayout,
+    ) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&gpu.color_attachment.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
+                },
+            ],
+            label: Some("LcdFilter Bind Group"),
+        })
     }
 
     fn create_render_pipeline(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
+        bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let vs_src = wgpu::include_spirv!("../shaders/lcd.vs.spv");
         let fs_src = wgpu::include_spirv!("../shaders/lcd.fs.spv");
@@ -29,7 +87,7 @@ impl LcdFilter {
         // no uniforms for LcdFilter shaders
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("LcdFilter Render Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -72,7 +130,14 @@ impl LcdFilter {
         })
     }
 
-    pub fn resize(&mut self, _window: &Window, _new_size: winit::dpi::PhysicalSize<u32>) {}
+    pub fn resize(
+        &mut self,
+        _window: &Window,
+        _new_size: winit::dpi::PhysicalSize<u32>,
+        gpu: &gpu_state::GpuState,
+    ) {
+        self.bind_group = Self::create_bind_group(gpu, &self.bind_group_layout);
+    }
 
     pub fn update(&mut self, _dt: std::time::Duration, _ctx: &mut AppContext) {}
 
@@ -97,6 +162,7 @@ impl LcdFilter {
         });
 
         render_pass.set_pipeline(&self.pipeline);
+        render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
     }
 }

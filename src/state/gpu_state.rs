@@ -8,7 +8,8 @@ pub struct GpuState {
     pub sc_desc: wgpu::SwapChainDescriptor,
     pub swap_chain: wgpu::SwapChain,
     pub size: winit::dpi::PhysicalSize<u32>,
-    pub depth_texture: texture::Texture,
+    pub depth_attachment: texture::Texture,
+    pub color_attachment: texture::Texture,
 }
 
 impl GpuState {
@@ -48,7 +49,10 @@ impl GpuState {
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
         let depth_texture =
-            texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+            texture::Texture::create_depth_texture(&device, &sc_desc, "depth_attachment");
+
+        let color_texture =
+            texture::Texture::create_color_texture(&device, &sc_desc, "color_attachment");
 
         Self {
             surface,
@@ -57,7 +61,8 @@ impl GpuState {
             sc_desc,
             swap_chain,
             size,
-            depth_texture,
+            depth_attachment: depth_texture,
+            color_attachment: color_texture,
         }
     }
 
@@ -65,8 +70,11 @@ impl GpuState {
         self.size = new_size;
         self.sc_desc.width = new_size.width.max(1);
         self.sc_desc.height = new_size.height.max(1);
-        self.depth_texture =
+        self.depth_attachment =
             texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
+        self.color_attachment =
+            texture::Texture::create_color_texture(&self.device, &self.sc_desc, "color_attachment");
+
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
     }
 

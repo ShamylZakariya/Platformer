@@ -99,9 +99,9 @@ impl AppState {
 
     pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
         self.gpu.resize(window, new_size);
-        self.game_state.resize(window, new_size);
-        self.game_ui.resize(window, new_size);
-        self.lcd_filter.resize(window, new_size);
+        self.game_state.resize(window, new_size, &self.gpu);
+        self.game_ui.resize(window, new_size, &self.gpu);
+        self.lcd_filter.resize(window, new_size, &self.gpu);
     }
 
     pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {

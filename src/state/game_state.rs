@@ -419,7 +419,12 @@ impl GameState {
         game_state
     }
 
-    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(
+        &mut self,
+        _window: &Window,
+        new_size: winit::dpi::PhysicalSize<u32>,
+        _gpu: &gpu_state::GpuState,
+    ) {
         self.camera_controller
             .projection
             .resize(new_size.width, new_size.height);
@@ -614,7 +619,7 @@ impl GameState {
         &mut self,
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
-        frame: &wgpu::SwapChainFrame,
+        _frame: &wgpu::SwapChainFrame,
         encoder: &mut wgpu::CommandEncoder,
     ) {
         //
@@ -624,7 +629,7 @@ impl GameState {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Game State Render Pass"),
             color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &frame.output.view,
+                attachment: &gpu.color_attachment.view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -637,7 +642,7 @@ impl GameState {
                 },
             }],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                attachment: &gpu.depth_texture.view,
+                attachment: &gpu.depth_attachment.view,
                 depth_ops: Some(wgpu::Operations {
                     load: wgpu::LoadOp::Clear(1.0),
                     store: true,
