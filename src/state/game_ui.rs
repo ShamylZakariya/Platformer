@@ -6,7 +6,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{audio, camera, sprite::rendering, state::gpu_state, texture::Texture};
+use crate::{audio, camera, sprite::rendering, state::gpu_state};
 use crate::{
     collision,
     entity::{self, EntityComponents},
@@ -68,7 +68,6 @@ impl GameUi {
         gpu: &mut gpu_state::GpuState,
         _options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
-        tonemap: Rc<Texture>,
     ) -> Self {
         // build camera
         let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
@@ -99,7 +98,6 @@ impl GameUi {
                 &gpu.device,
                 "UI Sprite Material",
                 spritesheet,
-                tonemap,
                 &bind_group_layout,
             ))
         };

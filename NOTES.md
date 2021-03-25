@@ -1,4 +1,6 @@
 CURRENTLY:
+    - Postprocessing
+q        - sprite.fs might not need to ramp to white as alpha approaches zero
 
 BUGS:
     - brief flicker of non-faded scene at startup, just one frame but it's visible

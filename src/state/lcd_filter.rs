@@ -1,4 +1,3 @@
-use std::rc::Rc;
 use winit::window::Window;
 
 use crate::{texture::Texture, Options};
@@ -9,10 +8,11 @@ pub struct LcdFilter {
     bind_group_layout: wgpu::BindGroupLayout,
     bind_group: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
+    tonemap: Texture,
 }
 
 impl LcdFilter {
-    pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options, _tonemap: Rc<Texture>) -> Self {
+    pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options, tonemap: Texture) -> Self {
         let bind_group_layout =
             gpu.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -29,9 +29,20 @@ impl LcdFilter {
                             },
                             count: None,
                         },
-                        // Sampler
+                        // Tonemap
                         wgpu::BindGroupLayoutEntry {
                             binding: 1,
+                            visibility: wgpu::ShaderStage::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                multisampled: false,
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                            },
+                            count: None,
+                        },
+                        // Sampler
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 2,
                             visibility: wgpu::ShaderStage::FRAGMENT,
                             ty: wgpu::BindingType::Sampler {
                                 comparison: false,
@@ -42,7 +53,7 @@ impl LcdFilter {
                     ],
                 });
 
-        let bind_group = Self::create_bind_group(&gpu, &bind_group_layout);
+        let bind_group = Self::create_bind_group(&gpu, &bind_group_layout, &tonemap.view);
         let pipeline =
             Self::create_render_pipeline(&gpu.device, gpu.sc_desc.format, &bind_group_layout);
 
@@ -50,12 +61,14 @@ impl LcdFilter {
             bind_group_layout,
             bind_group,
             pipeline,
+            tonemap,
         }
     }
 
     fn create_bind_group(
         gpu: &gpu_state::GpuState,
         layout: &wgpu::BindGroupLayout,
+        tonemap: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &layout,
@@ -66,6 +79,10 @@ impl LcdFilter {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&tonemap),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
                     resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
                 },
             ],
@@ -136,7 +153,7 @@ impl LcdFilter {
         _new_size: winit::dpi::PhysicalSize<u32>,
         gpu: &gpu_state::GpuState,
     ) {
-        self.bind_group = Self::create_bind_group(gpu, &self.bind_group_layout);
+        self.bind_group = Self::create_bind_group(gpu, &self.bind_group_layout, &self.tonemap.view);
     }
 
     pub fn update(&mut self, _dt: std::time::Duration, _ctx: &mut AppContext) {}

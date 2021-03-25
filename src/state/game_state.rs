@@ -138,7 +138,6 @@ impl GameState {
         gpu: &mut gpu_state::GpuState,
         options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
-        tonemap: Rc<texture::Texture>,
         start_checkpoint: u32,
         lives_remaining: u32,
     ) -> Self {
@@ -169,7 +168,6 @@ impl GameState {
                     &gpu.device,
                     "Sprite Material",
                     spritesheet,
-                    tonemap.clone(),
                     &material_bind_group_layout,
                 ))
             };
@@ -316,7 +314,6 @@ impl GameState {
                 &gpu.device,
                 "Sprite Material",
                 spritesheet,
-                tonemap,
                 &material_bind_group_layout,
             )
         });

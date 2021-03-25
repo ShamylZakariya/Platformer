@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use anyhow::*;
 use winit::{event::WindowEvent, window::Window};
 
@@ -43,29 +41,25 @@ impl AppState {
 
         let audio = Audio::default();
 
-        let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
-        let tonemap = Rc::new(
-            texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
-                .with_context(|| format!("Failed to load palette \"{}\"", tonemap_file))?,
-        );
-
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
         let mut game_state = GameState::new(
             &mut gpu,
             &options,
             &mut entity_id_vendor,
-            tonemap.clone(),
             game_controller.current_checkpoint(),
             game_controller.lives_remaining(),
         );
-        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor, tonemap.clone());
+        let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let overlay_ui = if options.debug_overlay {
             Some(DebugOverlay::new(window, &gpu))
         } else {
             None
         };
 
+        let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
+        let tonemap = texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
+            .with_context(|| format!("Failed to load palette \"{}\"", tonemap_file))?;
         let lcd_filter = LcdFilter::new(&mut gpu, &options, tonemap);
 
         if options.checkpoint == Some(0) {

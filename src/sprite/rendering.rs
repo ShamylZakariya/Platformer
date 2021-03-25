@@ -215,7 +215,6 @@ pub type Uniforms = crate::util::UniformWrapper<UniformData>;
 pub struct Material {
     pub name: String,
     pub texture: Rc<texture::Texture>,
-    pub tonemap: Rc<texture::Texture>,
     pub bind_group: wgpu::BindGroup,
 }
 
@@ -225,7 +224,6 @@ impl Material {
         device: &wgpu::Device,
         name: &str,
         texture: Rc<texture::Texture>,
-        tonemap: Rc<texture::Texture>,
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -237,10 +235,6 @@ impl Material {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&tonemap.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
                     resource: wgpu::BindingResource::Sampler(&texture.sampler),
                 },
             ],
@@ -249,7 +243,6 @@ impl Material {
         Self {
             name: String::from(name),
             texture,
-            tonemap,
             bind_group,
         }
     }
@@ -268,20 +261,9 @@ impl Material {
                     },
                     count: None,
                 },
-                // tonemap
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        multisampled: false,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                    },
-                    count: None,
-                },
                 // diffuse texture & tonemap sampler
                 wgpu::BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Sampler {
                         comparison: false,
