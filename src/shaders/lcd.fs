@@ -6,6 +6,11 @@ layout(set = 0, binding = 0) uniform texture2D color_attachment;
 layout(set = 0, binding = 1) uniform texture2D tonemap;
 layout(set = 0, binding = 2) uniform sampler color_sampler;
 
+layout(set = 1, binding = 0) uniform LcdUniforms {
+  vec2 u_sprite_size_px;
+  float u_palette_shift;
+};
+
 layout(location = 0) out vec4 f_color;
 
 void main() {

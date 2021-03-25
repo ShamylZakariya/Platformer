@@ -1,19 +1,58 @@
+use cgmath::*;
 use winit::window::Window;
 
 use crate::{texture::Texture, Options};
 
 use super::{app_state::AppContext, gpu_state};
 
+// ---------------------------------------------------------------------------------------------------------------------
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct LcdUniformData {
+    sprite_size_px: Vector2<f32>,
+    palette_shift: f32,
+}
+
+unsafe impl bytemuck::Pod for LcdUniformData {}
+unsafe impl bytemuck::Zeroable for LcdUniformData {}
+
+impl Default for LcdUniformData {
+    fn default() -> Self {
+        Self {
+            sprite_size_px: vec2(1.0, 1.0),
+            palette_shift: 0.0,
+        }
+    }
+}
+
+impl LcdUniformData {
+    pub fn set_sprite_size_px(&mut self, sprite_size_px: Vector2<f32>) -> &mut Self {
+        self.sprite_size_px = sprite_size_px;
+        self
+    }
+
+    pub fn set_palette_shift(&mut self, palette_shift: f32) -> &mut Self {
+        self.palette_shift = palette_shift.clamp(-1.0, 1.0);
+        self
+    }
+}
+
+pub type LcdUniforms = crate::util::UniformWrapper<LcdUniformData>;
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 pub struct LcdFilter {
-    bind_group_layout: wgpu::BindGroupLayout,
-    bind_group: wgpu::BindGroup,
+    textures_bind_group_layout: wgpu::BindGroupLayout,
+    textures_bind_group: wgpu::BindGroup,
     pipeline: wgpu::RenderPipeline,
     tonemap: Texture,
+    uniforms: LcdUniforms,
 }
 
 impl LcdFilter {
     pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options, tonemap: Texture) -> Self {
-        let bind_group_layout =
+        let textures_bind_group_layout =
             gpu.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                     label: Some("LcdFilter Bind Group Layout"),
@@ -53,19 +92,28 @@ impl LcdFilter {
                     ],
                 });
 
-        let bind_group = Self::create_bind_group(&gpu, &bind_group_layout, &tonemap.view);
-        let pipeline =
-            Self::create_render_pipeline(&gpu.device, gpu.sc_desc.format, &bind_group_layout);
+        let textures_bind_group =
+            Self::create_textures_bind_group(&gpu, &textures_bind_group_layout, &tonemap.view);
+
+        let uniforms = LcdUniforms::new(&gpu.device);
+
+        let pipeline = Self::create_render_pipeline(
+            &gpu.device,
+            gpu.sc_desc.format,
+            &textures_bind_group_layout,
+            &uniforms.bind_group_layout,
+        );
 
         Self {
-            bind_group_layout,
-            bind_group,
+            textures_bind_group_layout,
+            textures_bind_group,
             pipeline,
             tonemap,
+            uniforms,
         }
     }
 
-    fn create_bind_group(
+    fn create_textures_bind_group(
         gpu: &gpu_state::GpuState,
         layout: &wgpu::BindGroupLayout,
         tonemap: &wgpu::TextureView,
@@ -93,7 +141,8 @@ impl LcdFilter {
     fn create_render_pipeline(
         device: &wgpu::Device,
         color_format: wgpu::TextureFormat,
-        bind_group_layout: &wgpu::BindGroupLayout,
+        textures_bind_group_layout: &wgpu::BindGroupLayout,
+        uniforms_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
         let vs_src = wgpu::include_spirv!("../shaders/lcd.vs.spv");
         let fs_src = wgpu::include_spirv!("../shaders/lcd.fs.spv");
@@ -104,7 +153,7 @@ impl LcdFilter {
         // no uniforms for LcdFilter shaders
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("LcdFilter Render Pipeline Layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[&textures_bind_group_layout, &uniforms_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -153,10 +202,17 @@ impl LcdFilter {
         _new_size: winit::dpi::PhysicalSize<u32>,
         gpu: &gpu_state::GpuState,
     ) {
-        self.bind_group = Self::create_bind_group(gpu, &self.bind_group_layout, &self.tonemap.view);
+        self.textures_bind_group = Self::create_textures_bind_group(
+            gpu,
+            &self.textures_bind_group_layout,
+            &self.tonemap.view,
+        );
     }
 
-    pub fn update(&mut self, _dt: std::time::Duration, _ctx: &mut AppContext) {}
+    pub fn update(&mut self, _dt: std::time::Duration, ctx: &mut AppContext) {
+        self.uniforms.data.set_palette_shift(1_f32);
+        self.uniforms.write(&mut ctx.gpu.queue);
+    }
 
     pub fn render(
         &mut self,
@@ -179,7 +235,8 @@ impl LcdFilter {
         });
 
         render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
+        render_pass.set_bind_group(0, &self.textures_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.uniforms.bind_group, &[]);
         render_pass.draw(0..3, 0..1);
     }
 }
