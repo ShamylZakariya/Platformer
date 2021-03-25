@@ -39,8 +39,5 @@ void main() {
         mix(object_color, vec4(0, 0, 0, object_color.a), -u_palette_shift);
   }
 
-  // we don't use alpha in output, rather we blend to white to emulate LCD output
-  // TODO: This might not be necessary with palettizing in postprocessing
-  float intensity = mix(object_color.r, 1.0, 1.0 - object_color.a);
-  f_color = vec4(intensity, intensity, intensity, 1);
+  f_color = object_color;
 }

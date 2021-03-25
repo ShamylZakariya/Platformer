@@ -17,6 +17,5 @@ void main() {
   vec4 palettized_color =
       texture(sampler2D(tonemap, color_sampler), vec2(intensity + 0.125, 0));
 
-  palettized_color.rgb *= vec3(v_tex_coords.s, v_tex_coords.t, 1);
   f_color = vec4(palettized_color.rgb, 1.0);
 }
