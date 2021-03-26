@@ -149,7 +149,7 @@ pub struct UniformData {
     model_position: Vector4<f32>,
     color: Vector4<f32>,
     sprite_scale: Vector2<f32>,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     tex_coord_offset: Vector2<f32>,
     palette_shift: f32,
 }
@@ -163,7 +163,7 @@ impl Default for UniformData {
             model_position: Vector4::zero(),
             color: vec4(1.0, 1.0, 1.0, 1.0),
             sprite_scale: vec2(1.0, 1.0),
-            sprite_size_px: vec2(1.0, 1.0),
+            pixels_per_unit: vec2(1.0, 1.0),
             tex_coord_offset: vec2(0.0, 0.0),
             palette_shift: 0.0,
         }
@@ -191,8 +191,8 @@ impl UniformData {
         self
     }
 
-    pub fn set_sprite_size_px(&mut self, sprite_size_px: Vector2<f32>) -> &mut Self {
-        self.sprite_size_px = sprite_size_px;
+    pub fn set_sprite_size_px(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
+        self.pixels_per_unit = pixels_per_unit;
         self
     }
 

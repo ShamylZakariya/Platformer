@@ -31,7 +31,7 @@ pub struct FlyingFish {
     position: Point3<f32>,
     time_in_phase: f32,
     phase: i32,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     jump_phase: i32,
     jump_height: f32,
     rng: ThreadRng,
@@ -48,7 +48,7 @@ impl Default for FlyingFish {
             position: point3(0.0, 0.0, 0.0),
             time_in_phase: 0.0,
             phase: 0,
-            sprite_size_px: vec2(0.0, 0.0),
+            pixels_per_unit: vec2(0.0, 0.0),
             jump_phase: 0,
             jump_height: PARABOLA_HALF_HEIGHT_SHORT,
             rng: thread_rng(),
@@ -73,7 +73,7 @@ impl Entity for FlyingFish {
 
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
         self.centroid = sprite.origin.xy();
-        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
+        self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
 
         // offset phase such that neighbor fish don't jump in same dir
         self.phase = self.position.x as i32 % 2;
@@ -154,7 +154,7 @@ impl Entity for FlyingFish {
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
         let (xscale, xoffset) = match self.phase % 2 {
-            0 => (-1.0, 1.0 - 1.0 / self.sprite_size_px.x),
+            0 => (-1.0, 1.0 - 1.0 / self.pixels_per_unit.x),
             _ => (1.0, 0.0),
         };
         uniforms

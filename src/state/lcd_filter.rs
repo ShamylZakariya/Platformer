@@ -10,7 +10,7 @@ use super::{app_state::AppContext, gpu_state};
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LcdUniformData {
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     palette_shift: f32,
 }
 
@@ -20,15 +20,15 @@ unsafe impl bytemuck::Zeroable for LcdUniformData {}
 impl Default for LcdUniformData {
     fn default() -> Self {
         Self {
-            sprite_size_px: vec2(1.0, 1.0),
+            pixels_per_unit: vec2(1.0, 1.0),
             palette_shift: 0.0,
         }
     }
 }
 
 impl LcdUniformData {
-    pub fn set_sprite_size_px(&mut self, sprite_size_px: Vector2<f32>) -> &mut Self {
-        self.sprite_size_px = sprite_size_px;
+    pub fn set_sprite_size_px(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
+        self.pixels_per_unit = pixels_per_unit;
         self
     }
 

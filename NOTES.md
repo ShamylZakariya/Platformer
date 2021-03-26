@@ -1,6 +1,6 @@
 CURRENTLY:
     - Postprocessing
-q        - sprite.fs might not need to ramp to white as alpha approaches zero
+    - pixel effects will be better if I snap camera position to loxk pixels to, say, bottom left of screen
 
 BUGS:
     - brief flicker of non-faded scene at startup, just one frame but it's visible

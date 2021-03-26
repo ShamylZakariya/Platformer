@@ -25,26 +25,26 @@ pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
 pub struct Camera {
     position: Point3<f32>,
     pub look_dir: Vector3<f32>,
-    pixels_per_unit: Option<f32>,
+    pixels_per_unit: Option<Vector2<f32>>,
 }
 
 impl Camera {
     pub fn new<P: Into<Point3<f32>>, V: Into<Vector3<f32>>>(
         position: P,
         look_dir: V,
-        pixels_per_unit: Option<u32>,
+        pixels_per_unit: Option<Vector2<f32>>,
     ) -> Self {
         Self {
             position: position.into(),
             look_dir: look_dir.into(),
-            pixels_per_unit: pixels_per_unit.map(|ppu| ppu as f32),
+            pixels_per_unit: pixels_per_unit,
         }
     }
 
     pub fn position(&self) -> Point3<f32> {
         if let Some(ppu) = self.pixels_per_unit {
-            let cx = (self.position.x * ppu).floor() / ppu;
-            let cy = (self.position.y * ppu).floor() / ppu;
+            let cx = (self.position.x * ppu.x).floor() / ppu.x;
+            let cy = (self.position.y * ppu.y).floor() / ppu.y;
             point3(cx, cy, self.position.z)
         } else {
             self.position

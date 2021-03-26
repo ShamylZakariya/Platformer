@@ -26,7 +26,7 @@ pub struct Hoodie {
     entity_id: u32,
     collider_id: Option<u32>,
     spawn_point_id: u32,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     position: Point3<f32>,
     animation_cycle_tick_countdown: f32,
     animation_cycle_tick: u32,
@@ -40,7 +40,7 @@ impl Default for Hoodie {
             entity_id: 0,
             collider_id: None,
             spawn_point_id: 0,
-            sprite_size_px: vec2(0.0, 0.0),
+            pixels_per_unit: vec2(0.0, 0.0),
             position: point3(0.0, 0.0, 0.0),
             animation_cycle_tick_countdown: ANIMATION_CYCLE_DURATION,
             animation_cycle_tick: 0,
@@ -65,7 +65,7 @@ impl Entity for Hoodie {
             .expect("Spawned entities expect to find a spawn point id from the sprite");
 
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::ENTITIES);
-        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
+        self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
 
         // Make collider
         self.collider_id = Some(
@@ -129,7 +129,7 @@ impl Entity for Hoodie {
     }
 
     fn update_uniforms(&self, uniforms: &mut rendering::Uniforms) {
-        let one_px = 1.0 / self.sprite_size_px.x;
+        let one_px = 1.0 / self.pixels_per_unit.x;
 
         let (xscale, xoffset) = match self.march.current_movement_dir() {
             HorizontalDir::East => (1.0, 4.0 * one_px),

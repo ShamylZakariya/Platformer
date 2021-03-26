@@ -1130,10 +1130,10 @@ impl Firebrand {
             !(c.mask & RATCHET != 0 && p.y < (c.top() - 0.25))
         };
 
-        let sprite_size_px = self.pixels_per_unit.x;
+        let pixels_per_unit = self.pixels_per_unit.x;
         let inset_for_collider = |s: &collision::Collider| -> f32 {
             if s.mask & CONTACT_DAMAGE != 0 {
-                2.0 / sprite_size_px
+                2.0 / pixels_per_unit
             } else {
                 0.0
             }

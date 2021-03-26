@@ -126,7 +126,7 @@ pub struct GameState {
     viewport_left_when_boss_arena_entered: Option<f32>,
     camera_shaker: Option<CameraShaker>,
     game_state_peek: GameStatePeek,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     palette_shift: f32,
     num_restarts: u32,
 }
@@ -144,10 +144,7 @@ impl GameState {
         // Load the stage map
         let map = map::Map::new_tmx(Path::new("res/level_1.tmx"));
         let map = map.expect("Expected map to load");
-        let sprite_size_px = vec2(
-            map.tileset.tile_width as f32,
-            map.tileset.tile_height as f32,
-        );
+        let pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
 
         let material_bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let (
@@ -256,7 +253,7 @@ impl GameState {
         };
 
         // Build camera, and camera uniform storage
-        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), None);
+        let camera = camera::Camera::new((8.0, 8.0, -1.0), (0.0, 0.0, 1.0), Some(pixels_per_unit));
         let viewport_scale = if options.gameboy {
             MIN_CAMERA_SCALE
         } else {
@@ -349,21 +346,21 @@ impl GameState {
         stage_uniforms
             .data
             .set_model_position(point3(0.0, 0.0, 0.0))
-            .set_sprite_size_px(sprite_size_px)
+            .set_sprite_size_px(pixels_per_unit)
             .set_color(vec4(1.0, 1.0, 1.0, 1.0));
         stage_uniforms.write(&mut gpu.queue);
 
         stage_debug_draw_overlap_uniforms
             .data
             .set_model_position(point3(0.0, 0.0, -0.1)) // bring closer
-            .set_sprite_size_px(sprite_size_px)
+            .set_sprite_size_px(pixels_per_unit)
             .set_color(vec4(0.0, 1.0, 0.0, 0.75));
         stage_debug_draw_overlap_uniforms.write(&mut gpu.queue);
 
         stage_debug_draw_contact_uniforms
             .data
             .set_model_position(point3(0.0, 0.0, -0.2)) // bring closer
-            .set_sprite_size_px(sprite_size_px)
+            .set_sprite_size_px(pixels_per_unit)
             .set_color(vec4(1.0, 0.0, 0.0, 0.75));
         stage_debug_draw_contact_uniforms.write(&mut gpu.queue);
 
@@ -400,7 +397,7 @@ impl GameState {
             viewport_left_when_boss_arena_entered: None,
             camera_shaker: None,
             game_state_peek: GameStatePeek::default(),
-            sprite_size_px,
+            pixels_per_unit,
             palette_shift: 0.0,
             num_restarts: 0,
         };
@@ -553,7 +550,7 @@ impl GameState {
                     e.entity.update_uniforms(uniforms);
                     uniforms
                         .data
-                        .set_sprite_size_px(self.sprite_size_px)
+                        .set_sprite_size_px(self.pixels_per_unit)
                         .set_palette_shift(palette_shift);
                     uniforms.write(&mut ctx.gpu.queue);
                 }
@@ -580,7 +577,7 @@ impl GameState {
             a.update(dt);
             a.uniforms
                 .data
-                .set_sprite_size_px(self.sprite_size_px)
+                .set_sprite_size_px(self.pixels_per_unit)
                 .set_palette_shift(palette_shift);
             a.uniforms.write(&mut ctx.gpu.queue);
         }

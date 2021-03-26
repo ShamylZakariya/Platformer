@@ -25,7 +25,7 @@ pub struct FallingBridge {
     time_remaining: Option<f32>,
     is_falling: bool,
     vertical_velocity: f32,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
 }
 
 impl Default for FallingBridge {
@@ -38,7 +38,7 @@ impl Default for FallingBridge {
             time_remaining: None,
             is_falling: false,
             vertical_velocity: 0.0,
-            sprite_size_px: vec2(0.0, 0.0),
+            pixels_per_unit: vec2(0.0, 0.0),
         }
     }
 }
@@ -54,7 +54,7 @@ impl Entity for FallingBridge {
     ) {
         self.entity_id = entity_id;
         self.position = point3(sprite.origin.x, sprite.origin.y, layers::stage::LEVEL);
-        self.sprite_size_px = map.tileset.get_sprite_size().cast().unwrap();
+        self.pixels_per_unit = map.tileset.get_sprite_size().cast().unwrap();
 
         // we need to use a dynamic collider so we can assign an entity id
         self.collider_id = Some(
@@ -136,7 +136,7 @@ impl Entity for FallingBridge {
         match message.event {
             Event::FirebrandContact => {
                 if self.time_remaining.is_none() {
-                    self.offset.y -= 2.0 / self.sprite_size_px.y;
+                    self.offset.y -= 2.0 / self.pixels_per_unit.y;
                     self.time_remaining = Some(FALLING_BRIDGE_CONTACT_DELAY);
                 }
             }

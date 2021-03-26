@@ -58,7 +58,7 @@ pub struct GameUi {
     drawer_open_progress: f32,
     start_message_blink_countdown: f32,
     game_over_message_visible: bool,
-    sprite_size_px: Vector2<f32>,
+    pixels_per_unit: Vector2<f32>,
     palette_shift: f32,
     toggle_drawer_needed: bool,
 }
@@ -69,8 +69,14 @@ impl GameUi {
         _options: &Options,
         entity_id_vendor: &mut entity::IdVendor,
     ) -> Self {
+        // load game ui map and construct material/drawable etcs
+        let game_ui_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
+        let game_ui_map = game_ui_map.expect("Expected 'res/game_ui.tmx' to load");
+        let pixels_per_unit = game_ui_map.tileset.get_sprite_size().cast().unwrap();
+
         // build camera
-        let camera_view = camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), None);
+        let camera_view =
+            camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), Some(pixels_per_unit));
         let camera_uniforms: camera::Uniforms = util::UniformWrapper::new(&gpu.device);
         let camera_projection = camera::Projection::new(
             gpu.sc_desc.width,
@@ -79,10 +85,6 @@ impl GameUi {
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
         );
-
-        // load game ui map and construct material/drawable etcs
-        let game_ui_map = map::Map::new_tmx(Path::new("res/game_ui.tmx"));
-        let game_ui_map = game_ui_map.expect("Expected 'res/game_ui.tmx' to load");
 
         //
         //  Create sprite material and pipeline layout
@@ -102,7 +104,6 @@ impl GameUi {
             ))
         };
 
-        let sprite_size_px = game_ui_map.tileset.get_sprite_size().cast().unwrap();
         let drawer_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
 
         let pipeline_layout = gpu
@@ -205,7 +206,7 @@ impl GameUi {
             drawer_open_progress: 0.0,
             start_message_blink_countdown: 0.0,
             game_over_message_visible: false,
-            sprite_size_px,
+            pixels_per_unit,
             palette_shift: 0.0,
             toggle_drawer_needed: false,
         };
@@ -260,7 +261,7 @@ impl GameUi {
         ctx: &mut AppContext,
         game: &game_state::GameState,
     ) {
-        let sprite_size_px = self.sprite_size_px;
+        let pixels_per_unit = self.pixels_per_unit;
         let palette_shift = self.palette_shift();
         self.drawer_collision_space.update();
 
@@ -293,7 +294,7 @@ impl GameUi {
 
         self.drawer_uniforms
             .data
-            .set_sprite_size_px(sprite_size_px)
+            .set_sprite_size_px(pixels_per_unit)
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_palette_shift(palette_shift)
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
@@ -314,7 +315,7 @@ impl GameUi {
                 e.entity.update_uniforms(uniforms);
                 uniforms
                     .data
-                    .set_sprite_size_px(sprite_size_px)
+                    .set_sprite_size_px(pixels_per_unit)
                     .set_palette_shift(palette_shift)
                     .offset_model_position(drawer_offset);
                 uniforms.write(&mut ctx.gpu.queue);
@@ -332,7 +333,7 @@ impl GameUi {
                     .bounds;
                 uniforms
                     .data
-                    .set_sprite_size_px(sprite_size_px)
+                    .set_sprite_size_px(pixels_per_unit)
                     .set_color(vec4(1.0, 1.0, 1.0, 1.0))
                     .set_model_position(point3(-bounds.width() / 2.0, -bounds.height() / 2.0, 0.0));
                 uniforms.write(&mut ctx.gpu.queue);
@@ -468,8 +469,8 @@ impl GameUi {
         let bounds = self.game_ui_map.bounds();
         let vp_units_high = self.camera_projection.viewport_size().y;
         let drawer_closed_y =
-            (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0 - (3.0 / self.sprite_size_px.y);
-        let drawer_open_y = (-vp_units_high / 2.0) - 1.0 - 1.0 / self.sprite_size_px.y;
+            (-vp_units_high / 2.0) - bounds.height() - 1.0 + 3.0 - (3.0 / self.pixels_per_unit.y);
+        let drawer_open_y = (-vp_units_high / 2.0) - 1.0 - 1.0 / self.pixels_per_unit.y;
 
         if dt > Duration::from_secs(0) {
             if self.drawer_open {
