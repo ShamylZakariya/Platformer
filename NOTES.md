@@ -1,6 +1,10 @@
 CURRENTLY:
     - Postprocessing
-    - pixel effects will be better if I snap camera position to loxk pixels to, say, bottom left of screen
+    - Draw pixel grid
+        - We know that the pixel grid will be pixels_per_unit * viewport_scale vertical lines across, aligned to window edges
+        - The horizontal lines are tougher since we maintain square pixels. The projection aspect ratio can be used as a vertical offset. When, for example, the fract(aspect()) == 0.25, the vertical alignment of the pixel grid is off by about 0.25 pixels
+
+
 
 BUGS:
     - brief flicker of non-faded scene at startup, just one frame but it's visible

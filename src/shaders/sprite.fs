@@ -18,7 +18,7 @@ layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_model_position;
   vec4 u_color;
   vec2 u_sprite_scale;
-  vec2 u_sprite_size_px;
+  vec2 u_pixels_per_unit;
   vec2 u_tex_coord_offset;
   float u_palette_shift;
 };

@@ -294,7 +294,7 @@ impl GameUi {
 
         self.drawer_uniforms
             .data
-            .set_sprite_size_px(pixels_per_unit)
+            .set_pixels_per_unit(pixels_per_unit)
             .set_color(vec4(1.0, 1.0, 1.0, 1.0))
             .set_palette_shift(palette_shift)
             .set_model_position(point3(drawer_offset.x, drawer_offset.y, drawer_offset.z));
@@ -315,7 +315,7 @@ impl GameUi {
                 e.entity.update_uniforms(uniforms);
                 uniforms
                     .data
-                    .set_sprite_size_px(pixels_per_unit)
+                    .set_pixels_per_unit(pixels_per_unit)
                     .set_palette_shift(palette_shift)
                     .offset_model_position(drawer_offset);
                 uniforms.write(&mut ctx.gpu.queue);
@@ -333,7 +333,7 @@ impl GameUi {
                     .bounds;
                 uniforms
                     .data
-                    .set_sprite_size_px(pixels_per_unit)
+                    .set_pixels_per_unit(pixels_per_unit)
                     .set_color(vec4(1.0, 1.0, 1.0, 1.0))
                     .set_model_position(point3(-bounds.width() / 2.0, -bounds.height() / 2.0, 0.0));
                 uniforms.write(&mut ctx.gpu.queue);

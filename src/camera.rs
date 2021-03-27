@@ -43,8 +43,8 @@ impl Camera {
 
     pub fn position(&self) -> Point3<f32> {
         if let Some(ppu) = self.pixels_per_unit {
-            let cx = (self.position.x * ppu.x).floor() / ppu.x;
-            let cy = (self.position.y * ppu.y).floor() / ppu.y;
+            let cx = (self.position.x * ppu.x).ceil() / ppu.x;
+            let cy = (self.position.y * ppu.y).ceil() / ppu.y;
             point3(cx, cy, self.position.z)
         } else {
             self.position
@@ -106,6 +106,10 @@ impl Projection {
                 self.near,
                 self.far,
             )
+    }
+
+    pub fn aspect(&self) -> f32 {
+        self.aspect
     }
 
     pub fn size(&self) -> Vector2<f32> {

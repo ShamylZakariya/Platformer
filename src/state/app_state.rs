@@ -142,11 +142,12 @@ impl AppState {
                 entity_id_vendor: &mut self.entity_id_vendor,
             };
 
-            self.lcd_filter.update(dt, &mut ctx);
 
             self.game_state.update(game_dt, &mut ctx);
 
             self.game_ui.update(dt, &mut ctx, &self.game_state);
+
+            self.lcd_filter.update(dt, &mut ctx, &self.game_state);
 
             self.game_controller
                 .update(dt, &mut ctx, &mut self.game_state, &mut self.game_ui);

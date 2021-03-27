@@ -18,7 +18,7 @@ layout(set = 2, binding = 0) uniform SpriteUniforms {
   vec4 u_model_position;
   vec4 u_color;
   vec2 u_sprite_scale;
-  vec2 u_sprite_size_px;
+  vec2 u_pixels_per_unit;
   vec2 u_tex_coord_offset;
   float u_palette_shift;
 };
@@ -28,7 +28,7 @@ void main() {
   v_color = a_color * u_color;
 
   vec2 position = (u_sprite_scale * a_position.xy) + u_model_position.xy;
-  position = round(position * u_sprite_size_px) / u_sprite_size_px;
+  position = round(position * u_pixels_per_unit) / u_pixels_per_unit;
 
   // compute half-pixel outset bleed to mitigate cracking, since we can't use
   // indexed meshes because of non-continous tex coord assignment

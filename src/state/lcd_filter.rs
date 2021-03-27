@@ -3,15 +3,15 @@ use winit::window::Window;
 
 use crate::{texture::Texture, Options};
 
-use super::{app_state::AppContext, gpu_state};
+use super::{app_state::AppContext, game_state, gpu_state};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LcdUniformData {
+    viewport_size: Vector2<f32>,
     pixels_per_unit: Vector2<f32>,
-    palette_shift: f32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -20,20 +20,20 @@ unsafe impl bytemuck::Zeroable for LcdUniformData {}
 impl Default for LcdUniformData {
     fn default() -> Self {
         Self {
+            viewport_size: vec2(1.0, 1.0),
             pixels_per_unit: vec2(1.0, 1.0),
-            palette_shift: 0.0,
         }
     }
 }
 
 impl LcdUniformData {
-    pub fn set_sprite_size_px(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
-        self.pixels_per_unit = pixels_per_unit;
+    pub fn set_viewport_size(&mut self, viewport_size: Vector2<f32>) -> &mut Self {
+        self.viewport_size = viewport_size;
         self
     }
 
-    pub fn set_palette_shift(&mut self, palette_shift: f32) -> &mut Self {
-        self.palette_shift = palette_shift.clamp(-1.0, 1.0);
+    pub fn set_pixels_per_unit(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
+        self.pixels_per_unit = pixels_per_unit;
         self
     }
 }
@@ -209,8 +209,16 @@ impl LcdFilter {
         );
     }
 
-    pub fn update(&mut self, _dt: std::time::Duration, ctx: &mut AppContext) {
-        self.uniforms.data.set_palette_shift(1_f32);
+    pub fn update(
+        &mut self,
+        _dt: std::time::Duration,
+        ctx: &mut AppContext,
+        game: &game_state::GameState,
+    ) {
+        self.uniforms
+            .data
+            .set_pixels_per_unit(game.pixels_per_unit)
+            .set_viewport_size(game.camera_controller.projection.viewport_size());
         self.uniforms.write(&mut ctx.gpu.queue);
     }
 

@@ -191,7 +191,7 @@ impl UniformData {
         self
     }
 
-    pub fn set_sprite_size_px(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
+    pub fn set_pixels_per_unit(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
         self.pixels_per_unit = pixels_per_unit;
         self
     }
