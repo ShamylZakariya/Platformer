@@ -2,6 +2,8 @@ use std::{borrow::BorrowMut, fs::File};
 
 use rodio::{self, Source};
 
+use crate::Options;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Channel {
     Left,
@@ -126,6 +128,7 @@ impl SinkHolder {
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub struct Audio {
+    no_music: bool,
     stream: rodio::OutputStream,
     stream_handle: rodio::OutputStreamHandle,
     current_track: Option<rodio::Sink>,
@@ -133,11 +136,13 @@ pub struct Audio {
     interrupting_sinks: Vec<SinkHolder>,
 }
 
-impl Default for Audio {
-    fn default() -> Self {
+impl Audio {
+
+    pub fn new(options: &Options) -> Self {
         let (stream, stream_handle) =
             rodio::OutputStream::try_default().expect("Expect to open rodio audio output");
         Audio {
+            no_music: options.no_music,
             stream,
             stream_handle,
             current_track: None,
@@ -145,9 +150,7 @@ impl Default for Audio {
             interrupting_sinks: Vec::new(),
         }
     }
-}
 
-impl Audio {
     pub fn update(&mut self, _dt: std::time::Duration) {
         // prune sinks
         self.interrupting_sinks.retain(|s| !s.empty());
@@ -165,6 +168,10 @@ impl Audio {
     }
 
     pub fn start_track(&mut self, track: Tracks) {
+        if self.no_music {
+            return;
+        }
+
         self.stop_current_track();
         let sink = rodio::Sink::try_new(&self.stream_handle).unwrap();
         sink.set_volume(track.volume());
@@ -181,19 +188,31 @@ impl Audio {
     }
 
     pub fn pause_current_track(&mut self) {
+        if self.no_music {
+            return;
+        }
+
         if self.current_track.is_some() {
             self.current_track_explicitly_paused = true;
         }
     }
 
     pub fn resume_current_track(&mut self) {
+        if self.no_music {
+            return;
+        }
+
         if self.current_track.is_some() {
             self.current_track_explicitly_paused = false;
         }
     }
 
     pub fn current_track_is_paused(&mut self) -> bool {
-        self.current_track_explicitly_paused
+        if self.no_music {
+            false
+        } else {
+            self.current_track_explicitly_paused
+        }
     }
 
     pub fn stop_current_track(&mut self) {

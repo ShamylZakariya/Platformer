@@ -49,6 +49,10 @@ pub struct Options {
     /// Palette to use; options are "gameboy", "mist", "nostalgia", and "nymph"
     #[structopt(short, long, default_value = "gameboy")]
     pub palette: String,
+
+    /// Disables music
+    #[structopt(short, long)]
+    pub no_music: bool,
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

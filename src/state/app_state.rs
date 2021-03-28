@@ -39,7 +39,7 @@ impl AppState {
     pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
-        let audio = Audio::default();
+        let audio = Audio::new(&options);
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
