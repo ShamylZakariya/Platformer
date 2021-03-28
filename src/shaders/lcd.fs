@@ -15,13 +15,20 @@ layout(location = 0)out vec4 f_color;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
+#define GRID_ALPHA 0.5
+#define GRID_HARDNESS 1.75
+#define SHADOW_ALPHA .75
+
+
 float soft_grid(vec2 st, vec2 viewport_size, vec2 pixels_per_unit) {
     float aspect = viewport_size.x / viewport_size.y;
     vec2 coord = (st * pixels_per_unit * viewport_size);
-    coord.y += fract(aspect) * 0.5;
-    vec2 dist = abs(fract(coord) - 0.5);
-    dist = smoothstep(vec2(0.1), vec2(0.5), dist);
-    // dist = pow(dist, vec2(8.0));
+    vec2 offset = fract(aspect) / pixels_per_unit;
+    coord.x -= offset.x;
+    coord.y += offset.y;
+    vec2 dist = abs(fract(coord) - 0.5) * 2.;
+    dist *= dist;
+    dist = pow(dist, vec2(GRID_HARDNESS));
 
     float i = min(dist.r + dist.g, 1.0);
     return i;
@@ -38,9 +45,6 @@ float inner_shadow(vec2 st, float x_width, float y_width) {
 
     return min(left + right + top, 1.0);
 }
-
-#define GRID_ALPHA .5
-#define SHADOW_ALPHA .75
 
 void main() {
     vec2 tex_coord = vec2(v_tex_coords.s, 1 - v_tex_coords.t);
