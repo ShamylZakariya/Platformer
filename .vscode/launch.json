@@ -19,7 +19,9 @@
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": [
+                "--no-music",
+            ],
             "cwd": "${workspaceFolder}"
         },
         {
@@ -39,7 +41,8 @@
             },
             "args": [
                 "-c",
-                "2"
+                "1",
+                "-n"
             ],
             "cwd": "${workspaceFolder}"
         },

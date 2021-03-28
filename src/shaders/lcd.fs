@@ -23,11 +23,8 @@ layout(location = 0)out vec4 f_color;
 #define SHADOW_ALPHA 0.75
 
 float soft_grid(vec2 st, vec2 camera_position, vec2 viewport_size, vec2 pixels_per_unit) {
-    float aspect = viewport_size.x / viewport_size.y;
-    vec2 coord = (st * pixels_per_unit * viewport_size);
-    vec2 offset = fract(aspect) / pixels_per_unit;
-    coord.x -= offset.x;
-    coord.y += offset.y;
+    // camera is centered, so we count pixels out from center
+    vec2 coord = ((st - vec2(0.5)) * pixels_per_unit * viewport_size);
     vec2 dist = abs(fract(coord) - 0.5) * 2.0;
     dist *= dist;
     dist = pow(dist, vec2(PIXEL_EFFECT_HARDNESS));

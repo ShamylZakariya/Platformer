@@ -142,7 +142,6 @@ impl AppState {
                 entity_id_vendor: &mut self.entity_id_vendor,
             };
 
-
             self.game_state.update(game_dt, &mut ctx);
 
             self.game_ui.update(dt, &mut ctx, &self.game_state);

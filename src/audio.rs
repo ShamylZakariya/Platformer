@@ -137,7 +137,6 @@ pub struct Audio {
 }
 
 impl Audio {
-
     pub fn new(options: &Options) -> Self {
         let (stream, stream_handle) =
             rodio::OutputStream::try_default().expect("Expect to open rodio audio output");
