@@ -10,8 +10,11 @@ use super::{app_state::AppContext, game_state, gpu_state};
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct LcdUniformData {
+    camera_position: Point2<f32>,
     viewport_size: Vector2<f32>,
     pixels_per_unit: Vector2<f32>,
+    pixel_effect_alpha: f32,
+    shadow_effect_alpha: f32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -20,13 +23,31 @@ unsafe impl bytemuck::Zeroable for LcdUniformData {}
 impl Default for LcdUniformData {
     fn default() -> Self {
         Self {
+            camera_position: point2(0.0, 0.0),
             viewport_size: vec2(1.0, 1.0),
             pixels_per_unit: vec2(1.0, 1.0),
+            pixel_effect_alpha: 1.0,
+            shadow_effect_alpha: 1.0,
         }
     }
 }
 
 impl LcdUniformData {
+    pub fn set_pixel_effect_alpha(&mut self, pixel_effect_alpha: f32) -> &mut Self {
+        self.pixel_effect_alpha = pixel_effect_alpha;
+        self
+    }
+
+    pub fn set_shadow_effect_alpha(&mut self, shadow_effect_alpha: f32) -> &mut Self {
+        self.shadow_effect_alpha = shadow_effect_alpha;
+        self
+    }
+
+    pub fn set_camera_position(&mut self, camera_position: Point2<f32>) -> &mut Self {
+        self.camera_position = camera_position;
+        self
+    }
+
     pub fn set_viewport_size(&mut self, viewport_size: Vector2<f32>) -> &mut Self {
         self.viewport_size = viewport_size;
         self
@@ -215,8 +236,24 @@ impl LcdFilter {
         ctx: &mut AppContext,
         game: &game_state::GameState,
     ) {
+        // Determine an appropriate alpha for pixel effects - as window gets
+        // smaller the effect needs to fade out, since it looks busy on small windows.
+        // NOTE: min_high_freq and max_high_freq were determined via experimentation
+        let pixel_effect_alpha = {
+            let frequency = (game.camera_controller.projection.scale() * game.pixels_per_unit.x)
+                / ctx.gpu.size.width as f32;
+
+            let min_high_freq = 0.2 as f32;
+            let max_high_freq = 0.3 as f32;
+            let falloff =
+                ((frequency - min_high_freq) / (max_high_freq - min_high_freq)).clamp(0.0, 1.0);
+            1.0 - (falloff * falloff * falloff)
+        };
+
         self.uniforms
             .data
+            .set_pixel_effect_alpha(pixel_effect_alpha)
+            .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size());
         self.uniforms.write(&mut ctx.gpu.queue);

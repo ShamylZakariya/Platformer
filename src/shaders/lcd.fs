@@ -7,28 +7,30 @@ layout(set = 0, binding = 1)uniform texture2D t_tonemap;
 layout(set = 0, binding = 2)uniform sampler s_color_sampler;
 
 layout(set = 1, binding = 0)uniform LcdUniforms {
+    vec2 u_camera_position;
     vec2 u_viewport_size;
     vec2 u_pixels_per_unit;
+    float u_pixel_effect_alpha;
+    float u_shadow_effect_alpha;
 };
 
 layout(location = 0)out vec4 f_color;
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-#define GRID_ALPHA 0.5
-#define GRID_HARDNESS 1.75
-#define SHADOW_ALPHA .75
+#define PIXEL_EFFECT_ALPHA 0.5
+#define PIXEL_EFFECT_HARDNESS 1.75
+#define SHADOW_ALPHA 0.75
 
-
-float soft_grid(vec2 st, vec2 viewport_size, vec2 pixels_per_unit) {
+float soft_grid(vec2 st, vec2 camera_position, vec2 viewport_size, vec2 pixels_per_unit) {
     float aspect = viewport_size.x / viewport_size.y;
     vec2 coord = (st * pixels_per_unit * viewport_size);
     vec2 offset = fract(aspect) / pixels_per_unit;
     coord.x -= offset.x;
     coord.y += offset.y;
-    vec2 dist = abs(fract(coord) - 0.5) * 2.;
+    vec2 dist = abs(fract(coord) - 0.5) * 2.0;
     dist *= dist;
-    dist = pow(dist, vec2(GRID_HARDNESS));
+    dist = pow(dist, vec2(PIXEL_EFFECT_HARDNESS));
 
     float i = min(dist.r + dist.g, 1.0);
     return i;
@@ -52,16 +54,16 @@ void main() {
 
     // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
     // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
-    vec4 palettized_color =
-    texture(sampler2D(t_tonemap, s_color_sampler), vec2(intensity + 0.125, 0));
+    vec4 palettized_color = texture(sampler2D(t_tonemap, s_color_sampler), vec2(intensity + 0.125, 0));
 
     // get the "white" value for our tonemap
     vec4 grid_color = texture(sampler2D(t_tonemap, s_color_sampler), vec2(1.0, 1.0));
-    float grid = soft_grid(v_tex_coords, u_viewport_size, u_pixels_per_unit);
-    palettized_color.rgb = mix(palettized_color.rgb, grid_color.rgb, grid * GRID_ALPHA);
+    float grid = soft_grid(v_tex_coords, u_camera_position, u_viewport_size, u_pixels_per_unit);
+    palettized_color.rgb = mix(palettized_color.rgb, grid_color.rgb, grid * PIXEL_EFFECT_ALPHA * u_pixel_effect_alpha);
 
     vec3 shadow_color = vec3(0.0);
-    palettized_color.rgb = mix(palettized_color.rgb, shadow_color.rgb, SHADOW_ALPHA * inner_shadow(v_tex_coords, 0.1, 0.2));
+    palettized_color.rgb = mix(palettized_color.rgb, shadow_color.rgb,
+        SHADOW_ALPHA * u_shadow_effect_alpha * inner_shadow(v_tex_coords, 0.1, 0.2));
 
     f_color = vec4(palettized_color.rgb, 1.0);
 }
