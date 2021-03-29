@@ -1,3 +1,5 @@
+TODO:
+    - Need to display a "done!" message when exiting level 1 door
+
 BUGS:
     - Firebrand "jumps" when game paused
-    - brief flicker of non-faded scene at startup, just one frame but it's visible

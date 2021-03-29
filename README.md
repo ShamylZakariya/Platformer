@@ -26,10 +26,6 @@ cargo run -- --gameboy
 
 **Note**: Gamepad input is supported, and *much more fun*.
 
-## TODO:
-
-1. Postprocessing for grimy LCD effects
-
 ## Why?
 
 To learn [wgpu](https://github.com/gfx-rs/wgpu), and to get more experience in Rust - which is why I didn't use any of the the eminently capable rust game engines out there like [Amethyst](https://amethyst.rs/) or [Bevy](https://bevyengine.org/).
