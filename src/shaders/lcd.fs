@@ -52,10 +52,13 @@ void main() {
     // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
     vec4 palettized_color = texture(sampler2D(t_tonemap, s_color_sampler), vec2(intensity + 0.125, 0));
 
-    // get the "white" value for our tonemap
+    // get the "white" value for our tonemap, and the pixel effect amount. Mix in the pixel
+    // effect amount by u_pixel_effect_alpha which goes to zero as the user window size changes, to reduce
+    // moire` effects. But in turn, mix in the raw grid_color inversely to prevent an overall darkening of the scene.
     vec4 grid_color = texture(sampler2D(t_tonemap, s_color_sampler), vec2(1.0, 1.0));
     float grid = soft_grid(v_tex_coords, u_camera_position, u_viewport_size, u_pixels_per_unit);
     palettized_color.rgb = mix(palettized_color.rgb, grid_color.rgb, grid * PIXEL_EFFECT_ALPHA * u_pixel_effect_alpha);
+    palettized_color.rgb = mix(palettized_color.rgb, grid_color.rgb, 0.5 * PIXEL_EFFECT_ALPHA * (1.0 - u_pixel_effect_alpha));
 
     vec3 shadow_color = vec3(0.0);
     palettized_color.rgb = mix(palettized_color.rgb, shadow_color.rgb,
