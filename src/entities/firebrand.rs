@@ -446,6 +446,10 @@ impl Entity for Firebrand {
         message_dispatcher: &mut Dispatcher,
         game_state_peek: &GameStatePeek,
     ) {
+        if dt == Duration::from_secs(0) {
+            return;
+        }
+
         //
         // If we died, remove collision sprite and broadcast
         //
@@ -1028,50 +1032,6 @@ impl Firebrand {
         }
 
         if new_stance != self.character_state.stance {
-            // println!(
-            //     "Transition at {} (@{}) from {} -> {}",
-            //     self.time, self.step, self.character_state.stance, new_stance
-            // );
-
-            // NOTE This is a useless match block, but is useful to set breakpoints for specific transitions
-            // match self.character_state.stance {
-            //     Stance::Standing => match new_stance {
-            //         Stance::Standing => {}
-            //         Stance::InAir => {}
-            //         Stance::Flying => {}
-            //         Stance::WallHold(_) => {}
-            //         Stance::Injury => {}
-            //     },
-            //     Stance::InAir => match new_stance {
-            //         Stance::Standing => {}
-            //         Stance::InAir => {}
-            //         Stance::Flying => {}
-            //         Stance::WallHold(_) => {}
-            //         Stance::Injury => {}
-            //     },
-            //     Stance::Flying => match new_stance {
-            //         Stance::Standing => {}
-            //         Stance::InAir => {}
-            //         Stance::Flying => {}
-            //         Stance::WallHold(_) => {}
-            //         Stance::Injury => {}
-            //     },
-            //     Stance::WallHold(_) => match new_stance {
-            //         Stance::Standing => {}
-            //         Stance::InAir => {}
-            //         Stance::Flying => {}
-            //         Stance::WallHold(_) => {}
-            //         Stance::Injury => {}
-            //     },
-            //     Stance::Injury => match new_stance {
-            //         Stance::Standing => {}
-            //         Stance::InAir => {}
-            //         Stance::Flying => {}
-            //         Stance::WallHold(_) => {}
-            //         Stance::Injury => {}
-            //     },
-            // }
-
             self.injury_countdown = 0.0;
 
             match new_stance {
