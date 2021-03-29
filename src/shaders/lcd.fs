@@ -19,14 +19,13 @@ layout(location = 0)out vec4 f_color;
 // ---------------------------------------------------------------------------------------------------------------------
 
 #define PIXEL_EFFECT_ALPHA 0.5
-#define PIXEL_EFFECT_HARDNESS 1.75
+#define PIXEL_EFFECT_HARDNESS 2.75
 #define SHADOW_ALPHA 0.75
 
 float soft_grid(vec2 st, vec2 camera_position, vec2 viewport_size, vec2 pixels_per_unit) {
     // camera is centered, so we count pixels out from center
     vec2 coord = ((st - vec2(0.5)) * pixels_per_unit * viewport_size);
     vec2 dist = abs(fract(coord) - 0.5) * 2.0;
-    dist *= dist;
     dist = pow(dist, vec2(PIXEL_EFFECT_HARDNESS));
 
     float i = min(dist.r + dist.g, 1.0);
