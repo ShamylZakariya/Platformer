@@ -50,6 +50,8 @@ pub struct GameUi {
     game_start_uniforms: rendering::Uniforms,
     game_over_drawable: rendering::Drawable,
     game_over_uniforms: rendering::Uniforms,
+    level_complete_drawable: rendering::Drawable,
+    level_complete_uniforms: rendering::Uniforms,
     entities: HashMap<u32, entity::EntityComponents>,
 
     // state
@@ -58,6 +60,7 @@ pub struct GameUi {
     drawer_open_progress: f32,
     start_message_blink_countdown: f32,
     game_over_message_visible: bool,
+    level_complete_message_visible: bool,
     pixels_per_unit: Vector2<f32>,
     palette_shift: f32,
     toggle_drawer_needed: bool,
@@ -145,6 +148,7 @@ impl GameUi {
         let drawer_drawable = create_drawable("Drawer", layers::ui::BACKGROUND);
         let game_over_drawable = create_drawable("GameOver", layers::ui::FOREGROUND);
         let game_start_drawable = create_drawable("GameStart", layers::ui::FOREGROUND);
+        let level_complete_drawable = create_drawable("LevelComplete", layers::ui::FOREGROUND);
 
         //
         //  Load entities
@@ -182,6 +186,8 @@ impl GameUi {
 
         let game_over_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
         let game_start_uniforms = util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
+        let level_complete_uniforms =
+            util::UniformWrapper::<rendering::UniformData>::new(&gpu.device);
 
         let mut game_ui = Self {
             pipeline,
@@ -199,6 +205,8 @@ impl GameUi {
             game_over_uniforms,
             game_start_drawable,
             game_start_uniforms,
+            level_complete_drawable,
+            level_complete_uniforms,
             entities,
 
             time: 0.0,
@@ -206,6 +214,7 @@ impl GameUi {
             drawer_open_progress: 0.0,
             start_message_blink_countdown: 0.0,
             game_over_message_visible: false,
+            level_complete_message_visible: false,
             pixels_per_unit,
             palette_shift: 0.0,
             toggle_drawer_needed: false,
@@ -341,6 +350,10 @@ impl GameUi {
 
         center_text_drawable(&self.game_over_drawable, &mut self.game_over_uniforms);
         center_text_drawable(&self.game_start_drawable, &mut self.game_start_uniforms);
+        center_text_drawable(
+            &self.level_complete_drawable,
+            &mut self.level_complete_uniforms,
+        );
 
         // update countdowns
         self.start_message_blink_countdown =
@@ -420,6 +433,14 @@ impl GameUi {
                 &self.game_over_uniforms,
             );
         }
+
+        if self.level_complete_message_visible {
+            self.level_complete_drawable.draw(
+                &mut &mut render_pass,
+                &self.camera_uniforms,
+                &self.level_complete_uniforms,
+            );
+        }
     }
 
     pub fn handle_message(&mut self, message: &event_dispatch::Message) {
@@ -461,6 +482,10 @@ impl GameUi {
 
     pub fn show_game_over_message(&mut self) {
         self.game_over_message_visible = true;
+    }
+
+    pub fn show_level_complete_message(&mut self) {
+        self.level_complete_message_visible = true;
     }
 
     // MARK: Private

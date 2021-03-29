@@ -71,6 +71,7 @@ impl GameController {
             game_ui.set_palette_shift(-palette_shift);
             if fade_out_countdown < 0.0 {
                 self.fade_out_countdown = None;
+                game_ui.show_level_complete_message();
             } else {
                 self.fade_out_countdown = Some(fade_out_countdown);
             }
