@@ -29,3 +29,7 @@ cargo run -- --gameboy
 ## Why?
 
 To learn [wgpu](https://github.com/gfx-rs/wgpu), and to get more experience in Rust - which is why I didn't use any of the the eminently capable rust game engines out there like [Amethyst](https://amethyst.rs/) or [Bevy](https://bevyengine.org/).
+
+## Architecture
+
+See [Architecture](ARCH.md)
