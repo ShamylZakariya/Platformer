@@ -23,6 +23,8 @@ cargo run -- --gameboy
 - **A/D** Move left and right
 - **W** Jump, hold to jump higher. Press again while in-air to hover briefly.
 - **Space** Fire
+- **F1** Pause
+- **Esc** Quit
 
 **Note**: Gamepad input is supported, and *much more fun*.
 
