@@ -592,11 +592,7 @@ impl GameState {
             None
         };
 
-        let offset = if let Some(ref mut shaker) = self.camera_shaker {
-            Some(shaker.update(dt))
-        } else {
-            None
-        };
+        let offset = self.camera_shaker.as_mut().map(|shaker| shaker.update(dt));
 
         self.camera_controller
             .update(dt, tracking, offset, Some(current_map_bounds));

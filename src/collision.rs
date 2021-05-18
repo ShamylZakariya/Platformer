@@ -117,11 +117,8 @@ pub mod intersection {
             let n_a = n.distance2(*a);
             m_a.partial_cmp(&n_a).unwrap()
         });
-        if let Some(p) = intersections.first() {
-            Some(*p)
-        } else {
-            None
-        }
+
+        intersections.first().copied()
     }
 
     #[cfg(test)]

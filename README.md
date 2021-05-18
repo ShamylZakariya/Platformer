@@ -35,3 +35,7 @@ To learn [wgpu](https://github.com/gfx-rs/wgpu), and to get more experience in R
 ## Architecture
 
 See [Architecture](ARCH.md)
+
+## TODO
+
+1. Implement single-quad stage rendering using a sprite table texture which indexes into the spritemap.

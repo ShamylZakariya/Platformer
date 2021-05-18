@@ -243,8 +243,8 @@ impl LcdFilter {
             let frequency = (game.camera_controller.projection.scale() * game.pixels_per_unit.x)
                 / ctx.gpu.size.width as f32;
 
-            let min_high_freq = 0.2 as f32;
-            let max_high_freq = 0.5 as f32;
+            let min_high_freq = 0.2;
+            let max_high_freq = 0.5;
             let falloff =
                 ((frequency - min_high_freq) / (max_high_freq - min_high_freq)).clamp(0.0, 1.0);
             1.0 - (falloff * falloff)

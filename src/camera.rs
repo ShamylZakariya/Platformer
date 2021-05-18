@@ -37,7 +37,7 @@ impl Camera {
         Self {
             position: position.into(),
             look_dir: look_dir.into(),
-            pixels_per_unit: pixels_per_unit,
+            pixels_per_unit,
         }
     }
 

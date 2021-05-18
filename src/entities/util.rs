@@ -35,9 +35,9 @@ impl From<Vector2<f32>> for HorizontalDir {
     }
 }
 
-impl Into<Vector2<f32>> for HorizontalDir {
-    fn into(self) -> Vector2<f32> {
-        match self {
+impl From<HorizontalDir> for Vector2<f32> {
+    fn from(dir: HorizontalDir) -> Self {
+        match dir {
             HorizontalDir::East => vec2(1.0, 0.0),
             HorizontalDir::West => vec2(-1.0, 0.0),
         }
@@ -161,9 +161,9 @@ impl From<HorizontalDir> for CompassDir {
     }
 }
 
-impl Into<Vector2<f32>> for CompassDir {
-    fn into(self) -> Vector2<f32> {
-        self.to_dir()
+impl From<CompassDir> for Vector2<f32> {
+    fn from(cd: CompassDir) -> Self {
+        cd.to_dir()
     }
 }
 

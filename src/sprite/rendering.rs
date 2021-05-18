@@ -424,8 +424,8 @@ impl Mesh {
             index_buffer,
             num_elements,
             material,
-            sprite_element_indices,
             bounds,
+            sprite_element_indices,
         }
     }
 
