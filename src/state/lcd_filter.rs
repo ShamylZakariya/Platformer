@@ -171,7 +171,6 @@ impl LcdFilter {
         let vs_module = device.create_shader_module(&vs_src);
         let fs_module = device.create_shader_module(&fs_src);
 
-        // no uniforms for LcdFilter shaders
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("LcdFilter Render Pipeline Layout"),
             bind_group_layouts: &[&textures_bind_group_layout, &uniforms_bind_group_layout],

@@ -6,6 +6,7 @@ use rayon::prelude::*;
 use std::env;
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
+use std::time::SystemTime;
 
 struct ShaderData {
     src: String,
@@ -38,6 +39,28 @@ impl ShaderData {
             kind,
         })
     }
+
+    fn src_modification_time(&self) -> std::io::Result<SystemTime> {
+        let metadata = std::fs::metadata(&self.src_path)?;
+        metadata.modified()
+    }
+
+    fn spv_modification_time(&self) -> std::io::Result<SystemTime> {
+        let metadata = std::fs::metadata(&self.spv_path)?;
+        metadata.modified()
+    }
+
+    pub fn spv_out_of_date(&self) -> bool {
+        match (self.src_modification_time(), self.spv_modification_time()) {
+            (Ok(src_mod_time), Ok(spv_mod_time)) => {
+                println!("src:{:?} src_mod_time: {:?} spv:{:?} spv_mod_time:{:?} cmp:{:?}",
+                self.src_path, src_mod_time, self.spv_path, spv_mod_time, (src_mod_time > spv_mod_time)
+            );
+                src_mod_time >  spv_mod_time
+            }
+            _ => true
+        }
+    }
 }
 
 fn main() -> Result<()> {
@@ -64,14 +87,17 @@ fn main() -> Result<()> {
 
     // This can't be parallelized. The [shaderc::Compiler] is not thread safe.
     for shader in shaders? {
-        let compiled = compiler.compile_into_spirv(
-            &shader.src,
-            shader.kind,
-            &shader.src_path.to_str().unwrap(),
-            "main",
-            None,
-        )?;
-        write(shader.spv_path, compiled.as_binary_u8())?;
+        if shader.spv_out_of_date() {
+            println!("Compiling out-of-date SPV for: {:?}", &shader.src_path);
+            let compiled = compiler.compile_into_spirv(
+                &shader.src,
+                shader.kind,
+                &shader.src_path.to_str().unwrap(),
+                "main",
+                None,
+            )?;
+            write(shader.spv_path, compiled.as_binary_u8())?;
+        }
     }
 
     // Copy resource files (models, textures, etc)

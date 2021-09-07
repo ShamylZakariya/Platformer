@@ -38,4 +38,6 @@ See [Architecture](ARCH.md)
 
 ## TODO
 
-1. Implement single-quad stage rendering using a sprite table texture which indexes into the spritemap.
+1. Update to newer wgpu
+2. Ensure current sprite pipeline is better named to make clear it's for rendering individual quads, even if in a batch of thousands
+3. Implement single-quad stage rendering using a sprite table texture which indexes into the spritemap.
