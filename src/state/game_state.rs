@@ -216,7 +216,7 @@ impl GameState {
             // generate level entities
             let level_colliders: Vec<collision::Collider> = level_sprites
                 .iter()
-                .map(|s| collision::Collider::from_static_sprite(s))
+                .map(collision::Collider::from_static_sprite)
                 .collect();
             let mut collision_space = collision::Space::new(&level_colliders);
             let entities = map.generate_entities(
@@ -260,8 +260,8 @@ impl GameState {
             DEFAULT_CAMERA_SCALE
         };
         let projection = camera::Projection::new(
-            gpu.sc_desc.width,
-            gpu.sc_desc.height,
+            gpu.config.width,
+            gpu.config.height,
             viewport_scale,
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
@@ -292,7 +292,7 @@ impl GameState {
         let sprite_render_pipeline = rendering::create_render_pipeline(
             &gpu.device,
             &sprite_render_pipeline_layout,
-            gpu.sc_desc.format,
+            gpu.config.format,
             Some(texture::Texture::DEPTH_FORMAT),
         );
 
@@ -609,36 +609,39 @@ impl GameState {
         &mut self,
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
-        _frame: &wgpu::SwapChainFrame,
         encoder: &mut wgpu::CommandEncoder,
     ) {
         //
         // Render Sprites and entities; this is first pass so we clear color/depth
         //
 
+        let color_attachment = wgpu::RenderPassColorAttachment {
+            view: &gpu.color_attachment.view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                }),
+                store: true,
+            },
+        };
+
+        let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+            view: &gpu.depth_attachment.view,
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0),
+                store: true,
+            }),
+            stencil_ops: None,
+        };
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Game State Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &gpu.color_attachment.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 1.0,
-                        g: 1.0,
-                        b: 1.0,
-                        a: 1.0,
-                    }),
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                attachment: &gpu.depth_attachment.view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(1.0),
-                    store: true,
-                }),
-                stencil_ops: None,
-            }),
+            color_attachments: &[Some(color_attachment)],
+            depth_stencil_attachment: Some(depth_attachment),
         });
 
         render_pass.set_pipeline(&self.sprite_render_pipeline);
@@ -716,7 +719,7 @@ impl GameState {
             // entity is found that's OK, it might be expired.
             //
             if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
-                e.entity.handle_message(&message);
+                e.entity.handle_message(message);
             }
         } else {
             // if broadcast, send to everybody.

@@ -19,44 +19,38 @@ pub fn create_render_pipeline(
     depth_format: Option<wgpu::TextureFormat>,
 ) -> wgpu::RenderPipeline {
     let vertex_descs = &[Vertex::desc()];
-    let vs_src = wgpu::include_spirv!("../shaders/sprite.vs.spv");
-    let fs_src = wgpu::include_spirv!("../shaders/sprite.fs.spv");
-
-    let vs_module = device.create_shader_module(&vs_src);
-    let fs_module = device.create_shader_module(&fs_src);
+    let sprite_shader_module_desc = wgpu::include_wgsl!("../shaders/sprite.wgsl");
+    let sprite_shader_module = device.create_shader_module(sprite_shader_module_desc);
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Render Pipeline"),
-        layout: Some(&layout),
+        layout: Some(layout),
 
         vertex: wgpu::VertexState {
-            module: &vs_module,
-            entry_point: "main",
+            module: &sprite_shader_module,
+            entry_point: "sprite_vs_main",
             buffers: vertex_descs,
         },
 
         fragment: Some(wgpu::FragmentState {
-            module: &fs_module,
-            entry_point: "main",
-            targets: &[wgpu::ColorTargetState {
+            module: &sprite_shader_module,
+            entry_point: "sprite_fs_main",
+            targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,
-                alpha_blend: wgpu::BlendState::REPLACE,
-                color_blend: wgpu::BlendState {
-                    src_factor: wgpu::BlendFactor::SrcAlpha,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
+                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
         }),
 
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Cw,
-            cull_mode: wgpu::CullMode::None,
+            cull_mode: None,
             // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
             polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
         },
 
         depth_stencil: depth_format.map(|format| wgpu::DepthStencilState {
@@ -65,8 +59,6 @@ pub fn create_render_pipeline(
             depth_compare: wgpu::CompareFunction::Less,
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
-            // Setting this to true requires Features::DEPTH_CLAMPING
-            clamp_depth: false,
         }),
 
         multisample: wgpu::MultisampleState {
@@ -74,6 +66,8 @@ pub fn create_render_pipeline(
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
+
+        multiview: None,
     })
 }
 
@@ -114,27 +108,27 @@ impl VertexBufferDescription for Vertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
+            step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
                     offset: 0,
                     shader_location: 0,
-                    format: wgpu::VertexFormat::Float3,
+                    format: wgpu::VertexFormat::Float32x3,
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
-                    format: wgpu::VertexFormat::Float2,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
                     shader_location: 2,
-                    format: wgpu::VertexFormat::Float2,
+                    format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
                     offset: std::mem::size_of::<[f32; 7]>() as wgpu::BufferAddress,
                     shader_location: 3,
-                    format: wgpu::VertexFormat::Float4,
+                    format: wgpu::VertexFormat::Float32x4,
                 },
             ],
         }
@@ -152,6 +146,7 @@ pub struct UniformData {
     pixels_per_unit: Vector2<f32>,
     tex_coord_offset: Vector2<f32>,
     palette_shift: f32,
+    _unused: f32,
 }
 
 unsafe impl bytemuck::Pod for UniformData {}
@@ -166,6 +161,7 @@ impl Default for UniformData {
             pixels_per_unit: vec2(1.0, 1.0),
             tex_coord_offset: vec2(0.0, 0.0),
             palette_shift: 0.0,
+            _unused: 0.0,
         }
     }
 }
@@ -253,7 +249,7 @@ impl Material {
                 // diffuse texture
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -264,11 +260,8 @@ impl Material {
                 // diffuse texture & tonemap sampler
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler {
-                        comparison: false,
-                        filtering: false,
-                    },
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                     count: None,
                 },
             ],
@@ -406,13 +399,13 @@ impl Mesh {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{:?} Vertex Buffer", name)),
             contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
+            usage: wgpu::BufferUsages::VERTEX,
         });
 
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{:?} Index Buffer", name)),
             contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: wgpu::BufferUsages::INDEX,
         });
 
         let num_elements = indices.len() as u32;
@@ -482,6 +475,7 @@ impl Mesh {
 
 /// Drawable manages a vec of Mesh and Material, such that each Mesh's material index can point to a
 /// specific Material. The common case is for a Drawable to be made with a single mesh and material pair.
+#[derive(Default)]
 pub struct Drawable {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Rc<Material>>,
@@ -513,7 +507,7 @@ impl Drawable {
     ) {
         for mesh in &self.meshes {
             let material = &self.materials[mesh.material];
-            mesh.draw(render_pass, &material, camera_uniforms, sprite_uniforms);
+            mesh.draw(render_pass, material, camera_uniforms, sprite_uniforms);
         }
     }
 
@@ -532,19 +526,10 @@ impl Drawable {
             mesh.draw_sprites(
                 sprites,
                 render_pass,
-                &material,
+                material,
                 camera_uniforms,
                 sprite_uniforms,
             );
-        }
-    }
-}
-
-impl Default for Drawable {
-    fn default() -> Self {
-        Self {
-            meshes: vec![],
-            materials: vec![],
         }
     }
 }

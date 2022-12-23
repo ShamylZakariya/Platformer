@@ -90,7 +90,7 @@ impl CompassDir {
         }
     }
 
-    pub fn to_dir(&self) -> Vector2<f32> {
+    pub fn to_dir(self) -> Vector2<f32> {
         use CompassDir::*;
         let t = SIN_PI_4;
         match self {

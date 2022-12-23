@@ -82,8 +82,8 @@ impl GameUi {
             camera::Camera::new((0.0, 0.0, 0.0), (0.0, 0.0, 1.0), Some(pixels_per_unit));
         let camera_uniforms: camera::Uniforms = util::UniformWrapper::new(&gpu.device);
         let camera_projection = camera::Projection::new(
-            gpu.sc_desc.width,
-            gpu.sc_desc.height,
+            gpu.config.width,
+            gpu.config.height,
             DEFAULT_CAMERA_SCALE * 2.0, // ui units are half size of game units
             CAMERA_NEAR_PLANE,
             CAMERA_FAR_PLANE,
@@ -124,7 +124,7 @@ impl GameUi {
         let pipeline = rendering::create_render_pipeline(
             &gpu.device,
             &pipeline_layout,
-            gpu.sc_desc.format,
+            gpu.config.format,
             Some(texture::Texture::DEPTH_FORMAT),
         );
 
@@ -364,27 +364,30 @@ impl GameUi {
         &mut self,
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
-        _frame: &wgpu::SwapChainFrame,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        let color_attachment = wgpu::RenderPassColorAttachment {
+            view: &gpu.color_attachment.view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: true,
+            },
+        };
+
+        let depth_attachment = wgpu::RenderPassDepthStencilAttachment {
+            view: &gpu.depth_attachment.view,
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: true,
+            }),
+            stencil_ops: None,
+        };
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Game UI Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &gpu.color_attachment.view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: true,
-                },
-            }],
-            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                attachment: &gpu.depth_attachment.view,
-                depth_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: true,
-                }),
-                stencil_ops: None,
-            }),
+            color_attachments: &[Some(color_attachment)],
+            depth_stencil_attachment: Some(depth_attachment),
         });
 
         render_pass.set_pipeline(&self.pipeline);
@@ -436,7 +439,7 @@ impl GameUi {
 
         if self.level_complete_message_visible {
             self.level_complete_drawable.draw(
-                &mut &mut render_pass,
+                &mut render_pass,
                 &self.camera_uniforms,
                 &self.level_complete_uniforms,
             );
@@ -447,7 +450,7 @@ impl GameUi {
         if let Some(recipient_entity_id) = message.recipient_entity_id {
             // if message has a destination entity, attempt to route it there
             if let Some(e) = self.entities.get_mut(&recipient_entity_id) {
-                e.entity.handle_message(&message);
+                e.entity.handle_message(message);
             }
         } else {
             // if broadcast, send to everybody.

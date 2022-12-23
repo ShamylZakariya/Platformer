@@ -169,7 +169,7 @@ impl Entity for DeathAnimation {
 
             // Firebrand's death animation loops, where entity deaths run through a single cycle
             Mode::FirebrandDeath => {
-                let cycle_offset = if self.direction.is_diagonal() { 1 } else { 0 };
+                let cycle_offset = i32::from(self.direction.is_diagonal());
                 match (self.animation_frame + cycle_offset) % self.num_animation_frames() {
                     0 => "death_0",
                     1 => "death_1",

@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use anyhow::*;
-use futures::executor::block_on;
 use gilrs::Gilrs;
 use state::constants::{ORIGINAL_WINDOW_HEIGHT, ORIGINAL_WINDOW_WIDTH};
 use structopt::StructOpt;
@@ -57,11 +55,11 @@ pub struct Options {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn main() -> Result<()> {
-    let opt = Options::from_args();
-    let event_loop = EventLoop::new();
+fn run(opt: Options) {
+    let mut builder = WindowBuilder::new()
+        .with_title("Gargoyle's Quest")
+        .with_decorations(true);
 
-    let mut builder = WindowBuilder::new().with_title("Gargoyle's Quest");
     if opt.gameboy {
         let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
         builder = builder.with_inner_size(size);
@@ -72,13 +70,16 @@ fn main() -> Result<()> {
         println!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
 
+    let event_loop = EventLoop::new();
     let window = builder.build(&event_loop).unwrap();
 
-    let gpu = block_on(state::gpu_state::GpuState::new(&window));
-    let mut app_state = state::app_state::AppState::new(&window, gpu, opt)?;
+    let gpu = pollster::block_on(state::gpu_state::GpuState::new(&window));
+    let mut app_state = state::app_state::AppState::new(&window, gpu, opt).unwrap();
     let mut last_render_time = std::time::Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
+        control_flow.set_poll();
+
         while let Some(event) = gilrs.next_event() {
             app_state.gamepad_input(event);
         }
@@ -86,30 +87,46 @@ fn main() -> Result<()> {
         app_state.event(&window, &event);
 
         match event {
-            Event::RedrawRequested(_) => {
+            Event::RedrawRequested(window_id) if window_id == window.id() => {
                 let now = std::time::Instant::now();
                 let dt = now - last_render_time;
                 last_render_time = now;
 
                 app_state.update(&window, dt);
-                match app_state.render(&window) {
-                    Ok(_) => {}
-                    // Recreate the swap_chain if lost
-                    Err(wgpu::SwapChainError::Lost) => {
-                        app_state.resize(&window, app_state.gpu.size)
+
+                match app_state.gpu.surface.get_current_texture() {
+                    Ok(output) => {
+                        let mut encoder = app_state.gpu.device.create_command_encoder(
+                            &wgpu::CommandEncoderDescriptor {
+                                label: Some("Render Encoder"),
+                            },
+                        );
+                        app_state.render(&window, &mut encoder, &output);
+                        app_state
+                            .gpu
+                            .queue
+                            .submit(std::iter::once(encoder.finish()));
+                        output.present();
+                    }
+                    Err(wgpu::SurfaceError::Lost) => {
+                        let size = app_state.gpu.size();
+                        app_state.resize(&window, size);
                     }
                     // The system is out of memory, we should probably quit
-                    Err(wgpu::SwapChainError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
                     // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(_) => {}
+                    Err(e) => eprintln!("{:?}", e),
                 }
             }
             Event::MainEventsCleared => {
                 // we have to explicitly request a redraw
                 window.request_redraw();
             }
-            Event::WindowEvent { window_id, event } if window_id == window.id() => {
-                if !app_state.input(&window, &event) {
+            Event::WindowEvent {
+                window_id,
+                ref event,
+            } if window_id == window.id() => {
+                if !app_state.input(&window, event) {
                     match event {
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::KeyboardInput {
@@ -123,10 +140,10 @@ fn main() -> Result<()> {
                         } => *control_flow = ControlFlow::Exit,
 
                         WindowEvent::Resized(physical_size) => {
-                            app_state.resize(&window, physical_size);
+                            app_state.resize(&window, *physical_size);
                         }
                         WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            app_state.resize(&window, *new_inner_size);
+                            app_state.resize(&window, **new_inner_size);
                         }
                         _ => {}
                     }
@@ -135,4 +152,9 @@ fn main() -> Result<()> {
             _ => {}
         }
     });
+}
+
+fn main() {
+    let opt = Options::from_args();
+    run(opt);
 }
