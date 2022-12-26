@@ -32,14 +32,9 @@ pub trait MessageHandler {
     fn handle_message(&mut self, message: &Message);
 }
 
+#[derive(Default)]
 pub struct Dispatcher {
     messages: Vec<Message>,
-}
-
-impl Default for Dispatcher {
-    fn default() -> Self {
-        Dispatcher { messages: vec![] }
-    }
 }
 
 impl Dispatcher {

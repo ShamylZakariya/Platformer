@@ -40,17 +40,9 @@ impl ButtonState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct InputState {
     buttons: HashMap<VirtualKeyCode, ButtonState>,
-}
-
-impl Default for InputState {
-    fn default() -> Self {
-        Self {
-            buttons: HashMap::new(),
-        }
-    }
 }
 
 impl InputState {

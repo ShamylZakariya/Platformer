@@ -4,8 +4,8 @@ use winit::{event::WindowEvent, window::Window};
 use crate::{audio::Audio, entity, event_dispatch, texture, Options};
 
 use super::{
-    debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
-    game_ui::GameUi, gpu_state::GpuState, lcd_filter::LcdFilter,
+    game_controller::GameController, game_state::GameState, game_ui::GameUi, gpu_state::GpuState,
+    lcd_filter::LcdFilter,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ pub struct AppState {
     game_controller: GameController,
     game_state: GameState,
     game_ui: GameUi,
-    overlay: Option<DebugOverlay>,
+    // overlay: Option<DebugOverlay>,
     lcd_filter: LcdFilter,
 
     entity_id_vendor: entity::IdVendor,
@@ -36,7 +36,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
+    pub fn new(_window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
         let audio = Audio::new(&options);
@@ -51,11 +51,11 @@ impl AppState {
             game_controller.lives_remaining(),
         );
         let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
-        let overlay_ui = if options.debug_overlay {
-            Some(DebugOverlay::new(window, &gpu))
-        } else {
-            None
-        };
+        // let overlay_ui = if options.debug_overlay {
+        //     Some(DebugOverlay::new(window, &gpu))
+        // } else {
+        //     None
+        // };
 
         let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
         let tonemap = texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
@@ -77,7 +77,7 @@ impl AppState {
             game_controller,
             game_state,
             game_ui,
-            overlay: overlay_ui,
+            // overlay: overlay_ui,
             lcd_filter,
 
             entity_id_vendor,
@@ -85,10 +85,10 @@ impl AppState {
         })
     }
 
-    pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
-        if let Some(ref mut overlay) = self.overlay {
-            overlay.event(window, event);
-        }
+    pub fn event(&mut self, _window: &Window, _event: &winit::event::Event<()>) {
+        // if let Some(ref mut overlay) = self.overlay {
+        //     overlay.event(window, event);
+        // }
     }
 
     pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -121,9 +121,9 @@ impl AppState {
         // execution in the debugger, and we get a HUGE timestep after resuming.
         let dt = dt.min(std::time::Duration::from_millis(32));
 
-        if let Some(ref mut overlay) = self.overlay {
-            overlay.update(window, dt);
-        }
+        // if let Some(ref mut overlay) = self.overlay {
+        //     overlay.update(window, dt);
+        // }
 
         let game_dt = if self.game_ui.is_paused() {
             std::time::Duration::from_secs(0)
@@ -155,37 +155,32 @@ impl AppState {
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
     }
 
-    pub fn render(&mut self, window: &Window) -> Result<(), wgpu::SwapChainError> {
-        let frame = self.gpu.swap_chain.get_current_frame()?;
-        let mut encoder = self.gpu.encoder();
-
+    pub fn render(
+        &mut self,
+        window: &Window,
+        encoder: &mut wgpu::CommandEncoder,
+        output: &wgpu::SurfaceTexture,
+    ) {
         //
         //  Render game and UI overlay
         //
 
-        self.game_state
-            .render(window, &mut self.gpu, &frame, &mut encoder);
+        self.game_state.render(window, &mut self.gpu, encoder);
 
-        self.game_ui
-            .render(window, &mut self.gpu, &frame, &mut encoder);
+        self.game_ui.render(window, &mut self.gpu, encoder);
 
-        if let Some(ref mut overlay) = self.overlay {
-            overlay.render(
-                window,
-                &mut self.gpu,
-                &frame,
-                &mut encoder,
-                &mut self.game_state,
-            );
-        }
+        // if let Some(ref mut overlay) = self.overlay {
+        //     overlay.render(
+        //         window,
+        //         &mut self.gpu,
+        //         &frame,
+        //         &mut encoder,
+        //         &mut self.game_state,
+        //     );
+        // }
 
         self.lcd_filter
-            .render(window, &mut self.gpu, &frame, &mut encoder);
-
-        let commands = encoder.finish();
-        self.gpu.queue.submit(std::iter::once(commands));
-
-        Ok(())
+            .render(window, &mut self.gpu, output, encoder);
     }
 }
 

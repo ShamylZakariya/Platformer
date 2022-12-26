@@ -127,7 +127,7 @@ impl SpriteFlipbookAnimation {
         let mut durations = vec![];
 
         // ensure our frame sequence is in order by "animation_frame" property
-        let mut sequence: Vec<&tileset::Tile> = sequence.iter().copied().collect();
+        let mut sequence = sequence.to_vec();
         sequence.sort_by(|a, b| {
             let a_frame = a.get_property("animation_frame").expect(
                 "Tiles passed to SpriteAnimationSequence must have \"animation_frame\" property",
@@ -145,7 +145,7 @@ impl SpriteFlipbookAnimation {
         let first_tile = sequence
             .first()
             .expect("Animation sequence must not be empty");
-        let first_tile_tex_coords = tileset.get_tex_coords_for_tile(&first_tile);
+        let first_tile_tex_coords = tileset.get_tex_coords_for_tile(first_tile);
 
         for tile in sequence {
             let tex_coords = tileset.get_tex_coords_for_tile(tile);
@@ -510,22 +510,14 @@ impl Map {
 
     /// Returns the layer by the provided name, or None if not found
     pub fn layer_named(&self, name: &str) -> Option<&Layer> {
-        for layer in &self.layers {
-            if layer.name == name {
-                return Some(layer);
-            }
-        }
-        None
+        self.layers.iter().find(|layer| layer.name == name)
     }
 
     /// Returns the objectgroup by the provided name, or None if not found
     pub fn object_group_named(&self, name: &str) -> Option<&ObjectGroup> {
-        for object_group in &self.object_groups {
-            if object_group.name == name {
-                return Some(object_group);
-            }
-        }
-        None
+        self.object_groups
+            .iter()
+            .find(|object_group| object_group.name == name)
     }
 
     /// Finds the ObjectGroup object in the provided layer occupying the same position and extent on

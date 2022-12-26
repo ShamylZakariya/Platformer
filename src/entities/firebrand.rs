@@ -1202,7 +1202,7 @@ impl Firebrand {
                     if dist < delta_x {
                         delta_x = dist;
                         contacted = Some(collider);
-                        self.process_potential_collision_with(&collider);
+                        self.process_potential_collision_with(collider);
                     }
                 }
                 collision::ProbeResult::TwoHits {
@@ -1219,8 +1219,8 @@ impl Firebrand {
                         } else {
                             Some(collider_1)
                         };
-                        self.process_potential_collision_with(&collider_0);
-                        self.process_potential_collision_with(&collider_1);
+                        self.process_potential_collision_with(collider_0);
+                        self.process_potential_collision_with(collider_1);
                     }
                 }
             }
@@ -1237,7 +1237,7 @@ impl Firebrand {
                     if dist < -delta_x {
                         delta_x = -dist;
                         contacted = Some(collider);
-                        self.process_potential_collision_with(&collider);
+                        self.process_potential_collision_with(collider);
                     }
                 }
                 collision::ProbeResult::TwoHits {
@@ -1254,8 +1254,8 @@ impl Firebrand {
                         } else {
                             Some(collider_1)
                         };
-                        self.process_potential_collision_with(&collider_0);
-                        self.process_potential_collision_with(&collider_1);
+                        self.process_potential_collision_with(collider_0);
+                        self.process_potential_collision_with(collider_1);
                     }
                 }
             }
@@ -1369,7 +1369,7 @@ impl Firebrand {
                     if dist < delta.y {
                         delta.y = dist;
                         self.jump_time_remaining = 0.0;
-                        self.process_potential_collision_with(&sprite);
+                        self.process_potential_collision_with(sprite);
                     }
                 }
                 collision::ProbeResult::TwoHits {
@@ -1380,8 +1380,8 @@ impl Firebrand {
                     if dist < delta.y {
                         delta.y = dist;
                         self.jump_time_remaining = 0.0;
-                        self.process_potential_collision_with(&sprite_0);
-                        self.process_potential_collision_with(&sprite_1);
+                        self.process_potential_collision_with(sprite_0);
+                        self.process_potential_collision_with(sprite_1);
                     }
                 }
             }

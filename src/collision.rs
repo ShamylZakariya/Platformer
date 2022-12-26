@@ -701,7 +701,7 @@ impl Space {
 
     pub fn update(&mut self) {
         if self.dynamic_colliders_need_sort {
-            let colliders = std::mem::replace(&mut self.colliders, vec![]);
+            let colliders = std::mem::take(&mut self.colliders);
 
             self.dynamic_colliders.sort_by(|a, b| {
                 let c_a = &colliders[*a as usize];
@@ -1052,7 +1052,7 @@ impl Space {
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
         {
             let c = &self.colliders[*id as usize];
-            if c.mask & mask != 0 && c.contains_point(&point) {
+            if c.mask & mask != 0 && c.contains_point(point) {
                 return Some(c);
             }
         }
@@ -1109,7 +1109,7 @@ impl Space {
         let mut sprite_0 = None;
         let mut sprite_1 = None;
         if let Some(r) = self._probe_line(position, dir, max_steps, mask) {
-            if test(r.0, &r.1) {
+            if test(r.0, r.1) {
                 dist = Some(r.0);
                 sprite_0 = Some(r.1);
             }
@@ -1117,7 +1117,7 @@ impl Space {
 
         if should_probe_offset {
             if let Some(r) = self._probe_line(position + offset, dir, max_steps, mask) {
-                if test(r.0, &r.1) {
+                if test(r.0, r.1) {
                     dist = match dist {
                         Some(d) => Some(d.min(r.0)),
                         None => Some(r.0),

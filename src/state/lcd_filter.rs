@@ -81,7 +81,7 @@ impl LcdFilter {
                         // Color attachment
                         wgpu::BindGroupLayoutEntry {
                             binding: 0,
-                            visibility: wgpu::ShaderStage::FRAGMENT,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Texture {
                                 multisampled: false,
                                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -92,7 +92,7 @@ impl LcdFilter {
                         // Tonemap
                         wgpu::BindGroupLayoutEntry {
                             binding: 1,
-                            visibility: wgpu::ShaderStage::FRAGMENT,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Texture {
                                 multisampled: false,
                                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -103,24 +103,21 @@ impl LcdFilter {
                         // Sampler
                         wgpu::BindGroupLayoutEntry {
                             binding: 2,
-                            visibility: wgpu::ShaderStage::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler {
-                                comparison: false,
-                                filtering: false,
-                            },
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
                         },
                     ],
                 });
 
         let textures_bind_group =
-            Self::create_textures_bind_group(&gpu, &textures_bind_group_layout, &tonemap.view);
+            Self::create_textures_bind_group(gpu, &textures_bind_group_layout, &tonemap.view);
 
         let uniforms = LcdUniforms::new(&gpu.device);
 
         let pipeline = Self::create_render_pipeline(
             &gpu.device,
-            gpu.sc_desc.format,
+            gpu.config.format,
             &textures_bind_group_layout,
             &uniforms.bind_group_layout,
         );
@@ -140,7 +137,7 @@ impl LcdFilter {
         tonemap: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &layout,
+            layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -148,7 +145,7 @@ impl LcdFilter {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&tonemap),
+                    resource: wgpu::BindingResource::TextureView(tonemap),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -165,15 +162,12 @@ impl LcdFilter {
         textures_bind_group_layout: &wgpu::BindGroupLayout,
         uniforms_bind_group_layout: &wgpu::BindGroupLayout,
     ) -> wgpu::RenderPipeline {
-        let vs_src = wgpu::include_spirv!("../shaders/lcd.vs.spv");
-        let fs_src = wgpu::include_spirv!("../shaders/lcd.fs.spv");
-
-        let vs_module = device.create_shader_module(&vs_src);
-        let fs_module = device.create_shader_module(&fs_src);
+        let lcd_wgsl = wgpu::include_wgsl!("../shaders/lcd.wgsl");
+        let shader = device.create_shader_module(lcd_wgsl);
 
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("LcdFilter Render Pipeline Layout"),
-            bind_group_layouts: &[&textures_bind_group_layout, &uniforms_bind_group_layout],
+            bind_group_layouts: &[textures_bind_group_layout, uniforms_bind_group_layout],
             push_constant_ranges: &[],
         });
 
@@ -182,28 +176,32 @@ impl LcdFilter {
             layout: Some(&layout),
 
             vertex: wgpu::VertexState {
-                module: &vs_module,
-                entry_point: "main",
+                module: &shader,
+                entry_point: "lcd_vs_main",
                 buffers: &[],
             },
 
             fragment: Some(wgpu::FragmentState {
-                module: &fs_module,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
+                module: &shader,
+                entry_point: "lcd_fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
                     format: color_format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
-                    write_mask: wgpu::ColorWrite::ALL,
-                }],
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent::REPLACE,
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
             }),
 
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
-                cull_mode: wgpu::CullMode::None,
+                cull_mode: None,
                 polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
             },
 
             depth_stencil: None,
@@ -213,6 +211,8 @@ impl LcdFilter {
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
+
+            multiview: None,
         })
     }
 
@@ -240,7 +240,7 @@ impl LcdFilter {
         // NOTE: min_high_freq and max_high_freq were determined via experimentation
         let pixel_effect_alpha = {
             let frequency = (game.camera_controller.projection.scale() * game.pixels_per_unit.x)
-                / ctx.gpu.size.width as f32;
+                / ctx.gpu.config.width as f32;
 
             let min_high_freq = 0.2;
             let max_high_freq = 0.5;
@@ -262,19 +262,23 @@ impl LcdFilter {
         &mut self,
         _window: &Window,
         _gpu: &mut gpu_state::GpuState,
-        frame: &wgpu::SwapChainFrame,
+        output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("LcdFilter Render Pass"),
-            color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                attachment: &frame.output.view,
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Load,
                     store: true,
                 },
-            }],
+            })],
             depth_stencil_attachment: None,
         });
 
