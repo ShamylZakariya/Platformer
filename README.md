@@ -5,7 +5,7 @@ A remake of the first level of the delightful 1990 Gamebody platformer [Gargoyle
 
 ## Dependencies
 
-Most dependencies are managed by `cargo`, but men plan and god laughs, so `cmake` is required to build `shaderc`, and on linux `libudev` is required to build `gilrs`. Probably more, but I developed this on Ubuntu with a ton of dev libs already installed.
+Most dependencies are managed by `cargo`, but men plan and god laughs; on linux `libudev` is required to build `gilrs`. Probably more, but I developed this on Ubuntu and Fedora with a ton of dev libs already installed.
 
 
 ```bash
@@ -30,7 +30,7 @@ cargo run -- --gameboy
 
 ## Why?
 
-To learn [wgpu](https://github.com/gfx-rs/wgpu), and to get more experience in Rust - which is why I didn't use any of the the eminently capable rust game engines out there like [Amethyst](https://amethyst.rs/) or [Bevy](https://bevyengine.org/).
+To learn [wgpu](https://github.com/gfx-rs/wgpu), and to get more experience in Rust - which is why I didn't use any of the the eminently capable rust game engines out there such as [Bevy](https://bevyengine.org/).
 
 ## Architecture
 
@@ -38,6 +38,6 @@ See [Architecture](ARCH.md)
 
 ## TODO
 
-1. Update to newer wgpu
+1. Continuously update to whatever is current `wgpu`
 2. Ensure current sprite pipeline is better named to make clear it's for rendering individual quads, even if in a batch of thousands
 3. Implement single-quad stage rendering using a sprite table texture which indexes into the spritemap.
