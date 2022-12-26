@@ -4,8 +4,8 @@ use winit::{event::WindowEvent, window::Window};
 use crate::{audio::Audio, entity, event_dispatch, texture, Options};
 
 use super::{
-    game_controller::GameController, game_state::GameState, game_ui::GameUi, gpu_state::GpuState,
-    lcd_filter::LcdFilter,
+    debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
+    game_ui::GameUi, gpu_state::GpuState, lcd_filter::LcdFilter,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ pub struct AppState {
     game_controller: GameController,
     game_state: GameState,
     game_ui: GameUi,
-    // overlay: Option<DebugOverlay>,
+    debug_overlay: Option<DebugOverlay>,
     lcd_filter: LcdFilter,
 
     entity_id_vendor: entity::IdVendor,
@@ -36,7 +36,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(_window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
+    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
         let audio = Audio::new(&options);
@@ -51,11 +51,11 @@ impl AppState {
             game_controller.lives_remaining(),
         );
         let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
-        // let overlay_ui = if options.debug_overlay {
-        //     Some(DebugOverlay::new(window, &gpu))
-        // } else {
-        //     None
-        // };
+        let debug_overlay = if options.debug_overlay {
+            Some(DebugOverlay::new(window, &gpu))
+        } else {
+            None
+        };
 
         let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
         let tonemap = texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
@@ -77,18 +77,17 @@ impl AppState {
             game_controller,
             game_state,
             game_ui,
-            // overlay: overlay_ui,
+            debug_overlay,
             lcd_filter,
-
             entity_id_vendor,
             message_dispatcher: event_dispatch::Dispatcher::default(),
         })
     }
 
-    pub fn event(&mut self, _window: &Window, _event: &winit::event::Event<()>) {
-        // if let Some(ref mut overlay) = self.overlay {
-        //     overlay.event(window, event);
-        // }
+    pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
+        if let Some(ref mut debug_overlay) = self.debug_overlay {
+            debug_overlay.event(window, event);
+        }
     }
 
     pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
@@ -121,9 +120,9 @@ impl AppState {
         // execution in the debugger, and we get a HUGE timestep after resuming.
         let dt = dt.min(std::time::Duration::from_millis(32));
 
-        // if let Some(ref mut overlay) = self.overlay {
-        //     overlay.update(window, dt);
-        // }
+        if let Some(ref mut debug_overlay) = self.debug_overlay {
+            debug_overlay.update(window, dt);
+        }
 
         let game_dt = if self.game_ui.is_paused() {
             std::time::Duration::from_secs(0)
@@ -169,18 +168,18 @@ impl AppState {
 
         self.game_ui.render(window, &mut self.gpu, encoder);
 
-        // if let Some(ref mut overlay) = self.overlay {
-        //     overlay.render(
-        //         window,
-        //         &mut self.gpu,
-        //         &frame,
-        //         &mut encoder,
-        //         &mut self.game_state,
-        //     );
-        // }
-
         self.lcd_filter
             .render(window, &mut self.gpu, output, encoder);
+
+        if let Some(ref mut debug_overlay) = self.debug_overlay {
+            debug_overlay.render(
+                window,
+                &mut self.gpu,
+                output,
+                encoder,
+                &mut self.game_state,
+            );
+        }
     }
 }
 

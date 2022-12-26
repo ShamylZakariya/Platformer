@@ -66,7 +66,7 @@ impl DebugOverlay {
             }]);
 
         let renderer_config = imgui_wgpu::RendererConfig {
-            texture_format: gpu.sc_desc.format,
+            texture_format: gpu.config.format,
             ..Default::default()
         };
 
@@ -93,7 +93,7 @@ impl DebugOverlay {
         &mut self,
         window: &Window,
         gpu: &mut GpuState,
-        frame: &wgpu::SwapChainFrame,
+        output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
         game_state: &mut GameState,
     ) {
@@ -102,7 +102,6 @@ impl DebugOverlay {
             .expect("Failed to prepare frame");
 
         let display_state = self.create_ui_state_input(game_state);
-
         let ui = self.imgui.frame();
         let mut ui_input_state = UiInteractionOutput::default();
 
@@ -110,24 +109,21 @@ impl DebugOverlay {
         // Build the UI, mutating ui_input_state to indicate user interaction.
         //
 
-        imgui::Window::new(imgui::im_str!("Debug"))
+        ui.window("Debug")
             .size([280.0, 128.0], imgui::Condition::FirstUseEver)
-            .build(&ui, || {
+            .build(|| {
                 let mut camera_tracks_character = display_state.camera_tracks_character;
-                if ui.checkbox(
-                    imgui::im_str!("Camera Tracks Character"),
-                    &mut camera_tracks_character,
-                ) {
+                if ui.checkbox("Camera Tracks Character", &mut camera_tracks_character) {
                     ui_input_state.camera_tracks_character = Some(camera_tracks_character);
                 }
-                ui.text(imgui::im_str!(
+                ui.text(format!(
                     "camera: ({:.2},{:.2}) zoom: {:.2}",
                     display_state.camera_position.x,
                     display_state.camera_position.y,
                     display_state.zoom,
                 ));
 
-                ui.text(imgui::im_str!(
+                ui.text(format!(
                     "character: ({:.2},{:.2}) cycle: {}",
                     display_state.character_position.x,
                     display_state.character_position.y,
@@ -135,18 +131,12 @@ impl DebugOverlay {
                 ));
 
                 let mut zoom = display_state.zoom;
-                if imgui::Slider::new(imgui::im_str!("Zoom"))
-                    .range(MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE as f32)
-                    .build(&ui, &mut zoom)
-                {
+                if ui.slider("Zoom", MIN_CAMERA_SCALE, MAX_CAMERA_SCALE, &mut zoom) {
                     ui_input_state.zoom = Some(zoom);
                 }
 
                 let mut draw_stage_collision_info = display_state.draw_stage_collision_info;
-                if ui.checkbox(
-                    imgui::im_str!("Stage Collision Visible"),
-                    &mut draw_stage_collision_info,
-                ) {
+                if ui.checkbox("Stage Collision Visible", &mut draw_stage_collision_info) {
                     ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
                 }
             });
@@ -155,24 +145,33 @@ impl DebugOverlay {
         // Create and submit the render pass
         //
 
-        self.winit_platform.prepare_render(&ui, &window);
+        self.winit_platform.prepare_render(ui, window);
+
+        let output_view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Debug Overlay Render Pass"),
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.output.view,
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &output_view,
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Load, // Do not clear
                         store: true,
                     },
-                }],
+                })],
                 depth_stencil_attachment: None,
             });
 
             self.imgui_renderer
-                .render(ui.render(), &gpu.queue, &gpu.device, &mut render_pass)
+                .render(
+                    self.imgui.render(),
+                    &gpu.queue,
+                    &gpu.device,
+                    &mut render_pass,
+                )
                 .expect("Imgui render failed");
         }
 
