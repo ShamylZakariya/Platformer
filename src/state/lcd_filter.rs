@@ -15,6 +15,8 @@ pub struct LcdUniformData {
     pixels_per_unit: Vector2<f32>,
     pixel_effect_alpha: f32,
     shadow_effect_alpha: f32,
+    color_attachment_layer_index: u32,
+    color_attachment_layer_count: u32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -28,6 +30,8 @@ impl Default for LcdUniformData {
             pixels_per_unit: vec2(1.0, 1.0),
             pixel_effect_alpha: 1.0,
             shadow_effect_alpha: 1.0,
+            color_attachment_layer_index: 0,
+            color_attachment_layer_count: 1,
         }
     }
 }
@@ -55,6 +59,16 @@ impl LcdUniformData {
 
     pub fn set_pixels_per_unit(&mut self, pixels_per_unit: Vector2<f32>) -> &mut Self {
         self.pixels_per_unit = pixels_per_unit;
+        self
+    }
+
+    pub fn set_color_attachment_layer_index(&mut self, index: u32) -> &mut Self {
+        self.color_attachment_layer_index = index;
+        self
+    }
+
+    pub fn set_color_attachment_layer_count(&mut self, count: u32) -> &mut Self {
+        self.color_attachment_layer_count = count;
         self
     }
 }
@@ -254,7 +268,10 @@ impl LcdFilter {
             .set_pixel_effect_alpha(pixel_effect_alpha)
             .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
-            .set_viewport_size(game.camera_controller.projection.viewport_size());
+            .set_viewport_size(game.camera_controller.projection.viewport_size())
+            .set_color_attachment_layer_index(0)
+            .set_color_attachment_layer_count(64);
+
         self.uniforms.write(&mut ctx.gpu.queue);
     }
 
@@ -285,6 +302,6 @@ impl LcdFilter {
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.textures_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniforms.bind_group, &[]);
-        render_pass.draw(0..3, 0..1);
+        render_pass.draw(0..3, 0..1); //FSQ
     }
 }

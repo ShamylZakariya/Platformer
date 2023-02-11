@@ -96,9 +96,8 @@ impl GameUi {
         let bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let sprite_material = {
             let spritesheet_path = Path::new("res").join(&game_ui_map.tileset.image_path);
-            let spritesheet = Rc::new(
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
-            );
+            let spritesheet =
+                Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap());
             Rc::new(rendering::Material::new(
                 &gpu.device,
                 "UI Sprite Material",

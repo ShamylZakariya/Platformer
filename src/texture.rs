@@ -1,11 +1,16 @@
 use anyhow::*;
 use image::GenericImageView;
-use std::path::Path;
+use std::{num::NonZeroU32, path::Path};
 
 pub struct Texture {
     pub texture: wgpu::Texture,
+    // the texture view for the texture object
     pub view: wgpu::TextureView,
+    // in the case of a texture array (for shadow texture array), views to each layer
+    pub layer_array_views: Vec<wgpu::TextureView>,
     pub sampler: wgpu::Sampler,
+    pub view_dimension: wgpu::TextureViewDimension,
+    pub format: wgpu::TextureFormat,
 }
 
 #[allow(dead_code)]
@@ -16,12 +21,11 @@ impl Texture {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         path: P,
-        is_normal_map: bool,
     ) -> Result<Self> {
         let path_copy = path.as_ref().to_path_buf();
         let label = path_copy.to_str();
         let img = image::open(path)?;
-        Self::from_image(device, queue, &img, label, is_normal_map)
+        Self::from_image(device, queue, &img, label)
     }
 
     #[allow(dead_code)]
@@ -30,10 +34,9 @@ impl Texture {
         queue: &wgpu::Queue,
         bytes: &[u8],
         label: &str,
-        is_normal_map: bool,
     ) -> Result<Self> {
         let img = image::load_from_memory(bytes)?;
-        Self::from_image(device, queue, &img, Some(label), is_normal_map)
+        Self::from_image(device, queue, &img, Some(label))
     }
 
     pub fn from_image(
@@ -41,7 +44,6 @@ impl Texture {
         queue: &wgpu::Queue,
         img: &image::DynamicImage,
         label: Option<&str>,
-        is_normal_map: bool,
     ) -> Result<Self> {
         let rgba = img.to_rgba8();
         let dimensions = img.dimensions();
@@ -56,11 +58,7 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: if is_normal_map {
-                wgpu::TextureFormat::Rgba8Unorm
-            } else {
-                wgpu::TextureFormat::Rgba8UnormSrgb
-            },
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         });
 
@@ -94,7 +92,10 @@ impl Texture {
         Ok(Self {
             texture,
             view,
+            layer_array_views: vec![],
             sampler,
+            view_dimension: wgpu::TextureViewDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
         })
     }
 
@@ -135,7 +136,10 @@ impl Texture {
         Self {
             texture,
             view,
+            layer_array_views: vec![],
             sampler,
+            view_dimension: wgpu::TextureViewDimension::D2,
+            format: Self::DEPTH_FORMAT,
         }
     }
 
@@ -178,7 +182,68 @@ impl Texture {
         Self {
             texture,
             view,
+            layer_array_views: vec![],
             sampler,
+            view_dimension: wgpu::TextureViewDimension::D2,
+            format: config.format,
+        }
+    }
+
+    pub fn create_color_texture_array(
+        device: &wgpu::Device,
+        width: u32,
+        height: u32,
+        count: u32,
+        format: wgpu::TextureFormat,
+        label: &str,
+    ) -> Self {
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            size: wgpu::Extent3d {
+                width,
+                height,
+                depth_or_array_layers: count,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            label: Some(label),
+        });
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("color texture array sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            mipmap_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let layer_array_views = (0..count)
+            .map(|i| {
+                texture.create_view(&wgpu::TextureViewDescriptor {
+                    label: Some("shadow view"),
+                    format: None,
+                    dimension: Some(wgpu::TextureViewDimension::D2),
+                    aspect: wgpu::TextureAspect::All,
+                    base_mip_level: 0,
+                    mip_level_count: None,
+                    base_array_layer: i,
+                    array_layer_count: NonZeroU32::new(1),
+                })
+            })
+            .collect::<Vec<_>>();
+
+        Self {
+            texture,
+            view,
+            layer_array_views,
+            sampler,
+            view_dimension: wgpu::TextureViewDimension::D2,
+            format,
         }
     }
 }

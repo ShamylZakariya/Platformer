@@ -58,7 +58,7 @@ impl AppState {
         };
 
         let tonemap_file = format!("res/tonemaps/{}.png", options.palette);
-        let tonemap = texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file, false)
+        let tonemap = texture::Texture::load(&gpu.device, &gpu.queue, &tonemap_file)
             .with_context(|| format!("Failed to load palette \"{}\"", tonemap_file))?;
         let lcd_filter = LcdFilter::new(&mut gpu, &options, tonemap);
 
@@ -172,13 +172,7 @@ impl AppState {
             .render(window, &mut self.gpu, output, encoder);
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.render(
-                window,
-                &mut self.gpu,
-                output,
-                encoder,
-                &mut self.game_state,
-            );
+            debug_overlay.render(window, &mut self.gpu, output, encoder, &mut self.game_state);
         }
     }
 }

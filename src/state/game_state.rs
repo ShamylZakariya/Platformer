@@ -158,8 +158,7 @@ impl GameState {
             let stage_sprite_material = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet = Rc::new(
-                    texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false)
-                        .unwrap(),
+                    texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap(),
                 );
                 Rc::new(rendering::Material::new(
                     &gpu.device,
@@ -303,9 +302,8 @@ impl GameState {
 
         let entity_material = Rc::new({
             let spritesheet_path = Path::new("res").join(&entity_tileset.image_path);
-            let spritesheet = Rc::new(
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
-            );
+            let spritesheet =
+                Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap());
 
             rendering::Material::new(
                 &gpu.device,
