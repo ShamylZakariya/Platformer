@@ -101,6 +101,7 @@ pub struct LcdFilter {
 }
 
 impl LcdFilter {
+    /// Default time it takes for an LCD pixel to change state
     pub const DEFAULT_HYSTERESIS: std::time::Duration = std::time::Duration::from_millis(65);
 
     pub fn new(gpu: &mut gpu_state::GpuState, options: &Options, tonemap: Texture) -> Self {

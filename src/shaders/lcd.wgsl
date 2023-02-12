@@ -93,14 +93,7 @@ fn lcd_vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 @fragment
 fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
-    // // let layer = i32(lcd_uniforms.color_attachment_layer_index);
-    // // let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, layer).r;
-    // let intensity = sample_color_texture(in.tex_coord);
-
-    // // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
-    // // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
-    // let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(intensity + 0.125, 0.0));
-
+    // get source color value. this will include slow-response lcd history if enabled
     let palettized_color = sample_palettized(in.tex_coord);
 
     // get the "white" value for our tonemap, and the pixel effect amount. Mix in
