@@ -96,9 +96,8 @@ impl GameUi {
         let bind_group_layout = rendering::Material::bind_group_layout(&gpu.device);
         let sprite_material = {
             let spritesheet_path = Path::new("res").join(&game_ui_map.tileset.image_path);
-            let spritesheet = Rc::new(
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
-            );
+            let spritesheet =
+                Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap());
             Rc::new(rendering::Material::new(
                 &gpu.device,
                 "UI Sprite Material",
@@ -264,17 +263,12 @@ impl GameUi {
         }
     }
 
-    pub fn update(
-        &mut self,
-        dt: std::time::Duration,
-        ctx: &mut AppContext,
-        game: &game_state::GameState,
-    ) {
+    pub fn update(&mut self, ctx: &mut AppContext, game: &game_state::GameState) {
         let pixels_per_unit = self.pixels_per_unit;
         let palette_shift = self.palette_shift();
         self.drawer_collision_space.update();
 
-        self.time += dt.as_secs_f32();
+        self.time += ctx.game_delta_time.as_secs_f32();
 
         if self.toggle_drawer_needed {
             self.drawer_open = !self.drawer_open;
@@ -299,7 +293,11 @@ impl GameUi {
 
         // update drawer uniforms
         let bounds = self.game_ui_map.bounds();
-        let drawer_offset = vec3(-bounds.width() / 2.0, self.update_drawer_position(dt), 0.0);
+        let drawer_offset = vec3(
+            -bounds.width() / 2.0,
+            self.update_drawer_position(ctx.real_delta_time),
+            0.0,
+        );
 
         self.drawer_uniforms
             .data
@@ -313,7 +311,7 @@ impl GameUi {
         let game_state_peek = game.game_state_peek();
         for e in self.entities.values_mut() {
             e.entity.update(
-                dt,
+                ctx.real_delta_time,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
                 ctx.audio,
@@ -357,7 +355,7 @@ impl GameUi {
 
         // update countdowns
         self.start_message_blink_countdown =
-            (self.start_message_blink_countdown - dt.as_secs_f32()).max(0.0);
+            (self.start_message_blink_countdown - ctx.real_delta_time.as_secs_f32()).max(0.0);
     }
 
     pub fn render(
@@ -365,9 +363,11 @@ impl GameUi {
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
+        frame_index: usize,
     ) {
+        let layer_index = frame_index % gpu.color_attachment.layer_array_views.len();
         let color_attachment = wgpu::RenderPassColorAttachment {
-            view: &gpu.color_attachment.view,
+            view: &gpu.color_attachment.layer_array_views[layer_index],
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Load,

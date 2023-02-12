@@ -62,6 +62,7 @@
                 }
             },
             "args": [
+                "--no-music",
                 "--debug-overlay"
             ],
             "cwd": "${workspaceFolder}"

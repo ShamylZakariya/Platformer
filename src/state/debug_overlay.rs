@@ -5,6 +5,7 @@ use super::{
     constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
     game_state::GameState,
     gpu_state::GpuState,
+    lcd_filter::LcdFilter,
 };
 
 /// UiStateInput is the input data which will be used to render an ImGUI UI
@@ -19,6 +20,7 @@ struct UiStateInput {
     character_position: Point2<f32>,
     character_cycle: String,
     draw_stage_collision_info: bool,
+    lcd_hysteresis: Option<std::time::Duration>,
 }
 
 /// UiInteractionOutput represents the values from UiSTateInput which changed
@@ -31,6 +33,7 @@ struct UiInteractionOutput {
     zoom: Option<f32>,
     draw_stage_collision_info: Option<bool>,
     draw_entity_debug: Option<bool>,
+    lcd_hysteresis: Option<Option<std::time::Duration>>,
 }
 
 pub struct DebugOverlay {
@@ -96,12 +99,13 @@ impl DebugOverlay {
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
         game_state: &mut GameState,
+        lcd_filter: &mut LcdFilter,
     ) {
         self.winit_platform
             .prepare_frame(self.imgui.io_mut(), window)
             .expect("Failed to prepare frame");
 
-        let display_state = self.create_ui_state_input(game_state);
+        let display_state = self.create_ui_state_input(game_state, &lcd_filter);
         let ui = self.imgui.frame();
         let mut ui_input_state = UiInteractionOutput::default();
 
@@ -110,7 +114,7 @@ impl DebugOverlay {
         //
 
         ui.window("Debug")
-            .size([280.0, 128.0], imgui::Condition::FirstUseEver)
+            .size([280.0, 156.0], imgui::Condition::FirstUseEver)
             .build(|| {
                 let mut camera_tracks_character = display_state.camera_tracks_character;
                 if ui.checkbox("Camera Tracks Character", &mut camera_tracks_character) {
@@ -138,6 +142,27 @@ impl DebugOverlay {
                 let mut draw_stage_collision_info = display_state.draw_stage_collision_info;
                 if ui.checkbox("Stage Collision Visible", &mut draw_stage_collision_info) {
                     ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
+                }
+
+                let min_hysteresis_seconds: f32 = 0.0;
+                let max_hysteresis_seconds: f32 = 0.5;
+                let mut current_hysteresis_seconds = lcd_filter
+                    .lcd_hysteresis()
+                    .map_or_else(|| 0.0, |h| h.as_secs_f32());
+
+                if ui.slider(
+                    "LCD Hysteresis",
+                    min_hysteresis_seconds,
+                    max_hysteresis_seconds,
+                    &mut current_hysteresis_seconds,
+                ) {
+                    ui_input_state.lcd_hysteresis = if current_hysteresis_seconds > 0.0 {
+                        Some(Some(std::time::Duration::from_secs_f32(
+                            current_hysteresis_seconds,
+                        )))
+                    } else {
+                        Some(None)
+                    };
                 }
             });
 
@@ -175,10 +200,14 @@ impl DebugOverlay {
                 .expect("Imgui render failed");
         }
 
-        self.handle_ui_interaction_output(&ui_input_state, game_state);
+        self.handle_ui_interaction_output(&ui_input_state, game_state, lcd_filter);
     }
 
-    fn create_ui_state_input(&self, game_state: &GameState) -> UiStateInput {
+    fn create_ui_state_input(
+        &self,
+        game_state: &GameState,
+        lcd_filter: &LcdFilter,
+    ) -> UiStateInput {
         let cc = &game_state.camera_controller;
         if let Some(firebrand) = game_state.try_get_firebrand() {
             let position = firebrand.entity.position();
@@ -190,6 +219,7 @@ impl DebugOverlay {
                 character_position: position.xy(),
                 draw_stage_collision_info: game_state.draw_stage_collision_info,
                 character_cycle: firebrand.entity.sprite_cycle().to_string(),
+                lcd_hysteresis: lcd_filter.lcd_hysteresis(),
             }
         } else {
             UiStateInput {
@@ -199,6 +229,7 @@ impl DebugOverlay {
                 character_position: point2(0.0, 0.0),
                 draw_stage_collision_info: game_state.draw_stage_collision_info,
                 character_cycle: "<none>".to_owned(),
+                lcd_hysteresis: lcd_filter.lcd_hysteresis(),
             }
         }
     }
@@ -207,6 +238,7 @@ impl DebugOverlay {
         &mut self,
         ui_input_state: &UiInteractionOutput,
         game_state: &mut GameState,
+        lcd_filter: &mut LcdFilter,
     ) {
         if let Some(z) = ui_input_state.zoom {
             game_state.camera_controller.projection.set_scale(z);
@@ -216,6 +248,9 @@ impl DebugOverlay {
         }
         if let Some(ctp) = ui_input_state.camera_tracks_character {
             game_state.camera_tracks_character = ctp;
+        }
+        if let Some(lcd_hysteresis) = ui_input_state.lcd_hysteresis {
+            lcd_filter.set_lcd_hysteresis(lcd_hysteresis);
         }
     }
 }

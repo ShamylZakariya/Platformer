@@ -158,8 +158,7 @@ impl GameState {
             let stage_sprite_material = {
                 let spritesheet_path = Path::new("res").join(&map.tileset.image_path);
                 let spritesheet = Rc::new(
-                    texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false)
-                        .unwrap(),
+                    texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap(),
                 );
                 Rc::new(rendering::Material::new(
                     &gpu.device,
@@ -303,9 +302,8 @@ impl GameState {
 
         let entity_material = Rc::new({
             let spritesheet_path = Path::new("res").join(&entity_tileset.image_path);
-            let spritesheet = Rc::new(
-                texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path, false).unwrap(),
-            );
+            let spritesheet =
+                Rc::new(texture::Texture::load(&gpu.device, &gpu.queue, spritesheet_path).unwrap());
 
             rendering::Material::new(
                 &gpu.device,
@@ -481,7 +479,7 @@ impl GameState {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration, ctx: &mut AppContext) {
+    pub fn update(&mut self, ctx: &mut AppContext) {
         self.collision_space.update();
 
         //
@@ -521,7 +519,7 @@ impl GameState {
             });
         }
 
-        self.time += dt.as_secs_f32();
+        self.time += ctx.game_delta_time.as_secs_f32();
         let current_map_bounds = self.current_map_bounds();
         let firebrand = &self.get_firebrand().entity;
         self.game_state_peek.player_position = firebrand.position().xy();
@@ -539,7 +537,7 @@ impl GameState {
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
                 e.entity.update(
-                    dt,
+                    ctx.game_delta_time,
                     &self.map,
                     &mut self.collision_space,
                     ctx.audio,
@@ -574,7 +572,7 @@ impl GameState {
         //
 
         for a in &mut self.flipbook_animations {
-            a.update(dt);
+            a.update(ctx.game_delta_time);
             a.uniforms
                 .data
                 .set_pixels_per_unit(self.pixels_per_unit)
@@ -592,10 +590,17 @@ impl GameState {
             None
         };
 
-        let offset = self.camera_shaker.as_mut().map(|shaker| shaker.update(dt));
+        let offset = self
+            .camera_shaker
+            .as_mut()
+            .map(|shaker| shaker.update(ctx.game_delta_time));
 
-        self.camera_controller
-            .update(dt, tracking, offset, Some(current_map_bounds));
+        self.camera_controller.update(
+            ctx.game_delta_time,
+            tracking,
+            offset,
+            Some(current_map_bounds),
+        );
         self.camera_controller.uniforms.write(&mut ctx.gpu.queue);
 
         //
@@ -610,13 +615,15 @@ impl GameState {
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
+        frame_index: usize,
     ) {
         //
         // Render Sprites and entities; this is first pass so we clear color/depth
         //
 
+        let layer_index = frame_index % gpu.color_attachment.layer_array_views.len();
         let color_attachment = wgpu::RenderPassColorAttachment {
-            view: &gpu.color_attachment.view,
+            view: &gpu.color_attachment.layer_array_views[layer_index],
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {
