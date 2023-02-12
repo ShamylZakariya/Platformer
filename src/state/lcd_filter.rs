@@ -97,6 +97,7 @@ pub struct LcdFilter {
     tonemap: Texture,
     uniforms: LcdUniforms,
     lcd_hysteresis: Option<std::time::Duration>,
+    frames_available_for_hysteresis: usize,
 }
 
 impl LcdFilter {
@@ -161,7 +162,16 @@ impl LcdFilter {
             tonemap,
             uniforms,
             lcd_hysteresis,
+            frames_available_for_hysteresis: 0,
         }
+    }
+
+    pub fn set_lcd_hysteresis(&mut self, hysteresis: Option<std::time::Duration>) {
+        self.lcd_hysteresis = hysteresis;
+    }
+
+    pub fn lcd_hysteresis(&self) -> Option<std::time::Duration> {
+        self.lcd_hysteresis
     }
 
     fn create_textures_bind_group(
@@ -255,6 +265,8 @@ impl LcdFilter {
         _new_size: winit::dpi::PhysicalSize<u32>,
         gpu: &gpu_state::GpuState,
     ) {
+        // new color buffer means we lose our history sample range
+        self.frames_available_for_hysteresis = 0;
         self.textures_bind_group = Self::create_textures_bind_group(
             gpu,
             &self.textures_bind_group_layout,
@@ -279,12 +291,16 @@ impl LcdFilter {
 
         let layer_count = ctx.gpu.color_attachment.layer_array_views.len() as u32;
         let current_layer = ctx.frame_idx % layer_count;
-        let history_count = self.lcd_hysteresis.map_or_else(
-            || 1,
-            |hysteresis| {
-                (hysteresis.as_secs_f32() / ctx.real_delta_time.as_secs_f32()).ceil() as u32
-            },
-        );
+        let history_count = self
+            .lcd_hysteresis
+            .map_or_else(
+                || 1,
+                |hysteresis| {
+                    (hysteresis.as_secs_f32() / ctx.real_delta_time.as_secs_f32()).ceil() as u32
+                },
+            )
+            .min(self.frames_available_for_hysteresis as u32)
+            .max(1_u32);
 
         self.uniforms
             .data
@@ -302,7 +318,7 @@ impl LcdFilter {
     pub fn render(
         &mut self,
         _window: &Window,
-        _gpu: &mut gpu_state::GpuState,
+        gpu: &mut gpu_state::GpuState,
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
         _frame_index: usize,
@@ -328,5 +344,8 @@ impl LcdFilter {
         render_pass.set_bind_group(0, &self.textures_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniforms.bind_group, &[]);
         render_pass.draw(0..3, 0..1); //FSQ
+
+        self.frames_available_for_hysteresis = (self.frames_available_for_hysteresis + 1)
+            .min(gpu.color_attachment.layer_array_views.len());
     }
 }

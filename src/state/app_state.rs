@@ -189,7 +189,14 @@ impl AppState {
             .render(window, &mut self.gpu, output, encoder, frame_index);
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.render(window, &mut self.gpu, output, encoder, &mut self.game_state);
+            debug_overlay.render(
+                window,
+                &mut self.gpu,
+                output,
+                encoder,
+                &mut self.game_state,
+                &mut self.lcd_filter,
+            );
         }
     }
 }

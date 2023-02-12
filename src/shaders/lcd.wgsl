@@ -56,12 +56,12 @@ fn inner_shadow(st: vec2<f32>, x_width: f32, y_width: f32) -> f32 {
 }
 
 fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
-    let history_length = i32(lcd_uniforms.color_attachment_history_count);
+    let history_count = i32(lcd_uniforms.color_attachment_history_count);
     let layer_count = i32(lcd_uniforms.color_attachment_layer_count);
-    let first_layer = i32(lcd_uniforms.color_attachment_layer_index + lcd_uniforms.color_attachment_layer_count - lcd_uniforms.color_attachment_history_count) % layer_count;
+    let first_layer = (i32(lcd_uniforms.color_attachment_layer_index) + layer_count - (history_count - 1)) % layer_count;
 
     var accumulator = vec4<f32>(0.0);
-    for (var i: i32 = 0; i < history_length; i++) {
+    for (var i: i32 = 0; i < history_count; i++) {
         let layer = (first_layer + i) % layer_count;
         let intensity = textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
 
@@ -72,7 +72,7 @@ fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
         accumulator += palettized_color;
     }
 
-    return accumulator / f32(history_length);
+    return accumulator / f32(history_count);
 }
 
 ///////////////////////////////////////////////////////////////////////
