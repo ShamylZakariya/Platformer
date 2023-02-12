@@ -283,7 +283,7 @@ impl LcdFilter {
         _gpu: &mut gpu_state::GpuState,
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
-        frame_index: u32,
+        _frame_index: usize,
     ) {
         let view = output
             .texture

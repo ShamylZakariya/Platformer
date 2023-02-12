@@ -71,7 +71,8 @@ fn lcd_vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 @fragment
 fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
-    let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, 0).r;
+    let layer = i32(lcd_uniforms.color_attachment_layer_index);
+    let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, layer).r;
 
     // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
     // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)

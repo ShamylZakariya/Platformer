@@ -268,7 +268,7 @@ impl GameUi {
         let palette_shift = self.palette_shift();
         self.drawer_collision_space.update();
 
-        self.time += ctx.delta_t.as_secs_f32();
+        self.time += ctx.game_delta_time.as_secs_f32();
 
         if self.toggle_drawer_needed {
             self.drawer_open = !self.drawer_open;
@@ -295,7 +295,7 @@ impl GameUi {
         let bounds = self.game_ui_map.bounds();
         let drawer_offset = vec3(
             -bounds.width() / 2.0,
-            self.update_drawer_position(ctx.delta_t),
+            self.update_drawer_position(ctx.real_delta_time),
             0.0,
         );
 
@@ -311,7 +311,7 @@ impl GameUi {
         let game_state_peek = game.game_state_peek();
         for e in self.entities.values_mut() {
             e.entity.update(
-                ctx.delta_t,
+                ctx.real_delta_time,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
                 ctx.audio,
@@ -355,7 +355,7 @@ impl GameUi {
 
         // update countdowns
         self.start_message_blink_countdown =
-            (self.start_message_blink_countdown - ctx.delta_t.as_secs_f32()).max(0.0);
+            (self.start_message_blink_countdown - ctx.real_delta_time.as_secs_f32()).max(0.0);
     }
 
     pub fn render(
@@ -363,10 +363,11 @@ impl GameUi {
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
-        frame_index: u32,
+        frame_index: usize,
     ) {
+        let layer_index = frame_index % gpu.color_attachment.layer_array_views.len();
         let color_attachment = wgpu::RenderPassColorAttachment {
-            view: &gpu.color_attachment.layer_array_views[0],
+            view: &gpu.color_attachment.layer_array_views[layer_index],
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Load,

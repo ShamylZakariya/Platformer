@@ -48,7 +48,7 @@ impl GameController {
         game_state: &mut GameState,
         game_ui: &mut GameUi,
     ) {
-        let dt = ctx.delta_t.as_secs_f32();
+        let dt = ctx.game_delta_time.as_secs_f32();
 
         if let Some(fade_in_countdown) = self.fade_in_countdown {
             let fade_in_countdown = fade_in_countdown - dt;

@@ -102,7 +102,7 @@ fn run(opt: Options) {
                                 label: Some("Render Encoder"),
                             },
                         );
-                        app_state.render(&window, &mut encoder, &output, frame_index);
+                        app_state.render(&window, &mut encoder, &output, frame_index as usize);
                         app_state
                             .gpu
                             .queue

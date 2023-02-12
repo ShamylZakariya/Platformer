@@ -19,7 +19,8 @@ pub struct AppContext<'a> {
     pub entity_id_vendor: &'a mut entity::IdVendor,
     pub frame_idx: u32,
     pub time: std::time::Instant,
-    pub delta_t: std::time::Duration,
+    pub game_delta_time: std::time::Duration,
+    pub real_delta_time: std::time::Duration,
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -150,7 +151,8 @@ impl AppState {
                 entity_id_vendor: &mut self.entity_id_vendor,
                 frame_idx,
                 time,
-                delta_t: game_dt,
+                game_delta_time: game_dt,
+                real_delta_time: delta_time,
             };
 
             self.game_state.update(&mut ctx);
@@ -171,7 +173,7 @@ impl AppState {
         window: &Window,
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::SurfaceTexture,
-        frame_index: u32,
+        frame_index: usize,
     ) {
         //
         //  Render game and UI overlay
