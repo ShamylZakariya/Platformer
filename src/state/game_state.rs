@@ -614,7 +614,7 @@ impl GameState {
         //
 
         let color_attachment = wgpu::RenderPassColorAttachment {
-            view: &gpu.color_attachment.view,
+            view: &gpu.color_attachment.layer_array_views[0],
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color {

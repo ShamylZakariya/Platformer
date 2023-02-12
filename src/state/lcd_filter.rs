@@ -3,7 +3,11 @@ use winit::window::Window;
 
 use crate::{texture::Texture, Options};
 
-use super::{app_state::AppContext, game_state, gpu_state};
+use super::{
+    app_state::AppContext,
+    game_state,
+    gpu_state::{self},
+};
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -99,7 +103,7 @@ impl LcdFilter {
                             ty: wgpu::BindingType::Texture {
                                 multisampled: false,
                                 sample_type: wgpu::TextureSampleType::Float { filterable: false },
-                                view_dimension: wgpu::TextureViewDimension::D2,
+                                view_dimension: wgpu::TextureViewDimension::D2Array,
                             },
                             count: None,
                         },
@@ -155,7 +159,9 @@ impl LcdFilter {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&gpu.color_attachment.view),
+                    resource: wgpu::BindingResource::TextureView(
+                        &gpu.color_attachment.layer_array_views[0],
+                    ),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -270,7 +276,9 @@ impl LcdFilter {
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size())
             .set_color_attachment_layer_index(0)
-            .set_color_attachment_layer_count(64);
+            .set_color_attachment_layer_count(
+                ctx.gpu.color_attachment.layer_array_views.len() as u32
+            );
 
         self.uniforms.write(&mut ctx.gpu.queue);
     }

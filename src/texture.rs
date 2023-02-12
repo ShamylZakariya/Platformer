@@ -227,7 +227,7 @@ impl Texture {
                 texture.create_view(&wgpu::TextureViewDescriptor {
                     label: Some("shadow view"),
                     format: None,
-                    dimension: Some(wgpu::TextureViewDimension::D2),
+                    dimension: Some(wgpu::TextureViewDimension::D2Array),
                     aspect: wgpu::TextureAspect::All,
                     base_mip_level: 0,
                     mip_level_count: None,
@@ -242,7 +242,7 @@ impl Texture {
             view,
             layer_array_views,
             sampler,
-            view_dimension: wgpu::TextureViewDimension::D2,
+            view_dimension: wgpu::TextureViewDimension::D2Array,
             format,
         }
     }

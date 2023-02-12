@@ -14,7 +14,7 @@ struct LcdUniforms {
 };
 
 @group(0) @binding(0)
-var color_attachment_texture: texture_2d<f32>;
+var color_attachment_texture: texture_2d_array<f32>;
 
 @group(0) @binding(1)
 var tonemap_texture: texture_2d<f32>;
@@ -71,7 +71,7 @@ fn lcd_vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 @fragment
 fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
-    let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord).r;
+    let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, 0).r;
 
     // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
     // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)

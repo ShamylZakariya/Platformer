@@ -11,6 +11,8 @@ pub struct GpuState {
 }
 
 impl GpuState {
+    pub const COLOR_ATTACHMENT_LAYER_COUNT: u32 = 64;
+
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
 
@@ -50,8 +52,14 @@ impl GpuState {
         };
         surface.configure(&device, &config);
 
-        let color_attachment =
-            texture::Texture::create_color_texture(&device, &config, "Color Attachment");
+        let color_attachment = texture::Texture::create_color_texture_array(
+            &device,
+            config.width,
+            config.height,
+            Self::COLOR_ATTACHMENT_LAYER_COUNT,
+            config.format,
+            "Color Attachment Array",
+        );
         let depth_attachment =
             texture::Texture::create_depth_texture(&device, &config, "Depth Attachment");
 
@@ -74,10 +82,13 @@ impl GpuState {
                 &self.config,
                 "Depth Attachment",
             );
-            self.color_attachment = texture::Texture::create_color_texture(
+            self.color_attachment = texture::Texture::create_color_texture_array(
                 &self.device,
-                &self.config,
-                "Color Attachment",
+                self.config.width,
+                self.config.height,
+                Self::COLOR_ATTACHMENT_LAYER_COUNT,
+                self.config.format,
+                "Color Attachment Array",
             );
             self.surface.configure(&self.device, &self.config);
         }
