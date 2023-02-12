@@ -21,6 +21,8 @@ pub struct LcdUniformData {
     shadow_effect_alpha: f32,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
+    color_attachment_history_count: u32,
+    padding_: u32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -36,6 +38,8 @@ impl Default for LcdUniformData {
             shadow_effect_alpha: 1.0,
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
+            color_attachment_history_count: 5,
+            padding_: 0,
         }
     }
 }

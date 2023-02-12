@@ -11,6 +11,8 @@ struct LcdUniforms {
     shadow_effect_alpha: f32,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
+    color_attachment_history_count: u32,
+    padding_: u32,
 };
 
 @group(0) @binding(0)
@@ -53,6 +55,26 @@ fn inner_shadow(st: vec2<f32>, x_width: f32, y_width: f32) -> f32 {
     return min(left + right + top, 1.0);
 }
 
+fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
+    let history_length = i32(lcd_uniforms.color_attachment_history_count);
+    let layer_count = i32(lcd_uniforms.color_attachment_layer_count);
+    let first_layer = i32(lcd_uniforms.color_attachment_layer_index + lcd_uniforms.color_attachment_layer_count - lcd_uniforms.color_attachment_history_count) % layer_count;
+
+    var accumulator = vec4<f32>(0.0);
+    for (var i: i32 = 0; i < history_length; i++) {
+        let layer = (first_layer + i) % layer_count;
+        let intensity = textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
+
+        // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
+        // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
+
+        let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(intensity + 0.125, 0.0));
+        accumulator += palettized_color;
+    }
+
+    return accumulator / f32(history_length);
+}
+
 ///////////////////////////////////////////////////////////////////////
 
 @vertex
@@ -71,12 +93,15 @@ fn lcd_vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 @fragment
 fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
-    let layer = i32(lcd_uniforms.color_attachment_layer_index);
-    let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, layer).r;
+    // // let layer = i32(lcd_uniforms.color_attachment_layer_index);
+    // // let intensity = textureSample(color_attachment_texture, color_sampler, in.tex_coord, layer).r;
+    // let intensity = sample_color_texture(in.tex_coord);
 
-    // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
-    // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
-    let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(intensity + 0.125, 0.0));
+    // // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
+    // // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
+    // let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(intensity + 0.125, 0.0));
+
+    let palettized_color = sample_palettized(in.tex_coord);
 
     // get the "white" value for our tonemap, and the pixel effect amount. Mix in
     // the pixel effect amount by lcd_uniforms.pixel_effect_alpha which goes to zero as the
