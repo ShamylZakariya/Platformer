@@ -422,9 +422,9 @@ impl Mesh {
         }
     }
 
-    pub fn draw<'a, 'b>(
+    pub fn draw<'a>(
         &'a self,
-        render_pass: &'b mut wgpu::RenderPass<'a>,
+        render_pass: &mut wgpu::RenderPass<'a>,
         material: &'a Material,
         camera_uniforms: &'a camera::Uniforms,
         sprite_uniforms: &'a Uniforms,
@@ -499,9 +499,9 @@ impl Drawable {
         Self { meshes, materials }
     }
 
-    pub fn draw<'a, 'b>(
+    pub fn draw<'a>(
         &'a self,
-        render_pass: &'b mut wgpu::RenderPass<'a>,
+        render_pass: &mut wgpu::RenderPass<'a>,
         camera_uniforms: &'a camera::Uniforms,
         sprite_uniforms: &'a Uniforms,
     ) {

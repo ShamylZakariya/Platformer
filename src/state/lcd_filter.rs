@@ -154,7 +154,7 @@ impl LcdFilter {
             &uniforms.bind_group_layout,
         );
 
-        let lcd_hysteresis = (!options.no_hysteresis).then(|| Self::DEFAULT_HYSTERESIS);
+        let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
 
         Self {
             textures_bind_group_layout,

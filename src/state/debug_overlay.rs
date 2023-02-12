@@ -105,7 +105,7 @@ impl DebugOverlay {
             .prepare_frame(self.imgui.io_mut(), window)
             .expect("Failed to prepare frame");
 
-        let display_state = self.create_ui_state_input(game_state, &lcd_filter);
+        let display_state = self.create_ui_state_input(game_state, lcd_filter);
         let ui = self.imgui.frame();
         let mut ui_input_state = UiInteractionOutput::default();
 

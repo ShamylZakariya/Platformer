@@ -94,38 +94,29 @@ impl EntityClass {
 pub fn instantiate_entity_by_class_name(classname: &str) -> Option<Box<dyn entity::Entity>> {
     match classname {
         "BossFightTrigger" => {
-            Some(Box::new(boss_fight_trigger::BossFightTrigger::default())
-                as Box<dyn entity::Entity>)
+            Some(Box::<boss_fight_trigger::BossFightTrigger>::default() as Box<dyn entity::Entity>)
         }
-        "BossFish" => Some(Box::new(boss_fish::BossFish::default()) as Box<dyn entity::Entity>),
-        "Bat" => Some(Box::new(bat::Bat::default()) as Box<dyn entity::Entity>),
-        "CheckPoint" => {
-            Some(Box::new(check_point::CheckPoint::default()) as Box<dyn entity::Entity>)
-        }
+        "BossFish" => Some(Box::<boss_fish::BossFish>::default() as Box<dyn entity::Entity>),
+        "Bat" => Some(Box::<bat::Bat>::default() as Box<dyn entity::Entity>),
+        "CheckPoint" => Some(Box::<check_point::CheckPoint>::default() as Box<dyn entity::Entity>),
         "FallingBridge" => {
-            Some(Box::new(falling_bridge::FallingBridge::default()) as Box<dyn entity::Entity>)
+            Some(Box::<falling_bridge::FallingBridge>::default() as Box<dyn entity::Entity>)
         }
-        "FireSprite" => {
-            Some(Box::new(fire_sprite::FireSprite::default()) as Box<dyn entity::Entity>)
-        }
-        "FlyingFish" => {
-            Some(Box::new(flying_fish::FlyingFish::default()) as Box<dyn entity::Entity>)
-        }
-        "Hoodie" => Some(Box::new(hoodie::Hoodie::default()) as Box<dyn entity::Entity>),
-        "PowerUp" => Some(Box::new(power_up::PowerUp::default()) as Box<dyn entity::Entity>),
-        "SpawnPoint" => {
-            Some(Box::new(spawn_point::SpawnPoint::default()) as Box<dyn entity::Entity>)
-        }
+        "FireSprite" => Some(Box::<fire_sprite::FireSprite>::default() as Box<dyn entity::Entity>),
+        "FlyingFish" => Some(Box::<flying_fish::FlyingFish>::default() as Box<dyn entity::Entity>),
+        "Hoodie" => Some(Box::<hoodie::Hoodie>::default() as Box<dyn entity::Entity>),
+        "PowerUp" => Some(Box::<power_up::PowerUp>::default() as Box<dyn entity::Entity>),
+        "SpawnPoint" => Some(Box::<spawn_point::SpawnPoint>::default() as Box<dyn entity::Entity>),
 
         // Ui entities
-        "UiDigit" => Some(Box::new(ui_digit::UiDigit::default()) as Box<dyn entity::Entity>),
+        "UiDigit" => Some(Box::<ui_digit::UiDigit>::default() as Box<dyn entity::Entity>),
 
         "UiFlightBar" => {
-            Some(Box::new(ui_flight_bar::UiFlightBar::default()) as Box<dyn entity::Entity>)
+            Some(Box::<ui_flight_bar::UiFlightBar>::default() as Box<dyn entity::Entity>)
         }
 
         "UiHealthDot" => {
-            Some(Box::new(ui_health_dot::UiHealthDot::default()) as Box<dyn entity::Entity>)
+            Some(Box::<ui_health_dot::UiHealthDot>::default() as Box<dyn entity::Entity>)
         }
 
         _ => None,

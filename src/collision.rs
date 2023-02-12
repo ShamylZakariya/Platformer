@@ -704,8 +704,8 @@ impl Space {
             let colliders = std::mem::take(&mut self.colliders);
 
             self.dynamic_colliders.sort_by(|a, b| {
-                let c_a = &colliders[*a as usize];
-                let c_b = &colliders[*b as usize];
+                let c_a = &colliders[*a];
+                let c_b = &colliders[*b];
                 c_a.left().partial_cmp(&c_b.left()).unwrap()
             });
 
@@ -816,7 +816,7 @@ impl Space {
         }
 
         if let Some(id) = self.static_colliders.get(&point) {
-            let c = &self.colliders[*id as usize];
+            let c = &self.colliders[*id];
             if c.mask & mask != 0 && c.contains_point(&point_f) {
                 return Some(c);
             }
@@ -954,7 +954,7 @@ impl Space {
     fn get_static_collider_at(&self, point: Point2<i32>, mask: u32) -> Option<&Collider> {
         let point_f = point2(point.x as f32 + 0.5, point.y as f32 + 0.5);
         if let Some(id) = self.static_colliders.get(&point) {
-            let c = &self.colliders[*id as usize];
+            let c = &self.colliders[*id];
             if c.mask & mask != 0 && c.contains_point(&point_f) {
                 return Some(c);
             }
@@ -1051,7 +1051,7 @@ impl Space {
             .static_colliders
             .get(&point2(point.x.floor() as i32, point.y.floor() as i32))
         {
-            let c = &self.colliders[*id as usize];
+            let c = &self.colliders[*id];
             if c.mask & mask != 0 && c.contains_point(point) {
                 return Some(c);
             }
