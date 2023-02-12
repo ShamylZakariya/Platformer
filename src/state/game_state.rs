@@ -479,7 +479,7 @@ impl GameState {
         }
     }
 
-    pub fn update(&mut self, dt: std::time::Duration, ctx: &mut AppContext) {
+    pub fn update(&mut self, ctx: &mut AppContext) {
         self.collision_space.update();
 
         //
@@ -519,7 +519,7 @@ impl GameState {
             });
         }
 
-        self.time += dt.as_secs_f32();
+        self.time += ctx.delta_t.as_secs_f32();
         let current_map_bounds = self.current_map_bounds();
         let firebrand = &self.get_firebrand().entity;
         self.game_state_peek.player_position = firebrand.position().xy();
@@ -537,7 +537,7 @@ impl GameState {
             let mut expired_count = 0;
             for e in self.entities.values_mut() {
                 e.entity.update(
-                    dt,
+                    ctx.delta_t,
                     &self.map,
                     &mut self.collision_space,
                     ctx.audio,
@@ -572,7 +572,7 @@ impl GameState {
         //
 
         for a in &mut self.flipbook_animations {
-            a.update(dt);
+            a.update(ctx.delta_t);
             a.uniforms
                 .data
                 .set_pixels_per_unit(self.pixels_per_unit)
@@ -590,10 +590,13 @@ impl GameState {
             None
         };
 
-        let offset = self.camera_shaker.as_mut().map(|shaker| shaker.update(dt));
+        let offset = self
+            .camera_shaker
+            .as_mut()
+            .map(|shaker| shaker.update(ctx.delta_t));
 
         self.camera_controller
-            .update(dt, tracking, offset, Some(current_map_bounds));
+            .update(ctx.delta_t, tracking, offset, Some(current_map_bounds));
         self.camera_controller.uniforms.write(&mut ctx.gpu.queue);
 
         //
@@ -608,6 +611,7 @@ impl GameState {
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
+        frame_index: u32,
     ) {
         //
         // Render Sprites and entities; this is first pass so we clear color/depth

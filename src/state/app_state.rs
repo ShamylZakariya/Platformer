@@ -17,6 +17,9 @@ pub struct AppContext<'a> {
     pub audio: &'a mut Audio,
     pub message_dispatcher: &'a mut event_dispatch::Dispatcher,
     pub entity_id_vendor: &'a mut entity::IdVendor,
+    pub frame_idx: u32,
+    pub time: std::time::Instant,
+    pub delta_t: std::time::Duration,
 }
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -115,10 +118,16 @@ impl AppState {
         self.game_controller.gamepad_input(event);
     }
 
-    pub fn update(&mut self, window: &Window, dt: std::time::Duration) {
+    pub fn update(
+        &mut self,
+        window: &Window,
+        time: std::time::Instant,
+        delta_time: std::time::Duration,
+        frame_idx: u32,
+    ) {
         // Set a max timestep - this is crude, but prevents explosions when stopping
         // execution in the debugger, and we get a HUGE timestep after resuming.
-        let dt = dt.min(std::time::Duration::from_millis(32));
+        let dt = delta_time.min(std::time::Duration::from_millis(32));
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.update(window, dt);
@@ -127,7 +136,7 @@ impl AppState {
         let game_dt = if self.game_ui.is_paused() {
             std::time::Duration::from_secs(0)
         } else {
-            dt
+            delta_time
         };
 
         self.audio.update(dt);
@@ -139,16 +148,19 @@ impl AppState {
                 audio: &mut self.audio,
                 message_dispatcher: &mut self.message_dispatcher,
                 entity_id_vendor: &mut self.entity_id_vendor,
+                frame_idx,
+                time,
+                delta_t: game_dt,
             };
 
-            self.game_state.update(game_dt, &mut ctx);
+            self.game_state.update(&mut ctx);
 
-            self.game_ui.update(dt, &mut ctx, &self.game_state);
+            self.game_ui.update(&mut ctx, &self.game_state);
 
-            self.lcd_filter.update(dt, &mut ctx, &self.game_state);
+            self.lcd_filter.update(&mut ctx, &self.game_state);
 
             self.game_controller
-                .update(dt, &mut ctx, &mut self.game_state, &mut self.game_ui);
+                .update(&mut ctx, &mut self.game_state, &mut self.game_ui);
         }
 
         event_dispatch::Dispatcher::dispatch(&self.message_dispatcher.drain(), self);
@@ -159,17 +171,20 @@ impl AppState {
         window: &Window,
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::SurfaceTexture,
+        frame_index: u32,
     ) {
         //
         //  Render game and UI overlay
         //
 
-        self.game_state.render(window, &mut self.gpu, encoder);
+        self.game_state
+            .render(window, &mut self.gpu, encoder, frame_index);
 
-        self.game_ui.render(window, &mut self.gpu, encoder);
+        self.game_ui
+            .render(window, &mut self.gpu, encoder, frame_index);
 
         self.lcd_filter
-            .render(window, &mut self.gpu, output, encoder);
+            .render(window, &mut self.gpu, output, encoder, frame_index);
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.render(window, &mut self.gpu, output, encoder, &mut self.game_state);

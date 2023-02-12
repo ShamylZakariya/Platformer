@@ -76,6 +76,7 @@ fn run(opt: Options) {
     let gpu = pollster::block_on(state::gpu_state::GpuState::new(&window));
     let mut app_state = state::app_state::AppState::new(&window, gpu, opt).unwrap();
     let mut last_render_time = std::time::Instant::now();
+    let mut frame_index: u32 = 0;
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
@@ -92,7 +93,7 @@ fn run(opt: Options) {
                 let dt = now - last_render_time;
                 last_render_time = now;
 
-                app_state.update(&window, dt);
+                app_state.update(&window, now, dt, frame_index);
 
                 match app_state.gpu.surface.get_current_texture() {
                     Ok(output) => {
@@ -101,12 +102,14 @@ fn run(opt: Options) {
                                 label: Some("Render Encoder"),
                             },
                         );
-                        app_state.render(&window, &mut encoder, &output);
+                        app_state.render(&window, &mut encoder, &output, frame_index);
                         app_state
                             .gpu
                             .queue
                             .submit(std::iter::once(encoder.finish()));
                         output.present();
+
+                        frame_index = frame_index.wrapping_add(1);
                     }
                     Err(wgpu::SurfaceError::Lost) => {
                         let size = app_state.gpu.size();

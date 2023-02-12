@@ -263,17 +263,12 @@ impl GameUi {
         }
     }
 
-    pub fn update(
-        &mut self,
-        dt: std::time::Duration,
-        ctx: &mut AppContext,
-        game: &game_state::GameState,
-    ) {
+    pub fn update(&mut self, ctx: &mut AppContext, game: &game_state::GameState) {
         let pixels_per_unit = self.pixels_per_unit;
         let palette_shift = self.palette_shift();
         self.drawer_collision_space.update();
 
-        self.time += dt.as_secs_f32();
+        self.time += ctx.delta_t.as_secs_f32();
 
         if self.toggle_drawer_needed {
             self.drawer_open = !self.drawer_open;
@@ -298,7 +293,11 @@ impl GameUi {
 
         // update drawer uniforms
         let bounds = self.game_ui_map.bounds();
-        let drawer_offset = vec3(-bounds.width() / 2.0, self.update_drawer_position(dt), 0.0);
+        let drawer_offset = vec3(
+            -bounds.width() / 2.0,
+            self.update_drawer_position(ctx.delta_t),
+            0.0,
+        );
 
         self.drawer_uniforms
             .data
@@ -312,7 +311,7 @@ impl GameUi {
         let game_state_peek = game.game_state_peek();
         for e in self.entities.values_mut() {
             e.entity.update(
-                dt,
+                ctx.delta_t,
                 &self.game_ui_map,
                 &mut self.drawer_collision_space,
                 ctx.audio,
@@ -356,7 +355,7 @@ impl GameUi {
 
         // update countdowns
         self.start_message_blink_countdown =
-            (self.start_message_blink_countdown - dt.as_secs_f32()).max(0.0);
+            (self.start_message_blink_countdown - ctx.delta_t.as_secs_f32()).max(0.0);
     }
 
     pub fn render(
@@ -364,6 +363,7 @@ impl GameUi {
         _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
+        frame_index: u32,
     ) {
         let color_attachment = wgpu::RenderPassColorAttachment {
             view: &gpu.color_attachment.layer_array_views[0],

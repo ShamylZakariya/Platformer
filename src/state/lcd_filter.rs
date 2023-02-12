@@ -159,9 +159,7 @@ impl LcdFilter {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(
-                        &gpu.color_attachment.layer_array_views[0],
-                    ),
+                    resource: wgpu::BindingResource::TextureView(&gpu.color_attachment.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -249,12 +247,7 @@ impl LcdFilter {
         );
     }
 
-    pub fn update(
-        &mut self,
-        _dt: std::time::Duration,
-        ctx: &mut AppContext,
-        game: &game_state::GameState,
-    ) {
+    pub fn update(&mut self, ctx: &mut AppContext, game: &game_state::GameState) {
         // Determine an appropriate alpha for pixel effects - as window gets
         // smaller the effect needs to fade out, since it looks busy on small windows.
         // NOTE: min_high_freq and max_high_freq were determined via experimentation
@@ -269,16 +262,17 @@ impl LcdFilter {
             1.0 - (falloff * falloff)
         };
 
+        let layer_count = ctx.gpu.color_attachment.layer_array_views.len() as u32;
+        let current_layer = ctx.frame_idx % layer_count;
+
         self.uniforms
             .data
             .set_pixel_effect_alpha(pixel_effect_alpha)
             .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size())
-            .set_color_attachment_layer_index(0)
-            .set_color_attachment_layer_count(
-                ctx.gpu.color_attachment.layer_array_views.len() as u32
-            );
+            .set_color_attachment_layer_index(current_layer)
+            .set_color_attachment_layer_count(layer_count);
 
         self.uniforms.write(&mut ctx.gpu.queue);
     }
@@ -289,6 +283,7 @@ impl LcdFilter {
         _gpu: &mut gpu_state::GpuState,
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
+        frame_index: u32,
     ) {
         let view = output
             .texture
