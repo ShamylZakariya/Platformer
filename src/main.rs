@@ -48,6 +48,10 @@ pub struct Options {
     #[structopt(short, long, default_value = "gameboy")]
     pub palette: String,
 
+    /// If set, don't simulate gameboy's slow/sludgy pcd pixels
+    #[structopt(long)]
+    pub no_hysteresis: bool,
+
     /// Disables music
     #[structopt(short, long)]
     pub no_music: bool,

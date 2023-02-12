@@ -38,7 +38,7 @@ impl Default for LcdUniformData {
             shadow_effect_alpha: 1.0,
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
-            color_attachment_history_count: 5,
+            color_attachment_history_count: 0,
             padding_: 0,
         }
     }
@@ -79,6 +79,11 @@ impl LcdUniformData {
         self.color_attachment_layer_count = count;
         self
     }
+
+    pub fn set_color_attachment_history_count(&mut self, count: u32) -> &mut Self {
+        self.color_attachment_history_count = count;
+        self
+    }
 }
 
 pub type LcdUniforms = crate::util::UniformWrapper<LcdUniformData>;
@@ -91,10 +96,13 @@ pub struct LcdFilter {
     pipeline: wgpu::RenderPipeline,
     tonemap: Texture,
     uniforms: LcdUniforms,
+    lcd_hysteresis: Option<std::time::Duration>,
 }
 
 impl LcdFilter {
-    pub fn new(gpu: &mut gpu_state::GpuState, _options: &Options, tonemap: Texture) -> Self {
+    pub const DEFAULT_HYSTERESIS: std::time::Duration = std::time::Duration::from_millis(65);
+
+    pub fn new(gpu: &mut gpu_state::GpuState, options: &Options, tonemap: Texture) -> Self {
         let textures_bind_group_layout =
             gpu.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -144,12 +152,15 @@ impl LcdFilter {
             &uniforms.bind_group_layout,
         );
 
+        let lcd_hysteresis = (!options.no_hysteresis).then(|| Self::DEFAULT_HYSTERESIS);
+
         Self {
             textures_bind_group_layout,
             textures_bind_group,
             pipeline,
             tonemap,
             uniforms,
+            lcd_hysteresis,
         }
     }
 
@@ -268,6 +279,12 @@ impl LcdFilter {
 
         let layer_count = ctx.gpu.color_attachment.layer_array_views.len() as u32;
         let current_layer = ctx.frame_idx % layer_count;
+        let history_count = self.lcd_hysteresis.map_or_else(
+            || 1,
+            |hysteresis| {
+                (hysteresis.as_secs_f32() / ctx.real_delta_time.as_secs_f32()).ceil() as u32
+            },
+        );
 
         self.uniforms
             .data
@@ -276,7 +293,8 @@ impl LcdFilter {
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size())
             .set_color_attachment_layer_index(current_layer)
-            .set_color_attachment_layer_count(layer_count);
+            .set_color_attachment_layer_count(layer_count)
+            .set_color_attachment_history_count(history_count);
 
         self.uniforms.write(&mut ctx.gpu.queue);
     }
