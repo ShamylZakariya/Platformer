@@ -44,14 +44,14 @@ var<uniform> sprite_uniforms: SpriteUniforms;
 @vertex
 fn sprite_vs_main(in: VertexInput) -> FragmentInput {
 
-    let position = (sprite_uniforms.sprite_scale * in.position.xy) + sprite_uniforms.model_position.xy;
-    let position = round(position * sprite_uniforms.pixels_per_unit) / sprite_uniforms.pixels_per_unit;
+    var position = (sprite_uniforms.sprite_scale * in.position.xy) + sprite_uniforms.model_position.xy;
+    position = round(position * sprite_uniforms.pixels_per_unit) / sprite_uniforms.pixels_per_unit;
 
     // compute half-pixel outset bleed to mitigate cracking, since we can't use
     // indexed meshes because of non-continous tex coord assignment
 
     let outset = vec2<f32>(0.25 / camera_uniforms.framebuffer_size.x, 0.25 / camera_uniforms.framebuffer_size.y);
-    let position = position + in.corner * outset;
+    position = position + in.corner * outset;
 
     var out: FragmentInput;
     out.tex_coords = in.tex_coords + sprite_uniforms.tex_coord_offset;

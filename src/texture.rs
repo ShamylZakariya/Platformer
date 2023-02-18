@@ -60,6 +60,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
         });
 
         queue.write_texture(
@@ -117,6 +118,7 @@ impl Texture {
             dimension: wgpu::TextureDimension::D2,
             format: Self::DEPTH_FORMAT,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -127,9 +129,9 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Nearest,
-            compare: Some(wgpu::CompareFunction::LessEqual), // 5.
-            lod_min_clamp: -100.0,
-            lod_max_clamp: 100.0,
+            compare: Some(wgpu::CompareFunction::LessEqual),
+            lod_min_clamp: 0.0,
+            lod_max_clamp: 0.0,
             ..Default::default()
         });
 
@@ -163,6 +165,7 @@ impl Texture {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
@@ -209,6 +212,7 @@ impl Texture {
             format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
             label: Some(label),
+            view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -225,9 +229,9 @@ impl Texture {
         let layer_array_views = (0..count)
             .map(|i| {
                 texture.create_view(&wgpu::TextureViewDescriptor {
-                    label: Some("shadow view"),
-                    format: None,
-                    dimension: Some(wgpu::TextureViewDimension::D2Array),
+                    label: Some(&format!("Color texture array view[{}]", i)),
+                    format: Some(format),
+                    dimension: Some(wgpu::TextureViewDimension::D2),
                     aspect: wgpu::TextureAspect::All,
                     base_mip_level: 0,
                     mip_level_count: None,

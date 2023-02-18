@@ -16,8 +16,14 @@ impl GpuState {
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
 
-        let instance = wgpu::Instance::new(wgpu::Backends::all());
-        let surface = unsafe { instance.create_surface(window) };
+        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+            backends: wgpu::Backends::all(),
+            ..Default::default()
+        });
+
+        let surface = unsafe { instance.create_surface(window) }
+            .expect("Expected wgpu instance to create surface.");
+
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
@@ -39,16 +45,23 @@ impl GpuState {
             .await
             .unwrap();
 
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps
+            .formats
+            .iter()
+            .copied()
+            .filter(|f| f.describe().srgb)
+            .next()
+            .unwrap_or(surface_caps.formats[0]);
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: *surface
-                .get_supported_formats(&adapter)
-                .first()
-                .expect("Unable to find a surface compatible with the adapter"),
+            format: surface_format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
         };
         surface.configure(&device, &config);
 
