@@ -371,7 +371,7 @@ impl GameUi {
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Load,
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         };
 
@@ -379,7 +379,7 @@ impl GameUi {
             view: &gpu.depth_attachment.view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Load,
-                store: true,
+                store: wgpu::StoreOp::Store,
             }),
             stencil_ops: None,
         };
@@ -388,6 +388,8 @@ impl GameUi {
             label: Some("Game UI Render Pass"),
             color_attachments: &[Some(color_attachment)],
             depth_stencil_attachment: Some(depth_attachment),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         render_pass.set_pipeline(&self.pipeline);

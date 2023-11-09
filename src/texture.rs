@@ -1,6 +1,6 @@
 use anyhow::*;
 use image::GenericImageView;
-use std::{num::NonZeroU32, path::Path};
+use std::path::Path;
 
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -73,8 +73,8 @@ impl Texture {
             &rgba,
             wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
-                rows_per_image: std::num::NonZeroU32::new(dimensions.1),
+                bytes_per_row: Some(4 * dimensions.0),
+                rows_per_image: Some(dimensions.1),
             },
             size,
         );
@@ -236,7 +236,7 @@ impl Texture {
                     base_mip_level: 0,
                     mip_level_count: None,
                     base_array_layer: i,
-                    array_layer_count: NonZeroU32::new(1),
+                    array_layer_count: Some(1),
                 })
             })
             .collect::<Vec<_>>();

@@ -632,7 +632,7 @@ impl GameState {
                     b: 1.0,
                     a: 1.0,
                 }),
-                store: true,
+                store: wgpu::StoreOp::Store,
             },
         };
 
@@ -640,7 +640,7 @@ impl GameState {
             view: &gpu.depth_attachment.view,
             depth_ops: Some(wgpu::Operations {
                 load: wgpu::LoadOp::Clear(1.0),
-                store: true,
+                store: wgpu::StoreOp::Store,
             }),
             stencil_ops: None,
         };
@@ -649,6 +649,8 @@ impl GameState {
             label: Some("Game State Render Pass"),
             color_attachments: &[Some(color_attachment)],
             depth_stencil_attachment: Some(depth_attachment),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         render_pass.set_pipeline(&self.sprite_render_pipeline);
