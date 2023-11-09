@@ -12,7 +12,7 @@ default = []
 [dependencies]
 anyhow = "1.0"
 bytemuck = { version = "1.10", features = ["derive"] }
-pollster = "0.2"
+pollster = "0.3"
 image = "0.24"
 # imgui = "0.11"
 # imgui-wgpu = "0.24"
@@ -23,7 +23,7 @@ winit = { version = "0.27" }
 wgpu = { version = "0.18" }
 xml-rs = "0.8"
 gilrs = "0.10"
-rodio = "0.16"
+rodio = "0.17"
 
 [dependencies.cgmath]
 version = "0.18"
