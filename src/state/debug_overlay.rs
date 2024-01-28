@@ -44,6 +44,10 @@ pub struct DebugOverlay {
 
 impl DebugOverlay {
     pub fn new(window: &Window, gpu: &GpuState) -> Self {
+        //
+        // ImGUI-wgpu only supports up to wgpu 0.17, and as such, we're out of luck.
+        //
+
         // let mut imgui = imgui::Context::create();
         // let mut winit_platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
         // winit_platform.attach_window(
