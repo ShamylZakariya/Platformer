@@ -19,6 +19,7 @@ pub struct LcdUniformData {
     pixels_per_unit: Vector2<f32>,
     pixel_effect_alpha: f32,
     shadow_effect_alpha: f32,
+    color_attachment_size: Vector2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
@@ -36,6 +37,7 @@ impl Default for LcdUniformData {
             pixels_per_unit: vec2(1.0, 1.0),
             pixel_effect_alpha: 1.0,
             shadow_effect_alpha: 1.0,
+            color_attachment_size: Vector2 { x: 0, y: 0 },
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
@@ -70,13 +72,15 @@ impl LcdUniformData {
         self
     }
 
-    pub fn set_color_attachment_layer_index(&mut self, index: u32) -> &mut Self {
-        self.color_attachment_layer_index = index;
+    pub fn set_color_attachment_extent(&mut self, extent: wgpu::Extent3d) -> &mut Self {
+        self.color_attachment_size.x = extent.width;
+        self.color_attachment_size.y = extent.height;
+        self.color_attachment_layer_count = extent.depth_or_array_layers;
         self
     }
 
-    pub fn set_color_attachment_layer_count(&mut self, count: u32) -> &mut Self {
-        self.color_attachment_layer_count = count;
+    pub fn set_color_attachment_layer_index(&mut self, index: u32) -> &mut Self {
+        self.color_attachment_layer_index = index;
         self
     }
 
@@ -91,11 +95,13 @@ pub type LcdUniforms = crate::util::UniformWrapper<LcdUniformData>;
 // ---------------------------------------------------------------------------------------------------------------------
 
 pub struct LcdFilter {
-    textures_bind_group_layout: wgpu::BindGroupLayout,
-    textures_bind_group: wgpu::BindGroup,
-    pipeline: wgpu::RenderPipeline,
-    tonemap: Texture,
+    display_pass_pipeline: wgpu::RenderPipeline,
+    display_pass_textures_bind_group_layout: wgpu::BindGroupLayout,
+    display_pass_textures_bind_group: wgpu::BindGroup,
+
     uniforms: LcdUniforms,
+    tonemap: Texture,
+
     lcd_hysteresis: Option<std::time::Duration>,
     frames_available_for_hysteresis: usize,
 }
@@ -105,6 +111,62 @@ impl LcdFilter {
     pub const DEFAULT_HYSTERESIS: std::time::Duration = std::time::Duration::from_millis(65);
 
     pub fn new(gpu: &mut gpu_state::GpuState, options: &Options, tonemap: Texture) -> Self {
+        let uniforms = LcdUniforms::new(&gpu.device);
+
+        let display_pass = Self::create_display_pass(gpu, &uniforms, gpu.config.format, &tonemap);
+
+        let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
+
+        Self {
+            display_pass_pipeline: display_pass.0,
+            display_pass_textures_bind_group_layout: display_pass.1,
+            display_pass_textures_bind_group: display_pass.2,
+            tonemap,
+            uniforms,
+            lcd_hysteresis,
+            frames_available_for_hysteresis: 0,
+        }
+    }
+
+    pub fn set_lcd_hysteresis(&mut self, hysteresis: Option<std::time::Duration>) {
+        self.lcd_hysteresis = hysteresis;
+    }
+
+    pub fn lcd_hysteresis(&self) -> Option<std::time::Duration> {
+        self.lcd_hysteresis
+    }
+
+    fn create_display_pass_textures_bind_group(
+        gpu: &gpu_state::GpuState,
+        layout: &wgpu::BindGroupLayout,
+        tonemap: &wgpu::TextureView,
+    ) -> wgpu::BindGroup {
+        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&gpu.color_attachment.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(tonemap),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
+                },
+            ],
+            label: Some("LcdFilter Bind Group"),
+        })
+    }
+
+    fn create_display_pass(
+        gpu: &mut gpu_state::GpuState,
+        lcd_uniforms: &LcdUniforms,
+        color_format: wgpu::TextureFormat,
+        tonemap: &Texture,
+    ) -> (wgpu::RenderPipeline, wgpu::BindGroupLayout, wgpu::BindGroup) {
         let textures_bind_group_layout =
             gpu.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -142,122 +204,70 @@ impl LcdFilter {
                     ],
                 });
 
-        let textures_bind_group =
-            Self::create_textures_bind_group(gpu, &textures_bind_group_layout, &tonemap.view);
-
-        let uniforms = LcdUniforms::new(&gpu.device);
-
-        let pipeline = Self::create_render_pipeline(
-            &gpu.device,
-            gpu.config.format,
+        let textures_bind_group = Self::create_display_pass_textures_bind_group(
+            gpu,
             &textures_bind_group_layout,
-            &uniforms.bind_group_layout,
+            &tonemap.view,
         );
 
-        let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
-
-        Self {
-            textures_bind_group_layout,
-            textures_bind_group,
-            pipeline,
-            tonemap,
-            uniforms,
-            lcd_hysteresis,
-            frames_available_for_hysteresis: 0,
-        }
-    }
-
-    pub fn set_lcd_hysteresis(&mut self, hysteresis: Option<std::time::Duration>) {
-        self.lcd_hysteresis = hysteresis;
-    }
-
-    pub fn lcd_hysteresis(&self) -> Option<std::time::Duration> {
-        self.lcd_hysteresis
-    }
-
-    fn create_textures_bind_group(
-        gpu: &gpu_state::GpuState,
-        layout: &wgpu::BindGroupLayout,
-        tonemap: &wgpu::TextureView,
-    ) -> wgpu::BindGroup {
-        gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&gpu.color_attachment.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(tonemap),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
-                },
-            ],
-            label: Some("LcdFilter Bind Group"),
-        })
-    }
-
-    fn create_render_pipeline(
-        device: &wgpu::Device,
-        color_format: wgpu::TextureFormat,
-        textures_bind_group_layout: &wgpu::BindGroupLayout,
-        uniforms_bind_group_layout: &wgpu::BindGroupLayout,
-    ) -> wgpu::RenderPipeline {
         let lcd_wgsl = wgpu::include_wgsl!("../shaders/lcd.wgsl");
-        let shader = device.create_shader_module(lcd_wgsl);
+        let lcd_shader = gpu.device.create_shader_module(lcd_wgsl);
 
-        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("LcdFilter Render Pipeline Layout"),
-            bind_group_layouts: &[textures_bind_group_layout, uniforms_bind_group_layout],
-            push_constant_ranges: &[],
-        });
+        let pipeline_layout = gpu
+            .device
+            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("LcdFilter Render Pipeline Layout"),
+                bind_group_layouts: &[&textures_bind_group_layout, &lcd_uniforms.bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("LcdFilter Render Pipeline"),
-            layout: Some(&layout),
+        let pipeline = gpu
+            .device
+            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("LcdFilter Render Pipeline"),
+                layout: Some(&pipeline_layout),
 
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: "lcd_vs_main",
-                buffers: &[],
-            },
+                vertex: wgpu::VertexState {
+                    module: &lcd_shader,
+                    entry_point: "lcd_vs_main",
+                    buffers: &[],
+                },
 
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: "lcd_fs_main",
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: color_format,
-                    blend: Some(wgpu::BlendState {
-                        color: wgpu::BlendComponent::REPLACE,
-                        alpha: wgpu::BlendComponent::REPLACE,
-                    }),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
+                fragment: Some(wgpu::FragmentState {
+                    module: &lcd_shader,
+                    entry_point: "lcd_fs_main",
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: color_format,
+                        blend: Some(wgpu::BlendState {
+                            color: wgpu::BlendComponent::REPLACE,
+                            alpha: wgpu::BlendComponent::REPLACE,
+                        }),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
 
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleStrip,
-                strip_index_format: None,
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: None,
-                polygon_mode: wgpu::PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleStrip,
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Cw,
+                    cull_mode: None,
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    unclipped_depth: false,
+                    conservative: false,
+                },
 
-            depth_stencil: None,
+                depth_stencil: None,
 
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+                multisample: wgpu::MultisampleState {
+                    count: 1,
+                    mask: !0,
+                    alpha_to_coverage_enabled: false,
+                },
 
-            multiview: None,
-        })
+                multiview: None,
+            });
+
+        (pipeline, textures_bind_group_layout, textures_bind_group)
     }
 
     pub fn resize(
@@ -268,9 +278,9 @@ impl LcdFilter {
     ) {
         // new color buffer means we lose our history sample range
         self.frames_available_for_hysteresis = 0;
-        self.textures_bind_group = Self::create_textures_bind_group(
+        self.display_pass_textures_bind_group = Self::create_display_pass_textures_bind_group(
             gpu,
-            &self.textures_bind_group_layout,
+            &self.display_pass_textures_bind_group_layout,
             &self.tonemap.view,
         );
     }
@@ -290,7 +300,8 @@ impl LcdFilter {
             1.0 - (falloff * falloff)
         };
 
-        let layer_count = ctx.gpu.color_attachment.layer_array_views.len() as u32;
+        let color_attachment_extent = ctx.gpu.color_attachment.extent;
+        let layer_count = color_attachment_extent.depth_or_array_layers;
         let current_layer = ctx.frame_idx % layer_count;
         let history_count = self
             .lcd_hysteresis
@@ -310,7 +321,7 @@ impl LcdFilter {
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size())
             .set_color_attachment_layer_index(current_layer)
-            .set_color_attachment_layer_count(layer_count)
+            .set_color_attachment_extent(color_attachment_extent)
             .set_color_attachment_history_count(history_count);
 
         self.uniforms.write(&mut ctx.gpu.queue);
@@ -343,8 +354,8 @@ impl LcdFilter {
             occlusion_query_set: None,
         });
 
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &self.textures_bind_group, &[]);
+        render_pass.set_pipeline(&self.display_pass_pipeline);
+        render_pass.set_bind_group(0, &self.display_pass_textures_bind_group, &[]);
         render_pass.set_bind_group(1, &self.uniforms.bind_group, &[]);
         render_pass.draw(0..3, 0..1); //FSQ
 

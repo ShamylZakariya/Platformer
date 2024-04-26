@@ -22,7 +22,10 @@
             "args": [
                 "--no-music",
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "WINIT_UNIX_BACKEND": "x11"
+            }
         },
         {
             "type": "lldb",
@@ -44,7 +47,10 @@
                 "1",
                 "-n"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "WINIT_UNIX_BACKEND": "x11"
+            }
         },
         {
             "type": "lldb",
@@ -65,7 +71,10 @@
                 "--no-music",
                 "--debug-overlay"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "WINIT_UNIX_BACKEND": "x11"
+            }
         },
         {
             "type": "lldb",
@@ -84,7 +93,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "WINIT_UNIX_BACKEND": "x11"
+            }
         }
     ]
 }

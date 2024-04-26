@@ -11,6 +11,7 @@ pub struct Texture {
     pub sampler: wgpu::Sampler,
     pub view_dimension: wgpu::TextureViewDimension,
     pub format: wgpu::TextureFormat,
+    pub extent: wgpu::Extent3d,
 }
 
 #[allow(dead_code)]
@@ -97,6 +98,7 @@ impl Texture {
             sampler,
             view_dimension: wgpu::TextureViewDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            extent: size,
         })
     }
 
@@ -142,6 +144,7 @@ impl Texture {
             sampler,
             view_dimension: wgpu::TextureViewDimension::D2,
             format: Self::DEPTH_FORMAT,
+            extent: size,
         }
     }
 
@@ -189,6 +192,7 @@ impl Texture {
             sampler,
             view_dimension: wgpu::TextureViewDimension::D2,
             format: config.format,
+            extent: size,
         }
     }
 
@@ -200,12 +204,13 @@ impl Texture {
         format: wgpu::TextureFormat,
         label: &str,
     ) -> Self {
+        let size = wgpu::Extent3d {
+            width,
+            height,
+            depth_or_array_layers: count,
+        };
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            size: wgpu::Extent3d {
-                width,
-                height,
-                depth_or_array_layers: count,
-            },
+            size,
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
@@ -248,6 +253,7 @@ impl Texture {
             sampler,
             view_dimension: wgpu::TextureViewDimension::D2Array,
             format,
+            extent: size,
         }
     }
 }
