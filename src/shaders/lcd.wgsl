@@ -53,9 +53,9 @@ fn inner_shadow(st: vec2<f32>, x_width: f32, y_width: f32) -> f32 {
     var right = 1.0 - min((1.0 - st.x) / x_width, 1.0);
     var top = 1.0 - min((1.0 - st.y) / y_width, 1.0);
 
-    left = pow(left, 4.0);
-    right = pow(right, 4.0);
-    top = pow(top, 4.0);
+    left = pow(left, 3.0);
+    right = pow(right, 3.0);
+    top = pow(top, 3.0);
 
     return min(left + right + top, 1.0);
 }
@@ -118,7 +118,7 @@ fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
     palettized_color = mix(palettized_color, grid_color.xyz, 0.5 * PIXEL_EFFECT_ALPHA * (1.0 - lcd_uniforms.pixel_effect_alpha));
 
     let shadow_color = vec3<f32>(0.0);
-    palettized_color = mix(palettized_color, shadow_color, SHADOW_ALPHA * lcd_uniforms.shadow_effect_alpha * inner_shadow(in.tex_coord, 0.1, 0.2));
+    palettized_color = mix(palettized_color, shadow_color, SHADOW_ALPHA * lcd_uniforms.shadow_effect_alpha * inner_shadow(in.tex_coord, 0.2, 0.4));
 
     return vec4<f32>(palettized_color, 1.0);
 }
