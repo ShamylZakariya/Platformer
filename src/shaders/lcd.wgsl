@@ -24,6 +24,9 @@ var color_attachment_texture: texture_2d_array<f32>;
 var tonemap_texture: texture_2d<f32>;
 
 @group(0) @binding(2)
+var column_average_weights_texture: texture_2d<f32>;
+
+@group(0) @binding(3)
 var color_sampler: sampler;
 
 @group(1) @binding(0)
@@ -74,7 +77,11 @@ fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
         accumulator += palettized_color;
     }
 
-    return accumulator / f32(history_count);
+    let averaged_color = accumulator / f32(history_count);
+    let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(tex_coord.x, 0.0)).r;
+    let column_bleed = pow(column_weight, 0.125);
+
+    return averaged_color * column_bleed;
 }
 
 ///////////////////////////////////////////////////////////////////////

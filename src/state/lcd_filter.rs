@@ -128,18 +128,23 @@ impl LcdFilter {
 
     pub fn new(gpu: &mut gpu_state::GpuState, options: &Options, tonemap: Texture) -> Self {
         let uniforms = LcdUniforms::new(&gpu.device);
-
-        let display_pass = Self::create_display_pass(gpu, &uniforms, gpu.config.format, &tonemap);
-
-        let column_avg_pass = Self::create_column_averaging_pass(gpu, &uniforms, gpu.config.format);
-
         let column_avg_color_attachment = texture::Texture::create_color_texture(
             &gpu.device,
-            gpu.config.width,
+            160, // FIXME: This is a default, sane width but we need access to game state to know the right value
             1,
             gpu.config.format,
             "LcdFilter Column Averaging Render Pass Color Attachment",
         );
+
+        let display_pass = Self::create_display_pass(
+            gpu,
+            &uniforms,
+            gpu.config.format,
+            &tonemap,
+            &column_avg_color_attachment,
+        );
+
+        let column_avg_pass = Self::create_column_averaging_pass(gpu, &uniforms, gpu.config.format);
 
         let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
 
@@ -199,6 +204,7 @@ impl LcdFilter {
             gpu,
             &self.display_pass_textures_bind_group_layout,
             &self.tonemap.view,
+            &self.column_avg_color_attachment.view,
         );
     }
 
@@ -306,6 +312,7 @@ impl LcdFilter {
         gpu: &gpu_state::GpuState,
         layout: &wgpu::BindGroupLayout,
         tonemap: &wgpu::TextureView,
+        column_average_weights: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
@@ -320,6 +327,10 @@ impl LcdFilter {
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
+                    resource: wgpu::BindingResource::TextureView(column_average_weights),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
                     resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
                 },
             ],
@@ -332,6 +343,7 @@ impl LcdFilter {
         lcd_uniforms: &LcdUniforms,
         color_format: wgpu::TextureFormat,
         tonemap: &Texture,
+        column_weights: &Texture,
     ) -> (wgpu::RenderPipeline, wgpu::BindGroupLayout, wgpu::BindGroup) {
         let textures_bind_group_layout =
             gpu.device
@@ -360,9 +372,20 @@ impl LcdFilter {
                             },
                             count: None,
                         },
-                        // Sampler
+                        // Column Averaging Map
                         wgpu::BindGroupLayoutEntry {
                             binding: 2,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                multisampled: false,
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                            },
+                            count: None,
+                        },
+                        // Sampler
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 3,
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
@@ -374,6 +397,7 @@ impl LcdFilter {
             gpu,
             &textures_bind_group_layout,
             &tonemap.view,
+            &column_weights.view,
         );
 
         let lcd_wgsl = wgpu::include_wgsl!("../shaders/lcd.wgsl");
