@@ -150,12 +150,14 @@ impl Texture {
 
     pub fn create_color_texture(
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
+        width: u32,
+        height: u32,
+        format: wgpu::TextureFormat,
         label: &str,
     ) -> Self {
         let size = wgpu::Extent3d {
-            width: config.width,
-            height: config.height,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         let desc = wgpu::TextureDescriptor {
@@ -164,7 +166,7 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: config.format,
+            format: format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST,
@@ -172,7 +174,7 @@ impl Texture {
         };
         let texture = device.create_texture(&desc);
         let view = texture.create_view(&wgpu::TextureViewDescriptor {
-            format: Some(config.format),
+            format: Some(format),
             ..Default::default()
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -191,7 +193,7 @@ impl Texture {
             layer_array_views: vec![],
             sampler,
             view_dimension: wgpu::TextureViewDimension::D2,
-            format: config.format,
+            format,
             extent: size,
         }
     }

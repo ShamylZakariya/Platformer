@@ -7,6 +7,7 @@ struct LcdUniforms {
     camera_position: vec2<f32>,
     viewport_size: vec2<f32>,
     pixels_per_unit: vec2<f32>,
+    lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
     shadow_effect_alpha: f32,
     color_attachment_size: vec2<u32>,
@@ -41,20 +42,21 @@ fn vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 }
 
 fn average_column(tc: vec2<f32>) -> f32 {
-    let rows:u32 = lcd_uniforms.color_attachment_size.y;
-    let row_step: f32 = 1.0 / f32(rows);
+    let row_step: f32 = 1.0 / lcd_uniforms.lcd_resolution.y;
     let layer = lcd_uniforms.color_attachment_layer_index;
 
     var accumulator:f32 = 0.0;
-    var row_tc = 0.0;
+    var row_tc = row_step * 0.5;
+    var samples = 0.0;
 
-    for (var i = 0u; i < rows; i += 1u) {
+    while (row_tc < 1.0) {
         let tex_coord = vec2<f32>(tc.x, row_tc);
         accumulator += textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
         row_tc += row_step;
+        samples += 1.0;
     }
 
-    return accumulator / f32(rows);
+    return accumulator / samples;
 }
 
 @fragment

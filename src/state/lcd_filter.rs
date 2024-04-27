@@ -1,7 +1,10 @@
 use cgmath::*;
 use winit::window::Window;
 
-use crate::{texture::Texture, Options};
+use crate::{
+    texture::{self, Texture},
+    Options,
+};
 
 use super::{
     app_state::AppContext,
@@ -17,6 +20,7 @@ pub struct LcdUniformData {
     camera_position: Point2<f32>,
     viewport_size: Vector2<f32>,
     pixels_per_unit: Vector2<f32>,
+    lcd_resolution: Vector2<f32>,
     pixel_effect_alpha: f32,
     shadow_effect_alpha: f32,
     color_attachment_size: Vector2<u32>,
@@ -35,6 +39,7 @@ impl Default for LcdUniformData {
             camera_position: point2(0.0, 0.0),
             viewport_size: vec2(1.0, 1.0),
             pixels_per_unit: vec2(1.0, 1.0),
+            lcd_resolution: vec2(0.0, 0.0),
             pixel_effect_alpha: 1.0,
             shadow_effect_alpha: 1.0,
             color_attachment_size: Vector2 { x: 0, y: 0 },
@@ -88,6 +93,12 @@ impl LcdUniformData {
         self.color_attachment_history_count = count;
         self
     }
+
+    pub fn set_lcd_resolution(&mut self, width: f32, height: f32) -> &mut Self {
+        self.lcd_resolution.x = width;
+        self.lcd_resolution.y = height;
+        self
+    }
 }
 
 pub type LcdUniforms = crate::util::UniformWrapper<LcdUniformData>;
@@ -102,6 +113,7 @@ pub struct LcdFilter {
     column_avg_pass_pipeline: wgpu::RenderPipeline,
     column_avg_pass_textures_bind_group_layout: wgpu::BindGroupLayout,
     column_avg_pass_textures_bind_group: wgpu::BindGroup,
+    column_avg_color_attachment: Texture,
 
     uniforms: LcdUniforms,
     tonemap: Texture,
@@ -119,8 +131,15 @@ impl LcdFilter {
 
         let display_pass = Self::create_display_pass(gpu, &uniforms, gpu.config.format, &tonemap);
 
-        let column_averaging_pass =
-            Self::create_column_averaging_pass(gpu, &uniforms, gpu.config.format);
+        let column_avg_pass = Self::create_column_averaging_pass(gpu, &uniforms, gpu.config.format);
+
+        let column_avg_color_attachment = texture::Texture::create_color_texture(
+            &gpu.device,
+            gpu.config.width,
+            1,
+            gpu.config.format,
+            "LcdFilter Column Averaging Render Pass Color Attachment",
+        );
 
         let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
 
@@ -129,9 +148,10 @@ impl LcdFilter {
             display_pass_textures_bind_group_layout: display_pass.1,
             display_pass_textures_bind_group: display_pass.2,
 
-            column_avg_pass_pipeline: column_averaging_pass.0,
-            column_avg_pass_textures_bind_group_layout: column_averaging_pass.1,
-            column_avg_pass_textures_bind_group: column_averaging_pass.2,
+            column_avg_pass_pipeline: column_avg_pass.0,
+            column_avg_pass_textures_bind_group_layout: column_avg_pass.1,
+            column_avg_pass_textures_bind_group: column_avg_pass.2,
+            column_avg_color_attachment,
 
             uniforms,
             tonemap,
@@ -153,14 +173,20 @@ impl LcdFilter {
         _window: &Window,
         _new_size: winit::dpi::PhysicalSize<u32>,
         gpu: &gpu_state::GpuState,
+        game: &game_state::GameState,
     ) {
         // new color buffer means we lose our history sample range
         self.frames_available_for_hysteresis = 0;
 
-        self.display_pass_textures_bind_group = Self::create_display_pass_textures_bind_group(
-            gpu,
-            &self.display_pass_textures_bind_group_layout,
-            &self.tonemap.view,
+        let lcd_resolution_width =
+            (game.camera_controller.projection.scale() * game.pixels_per_unit.x).ceil() as u32;
+
+        self.column_avg_color_attachment = texture::Texture::create_color_texture(
+            &gpu.device,
+            lcd_resolution_width,
+            1,
+            gpu.config.format,
+            "LcdFilter Column Averaging Render Pass Color Attachment",
         );
 
         self.column_avg_pass_textures_bind_group =
@@ -168,6 +194,12 @@ impl LcdFilter {
                 gpu,
                 &self.column_avg_pass_textures_bind_group_layout,
             );
+
+        self.display_pass_textures_bind_group = Self::create_display_pass_textures_bind_group(
+            gpu,
+            &self.display_pass_textures_bind_group_layout,
+            &self.tonemap.view,
+        );
     }
 
     pub fn update(&mut self, ctx: &mut AppContext, game: &game_state::GameState) {
@@ -199,6 +231,13 @@ impl LcdFilter {
             .min(self.frames_available_for_hysteresis as u32)
             .max(1_u32);
 
+        let ctx_width = ctx.gpu.config.width as f32;
+        let ctx_height = ctx.gpu.config.height as f32;
+        let lcd_resolution_width =
+            game.camera_controller.projection.scale() * game.pixels_per_unit.x;
+        let lcd_pixel_size = ctx_width / lcd_resolution_width;
+        let lcd_resolution_height = ctx_height / lcd_pixel_size;
+
         self.uniforms
             .data
             .set_pixel_effect_alpha(pixel_effect_alpha)
@@ -207,7 +246,8 @@ impl LcdFilter {
             .set_viewport_size(game.camera_controller.projection.viewport_size())
             .set_color_attachment_layer_index(current_layer)
             .set_color_attachment_extent(color_attachment_extent)
-            .set_color_attachment_history_count(history_count);
+            .set_color_attachment_history_count(history_count)
+            .set_lcd_resolution(lcd_resolution_width, lcd_resolution_height);
 
         self.uniforms.write(&mut ctx.gpu.queue);
     }
@@ -219,6 +259,20 @@ impl LcdFilter {
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
         _frame_index: usize,
+    ) {
+        self.render_column_averaging_pass(encoder);
+        self.render_display_pass(gpu, output, encoder);
+    }
+
+    //
+    //  Display Pass
+    //
+
+    fn render_display_pass(
+        &mut self,
+        gpu: &mut gpu_state::GpuState,
+        output: &wgpu::SurfaceTexture,
+        encoder: &mut wgpu::CommandEncoder,
     ) {
         let view = output
             .texture
@@ -247,10 +301,6 @@ impl LcdFilter {
         self.frames_available_for_hysteresis = (self.frames_available_for_hysteresis + 1)
             .min(gpu.color_attachment.layer_array_views.len());
     }
-
-    //
-    //  Display Pass
-    //
 
     fn create_display_pass_textures_bind_group(
         gpu: &gpu_state::GpuState,
@@ -389,6 +439,35 @@ impl LcdFilter {
     //
     //  Column Averaging Pass
     //
+
+    fn render_column_averaging_pass(&mut self, encoder: &mut wgpu::CommandEncoder) {
+        let color_attachment = wgpu::RenderPassColorAttachment {
+            view: &self.column_avg_color_attachment.view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: 1.0,
+                    g: 1.0,
+                    b: 1.0,
+                    a: 1.0,
+                }),
+                store: wgpu::StoreOp::Store,
+            },
+        };
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("LcdFilter Column Averaging Render Pass"),
+            color_attachments: &[Some(color_attachment)],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        render_pass.set_pipeline(&self.column_avg_pass_pipeline);
+        render_pass.set_bind_group(0, &self.column_avg_pass_textures_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.uniforms.bind_group, &[]);
+        render_pass.draw(0..3, 0..1); //FSQ
+    }
 
     fn create_column_averaging_pass_textures_bind_group(
         gpu: &gpu_state::GpuState,

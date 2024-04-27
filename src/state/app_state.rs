@@ -98,7 +98,8 @@ impl AppState {
         self.gpu.resize(window, new_size);
         self.game_state.resize(window, new_size, &self.gpu);
         self.game_ui.resize(window, new_size, &self.gpu);
-        self.lcd_filter.resize(window, new_size, &self.gpu);
+        self.lcd_filter
+            .resize(window, new_size, &self.gpu, &self.game_state);
     }
 
     pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {

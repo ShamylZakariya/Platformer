@@ -2,7 +2,7 @@
     "rdocCaptureSettings": 1,
     "settings": {
         "autoStart": false,
-        "commandLine": "",
+        "commandLine": "WINIT_UNIX_BACKEND=x11",
         "environment": [
         ],
         "executable": "/home/shamyl/Code/Platformer/target/debug/platformer",
@@ -19,6 +19,7 @@
             "delayForDebugger": 0,
             "hookIntoChildren": false,
             "refAllResources": false,
+            "softMemoryLimit": 0,
             "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,
