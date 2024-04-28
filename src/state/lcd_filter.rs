@@ -41,7 +41,7 @@ impl Default for LcdUniformData {
             pixels_per_unit: vec2(1.0, 1.0),
             lcd_resolution: vec2(0.0, 0.0),
             pixel_effect_alpha: 1.0,
-            shadow_effect_alpha: 1.0,
+            shadow_effect_alpha: 0.7,
             color_attachment_size: Vector2 { x: 0, y: 0 },
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
