@@ -9,6 +9,7 @@ struct LcdUniforms {
     pixels_per_unit: vec2<f32>,
     lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
+    pixel_effect_hardness: f32,
     shadow_effect_alpha: f32,
     color_attachment_size: vec2<u32>,
     color_attachment_layer_index: u32,
@@ -66,15 +67,15 @@ fn fbm(t: vec2<f32>) -> f32 {
 
 ///////////////////////////////////////////////////////////////////////
 
-const PIXEL_EFFECT_ALPHA:f32 = 0.65;
-const PIXEL_EFFECT_HARDNESS:f32 = 3.0;
 const REFLECTOR_SPARKLE:f32 = 0.1;
+
+///////////////////////////////////////////////////////////////////////
 
 fn soft_grid(st: vec2<f32>, camera_position: vec2<f32>, viewport_size: vec2<f32>, pixels_per_unit: vec2<f32>) -> f32 {
     // camera is centered, so we count pixels out from center
     let coord = ((st - vec2(0.5)) * pixels_per_unit * viewport_size);
     var dist = abs(fract(coord) - 0.5) * 2.0;
-    dist = pow(dist, vec2(PIXEL_EFFECT_HARDNESS));
+    dist = pow(dist, vec2(lcd_uniforms.pixel_effect_hardness));
 
     let i = min(dist.r + dist.g, 1.0);
     return i;
@@ -163,8 +164,8 @@ fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
     let grid_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(1.0, 1.0));
     let grid = soft_grid(in.tex_coord, lcd_uniforms.camera_position, lcd_uniforms.viewport_size, lcd_uniforms.pixels_per_unit);
 
-    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, grid * PIXEL_EFFECT_ALPHA * lcd_uniforms.pixel_effect_alpha);
-    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, 0.5 * PIXEL_EFFECT_ALPHA * (1.0 - lcd_uniforms.pixel_effect_alpha));
+    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, grid * lcd_uniforms.pixel_effect_alpha);
+    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, 0.5 * (1.0 - lcd_uniforms.pixel_effect_alpha));
 
     // mix in lcd back reflector "sparkle" based on opacity of the lcd cell,
     // e.g., the darker the pixel, the less sparkle

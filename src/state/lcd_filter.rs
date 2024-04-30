@@ -22,12 +22,14 @@ pub struct LcdUniformData {
     pixels_per_unit: Vector2<f32>,
     lcd_resolution: Vector2<f32>,
     pixel_effect_alpha: f32,
+    pixel_effect_hardness: f32,
     shadow_effect_alpha: f32,
+    padding_: u32,
     color_attachment_size: Vector2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
-    padding_: u32,
+    padding2_: u32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -41,12 +43,14 @@ impl Default for LcdUniformData {
             pixels_per_unit: vec2(1.0, 1.0),
             lcd_resolution: vec2(0.0, 0.0),
             pixel_effect_alpha: 1.0,
+            pixel_effect_hardness: 3.0,
             shadow_effect_alpha: 0.7,
             color_attachment_size: Vector2 { x: 0, y: 0 },
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
             padding_: 0,
+            padding2_: 0,
         }
     }
 }
@@ -54,6 +58,11 @@ impl Default for LcdUniformData {
 impl LcdUniformData {
     pub fn set_pixel_effect_alpha(&mut self, pixel_effect_alpha: f32) -> &mut Self {
         self.pixel_effect_alpha = pixel_effect_alpha;
+        self
+    }
+
+    pub fn set_pixel_effect_hardness(&mut self, pixel_effect_hardness: f32) -> &mut Self {
+        self.pixel_effect_hardness = pixel_effect_hardness;
         self
     }
 
@@ -212,7 +221,7 @@ impl LcdFilter {
         // Determine an appropriate alpha for pixel effects - as window gets
         // smaller the effect needs to fade out, since it looks busy on small windows.
         // NOTE: min_high_freq and max_high_freq were determined via experimentation
-        let pixel_effect_alpha = {
+        let pixel_effect_alpha = 0.8 * {
             let frequency = (game.camera_controller.projection.scale() * game.pixels_per_unit.x)
                 / ctx.gpu.config.width as f32;
 
@@ -221,6 +230,21 @@ impl LcdFilter {
             let falloff =
                 ((frequency - min_high_freq) / (max_high_freq - min_high_freq)).clamp(0.0, 1.0);
             1.0 - (falloff * falloff)
+        };
+
+        // pixel effect hardness should go up as the LCD pixel size goes above 3 or so display pixels
+        let pixel_effect_hardness = {
+            let lcd_pixel_size = ctx.gpu.config.width as f32
+                / (game.camera_controller.projection.scale() * game.pixels_per_unit.x);
+            let min_hardness = 3.0_f32;
+            let max_hardness = 7.0_f32;
+            let min_lcd_pixel_size = 2.0_f32;
+            let max_lcd_pixel_size = 10.0_f32;
+            let v = ((lcd_pixel_size - min_lcd_pixel_size)
+                / (max_lcd_pixel_size - min_lcd_pixel_size))
+                .clamp(0.0, 1.0)
+                .powf(2.0);
+            min_hardness + v * (max_hardness - min_hardness)
         };
 
         let color_attachment_extent = ctx.gpu.color_attachment.extent;
@@ -247,6 +271,7 @@ impl LcdFilter {
         self.uniforms
             .data
             .set_pixel_effect_alpha(pixel_effect_alpha)
+            .set_pixel_effect_hardness(pixel_effect_hardness)
             .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_viewport_size(game.camera_controller.projection.viewport_size())

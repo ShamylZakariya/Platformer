@@ -9,6 +9,7 @@ struct LcdUniforms {
     pixels_per_unit: vec2<f32>,
     lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
+    pixel_effect_hardness: f32,
     shadow_effect_alpha: f32,
     color_attachment_size: vec2<u32>,
     color_attachment_layer_index: u32,
