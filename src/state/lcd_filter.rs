@@ -19,6 +19,7 @@ use super::{
 pub struct LcdUniformData {
     camera_position: Point2<f32>,
     viewport_size: Vector2<f32>,
+    context_size: Vector2<f32>,
     pixels_per_unit: Vector2<f32>,
     lcd_resolution: Vector2<f32>,
     pixel_effect_alpha: f32,
@@ -40,6 +41,7 @@ impl Default for LcdUniformData {
         Self {
             camera_position: point2(0.0, 0.0),
             viewport_size: vec2(1.0, 1.0),
+            context_size: vec2(0.0, 0.0),
             pixels_per_unit: vec2(1.0, 1.0),
             lcd_resolution: vec2(0.0, 0.0),
             pixel_effect_alpha: 1.0,
@@ -56,6 +58,16 @@ impl Default for LcdUniformData {
 }
 
 impl LcdUniformData {
+    pub fn set_viewport_size(&mut self, viewport_size: Vector2<f32>) -> &mut Self {
+        self.viewport_size = viewport_size;
+        self
+    }
+
+    pub fn set_context_size(&mut self, output_size: Vector2<f32>) -> &mut Self {
+        self.context_size = output_size;
+        self
+    }
+
     pub fn set_pixel_effect_alpha(&mut self, pixel_effect_alpha: f32) -> &mut Self {
         self.pixel_effect_alpha = pixel_effect_alpha;
         self
@@ -73,11 +85,6 @@ impl LcdUniformData {
 
     pub fn set_camera_position(&mut self, camera_position: Point2<f32>) -> &mut Self {
         self.camera_position = camera_position;
-        self
-    }
-
-    pub fn set_viewport_size(&mut self, viewport_size: Vector2<f32>) -> &mut Self {
-        self.viewport_size = viewport_size;
         self
     }
 
@@ -126,6 +133,7 @@ pub struct LcdFilter {
 
     uniforms: LcdUniforms,
     tonemap: Texture,
+    noise: Texture,
 
     lcd_hysteresis: Option<std::time::Duration>,
     frames_available_for_hysteresis: usize,
@@ -145,11 +153,16 @@ impl LcdFilter {
             "LcdFilter Column Averaging Render Pass Color Attachment",
         );
 
+        let noise_texture = "res/white_noise.png";
+        let noise = texture::Texture::load(&gpu.device, &gpu.queue, noise_texture)
+            .expect(&format!("Expected to load noise texture {}", noise_texture));
+
         let display_pass = Self::create_display_pass(
             gpu,
             &uniforms,
             gpu.config.format,
             &tonemap,
+            &noise,
             &column_avg_color_attachment,
         );
 
@@ -169,6 +182,7 @@ impl LcdFilter {
 
             uniforms,
             tonemap,
+            noise,
             lcd_hysteresis,
             frames_available_for_hysteresis: 0,
         }
@@ -213,6 +227,7 @@ impl LcdFilter {
             gpu,
             &self.display_pass_textures_bind_group_layout,
             &self.tonemap.view,
+            &self.noise.view,
             &self.column_avg_color_attachment.view,
         );
     }
@@ -270,11 +285,12 @@ impl LcdFilter {
 
         self.uniforms
             .data
+            .set_viewport_size(game.camera_controller.projection.viewport_size())
+            .set_context_size(vec2(ctx_width, ctx_height))
             .set_pixel_effect_alpha(pixel_effect_alpha)
             .set_pixel_effect_hardness(pixel_effect_hardness)
             .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
-            .set_viewport_size(game.camera_controller.projection.viewport_size())
             .set_color_attachment_layer_index(current_layer)
             .set_color_attachment_extent(color_attachment_extent)
             .set_color_attachment_history_count(history_count)
@@ -337,6 +353,7 @@ impl LcdFilter {
         gpu: &gpu_state::GpuState,
         layout: &wgpu::BindGroupLayout,
         tonemap: &wgpu::TextureView,
+        noise: &wgpu::TextureView,
         column_average_weights: &wgpu::TextureView,
     ) -> wgpu::BindGroup {
         gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -356,6 +373,10 @@ impl LcdFilter {
                 },
                 wgpu::BindGroupEntry {
                     binding: 3,
+                    resource: wgpu::BindingResource::TextureView(noise),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
                     resource: wgpu::BindingResource::Sampler(&gpu.color_attachment.sampler),
                 },
             ],
@@ -368,6 +389,7 @@ impl LcdFilter {
         lcd_uniforms: &LcdUniforms,
         color_format: wgpu::TextureFormat,
         tonemap: &Texture,
+        noise: &Texture,
         column_weights: &Texture,
     ) -> (wgpu::RenderPipeline, wgpu::BindGroupLayout, wgpu::BindGroup) {
         let textures_bind_group_layout =
@@ -408,9 +430,20 @@ impl LcdFilter {
                             },
                             count: None,
                         },
-                        // Sampler
+                        // Noise Texture
                         wgpu::BindGroupLayoutEntry {
                             binding: 3,
+                            visibility: wgpu::ShaderStages::FRAGMENT,
+                            ty: wgpu::BindingType::Texture {
+                                multisampled: false,
+                                sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                                view_dimension: wgpu::TextureViewDimension::D2,
+                            },
+                            count: None,
+                        },
+                        // Non-Filtered Sampler
+                        wgpu::BindGroupLayoutEntry {
+                            binding: 4,
                             visibility: wgpu::ShaderStages::FRAGMENT,
                             ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::NonFiltering),
                             count: None,
@@ -422,6 +455,7 @@ impl LcdFilter {
             gpu,
             &textures_bind_group_layout,
             &tonemap.view,
+            &noise.view,
             &column_weights.view,
         );
 

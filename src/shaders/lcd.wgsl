@@ -6,6 +6,7 @@ struct FragmentInput {
 struct LcdUniforms {
     camera_position: vec2<f32>,
     viewport_size: vec2<f32>,
+    context_size: vec2<f32>,
     pixels_per_unit: vec2<f32>,
     lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
@@ -28,6 +29,9 @@ var tonemap_texture: texture_2d<f32>;
 var column_average_weights_texture: texture_2d<f32>;
 
 @group(0) @binding(3)
+var noise_texture: texture_2d<f32>;
+
+@group(0) @binding(4)
 var color_sampler: sampler;
 
 @group(1) @binding(0)
@@ -67,7 +71,7 @@ fn fbm(t: vec2<f32>) -> f32 {
 
 ///////////////////////////////////////////////////////////////////////
 
-const REFLECTOR_SPARKLE:f32 = 0.1;
+const REFLECTOR_SPARKLE:f32 = 0.5;
 
 ///////////////////////////////////////////////////////////////////////
 
@@ -82,29 +86,34 @@ fn soft_grid(st: vec2<f32>, camera_position: vec2<f32>, viewport_size: vec2<f32>
 }
 
 fn inner_shadow(st: vec2<f32>) -> f32 {
-    let x_width = 0.2;
-    let y_width = 0.4;
-    let hardness = 3.0;
+    let horizontal_shadow_width = 0.1;
+    let top_shadow_width = 0.1;
+    let bottom_shadow_width = 0.4;
+    let hardness = 4.0;
     let lumpiness_frequency = 10.0;
     let lumpiness_mix = 0.25;
 
-    var left = max(1.0 - (st.x / x_width), 0.0);
-    var right = 1.0 - min((1.0 - st.x) / x_width, 1.0);
-    var top = 1.0 - min((1.0 - st.y) / y_width, 1.0);
+    var left = max(1.0 - (st.x / horizontal_shadow_width), 0.0);
+    var top = max(1.0 - (st.y / top_shadow_width), 0.0);
+    var right = 1.0 - min((1.0 - st.x) / horizontal_shadow_width, 1.0);
+    var bottom = 1.0 - min((1.0 - st.y) / bottom_shadow_width, 1.0);
 
     left = pow(left, hardness);
-    right = pow(right, hardness);
     top = pow(top, hardness);
+    right = pow(right, hardness);
+    bottom = pow(bottom, hardness);
 
-    let total = min(left + right + top, 1.0);
+    let total = min(left + right + bottom + top, 1.0);
     var lumpiness = 1.0 - (lumpiness_mix * fbm(st * lumpiness_frequency));
 
     return lcd_uniforms.shadow_effect_alpha * total * lumpiness;
 }
 
-// returns a value from [-1,1]
+// returns a value from [0,1]
 fn lcd_reflector_sparkle(st: vec2<f32>) -> f32 {
-    let n = rand2(st) * 2.0 - 1.0;
+    let tc = fract(lcd_uniforms.context_size * st / f32(textureDimensions(noise_texture).x));
+    var n = dot(textureSample(noise_texture, color_sampler, tc).rgb, vec3<f32>(0.21, 0.71, 0.08));
+    n = pow(n, 2.0);
     return REFLECTOR_SPARKLE * n;
 }
 

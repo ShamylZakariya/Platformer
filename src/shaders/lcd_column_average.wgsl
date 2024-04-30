@@ -6,6 +6,7 @@ struct FragmentInput {
 struct LcdUniforms {
     camera_position: vec2<f32>,
     viewport_size: vec2<f32>,
+    context_size: vec2<f32>,
     pixels_per_unit: vec2<f32>,
     lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
