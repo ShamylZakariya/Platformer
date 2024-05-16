@@ -118,7 +118,7 @@ fn lcd_reflector_sparkle(st: vec2<f32>) -> f32 {
 }
 
 // returns the palettized sampled lcd color in (rgb), and the raw intensity in (alpha)
-fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
+fn lcd(tex_coord: vec2<f32>) -> vec4<f32> {
     let history_count = i32(lcd_uniforms.color_attachment_history_count);
     let layer_count = i32(lcd_uniforms.color_attachment_layer_count);
     let first_layer = (i32(lcd_uniforms.color_attachment_layer_index) + layer_count - (history_count - 1)) % layer_count;
@@ -136,10 +136,18 @@ fn sample_palettized(tex_coord: vec2<f32>) -> vec4<f32> {
     }
 
     let averaged_color = accumulator / f32(history_count);
+    let intensity = 1.0 - averaged_color.a;
+
+    let coord = (tex_coord - vec2(0.5));// * lcd_uniforms.pixels_per_unit * lcd_uniforms.viewport_size);
+    let texel = floor(coord * lcd_uniforms.lcd_resolution);
+    let noise_for_texel = (rand2(texel) * 2.0 - 1.0) * 0.5; // range from -0.5 to 0.5
+    let noise_weight = 0.125 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
+    let noisy_color = vec4<f32>(averaged_color.xyz + vec3<f32>(noise_for_texel * noise_weight), 1.0);
+
     let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(tex_coord.x, 0.0)).r;
     let column_bleed = pow(column_weight, 0.125);
 
-    return averaged_color * column_bleed;
+    return vec4<f32>(vec3<f32>(noisy_color.xyz * column_bleed), intensity);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -161,7 +169,7 @@ fn lcd_vs_main(@builtin(vertex_index) in_vertex_index: u32) -> FragmentInput {
 fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
     // get source color value. this will include slow-response lcd history if enabled;
-    let lcd_sampled_value = sample_palettized(in.tex_coord);
+    let lcd_sampled_value = lcd(in.tex_coord);
     var lcd_pixel_color = lcd_sampled_value.xyz;
     let lcd_intensity = lcd_sampled_value.a;
 
