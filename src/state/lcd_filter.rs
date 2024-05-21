@@ -25,12 +25,12 @@ pub struct LcdUniformData {
     pixel_effect_alpha: f32,
     pixel_effect_hardness: f32,
     shadow_effect_alpha: f32,
-    padding_: u32,
+    lcd_reflector_sparkle_alpha: f32,
     color_attachment_size: Vector2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
-    padding2_: u32,
+    padding1_: u32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -47,12 +47,12 @@ impl Default for LcdUniformData {
             pixel_effect_alpha: 1.0,
             pixel_effect_hardness: 3.0,
             shadow_effect_alpha: 0.7,
+            lcd_reflector_sparkle_alpha: 1.0,
             color_attachment_size: Vector2 { x: 0, y: 0 },
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
-            padding_: 0,
-            padding2_: 0,
+            padding1_: 0,
         }
     }
 }
@@ -80,6 +80,14 @@ impl LcdUniformData {
 
     pub fn set_shadow_effect_alpha(&mut self, shadow_effect_alpha: f32) -> &mut Self {
         self.shadow_effect_alpha = shadow_effect_alpha;
+        self
+    }
+
+    pub fn set_lcd_reflector_sparkle_alpha(
+        &mut self,
+        lcd_reflector_sparkle_alpha: f32,
+    ) -> &mut Self {
+        self.lcd_reflector_sparkle_alpha = lcd_reflector_sparkle_alpha;
         self
     }
 
@@ -236,7 +244,7 @@ impl LcdFilter {
         // Determine an appropriate alpha for pixel effects - as window gets
         // smaller the effect needs to fade out, since it looks busy on small windows.
         // NOTE: min_high_freq and max_high_freq were determined via experimentation
-        let pixel_effect_alpha = 0.8 * {
+        let pixel_effect_alpha = 0.25 * {
             let frequency = (game.camera_controller.projection.scale() * game.pixels_per_unit.x)
                 / ctx.gpu.config.width as f32;
 
@@ -247,8 +255,10 @@ impl LcdFilter {
             1.0 - (falloff * falloff)
         };
 
+        let lcd_reflector_sparkle_alpha = pixel_effect_alpha;
+
         // pixel effect hardness should go up as the LCD pixel size goes above 3 or so display pixels
-        let pixel_effect_hardness = {
+        let pixel_effect_hardness = 1.0 * {
             let lcd_pixel_size = ctx.gpu.config.width as f32
                 / (game.camera_controller.projection.scale() * game.pixels_per_unit.x);
             let min_hardness = 3.0_f32;
@@ -289,6 +299,7 @@ impl LcdFilter {
             .set_context_size(vec2(ctx_width, ctx_height))
             .set_pixel_effect_alpha(pixel_effect_alpha)
             .set_pixel_effect_hardness(pixel_effect_hardness)
+            .set_lcd_reflector_sparkle_alpha(lcd_reflector_sparkle_alpha)
             .set_camera_position(game.camera_controller.camera.position().xy())
             .set_pixels_per_unit(game.pixels_per_unit)
             .set_color_attachment_layer_index(current_layer)

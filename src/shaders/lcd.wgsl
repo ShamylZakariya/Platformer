@@ -12,6 +12,7 @@ struct LcdUniforms {
     pixel_effect_alpha: f32,
     pixel_effect_hardness: f32,
     shadow_effect_alpha: f32,
+    lcd_reflector_sparkle_alpha: f32,
     color_attachment_size: vec2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
@@ -71,10 +72,6 @@ fn fbm(t: vec2<f32>) -> f32 {
 
 ///////////////////////////////////////////////////////////////////////
 
-const REFLECTOR_SPARKLE:f32 = 0.5;
-
-///////////////////////////////////////////////////////////////////////
-
 fn soft_grid(st: vec2<f32>, camera_position: vec2<f32>, viewport_size: vec2<f32>, pixels_per_unit: vec2<f32>) -> f32 {
     // camera is centered, so we count pixels out from center
     let coord = ((st - vec2(0.5)) * pixels_per_unit * viewport_size);
@@ -113,8 +110,7 @@ fn inner_shadow(st: vec2<f32>) -> f32 {
 fn lcd_reflector_sparkle(st: vec2<f32>) -> f32 {
     let tc = fract(lcd_uniforms.context_size * st / f32(textureDimensions(noise_texture).x));
     var n = dot(textureSample(noise_texture, color_sampler, tc).rgb, vec3<f32>(0.21, 0.71, 0.08));
-    n = pow(n, 2.0);
-    return REFLECTOR_SPARKLE * n;
+    return n * n;
 }
 
 // returns the palettized sampled lcd color in (rgb), and the raw intensity in (alpha)
@@ -126,22 +122,22 @@ fn lcd(tex_coord: vec2<f32>) -> vec4<f32> {
     var accumulator = vec4<f32>(0.0);
     for (var i: i32 = 0; i < history_count; i++) {
         let layer = (first_layer + i) % layer_count;
-        let intensity = textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
+        let value = textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
 
         // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
         // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
 
-        let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(intensity + 0.125, 0.0));
-        accumulator += vec4<f32>(palettized_color.xyz, intensity);
+        let palettized_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(value + 0.125, 0.0));
+        accumulator += vec4<f32>(palettized_color.xyz, value);
     }
 
     let averaged_color = accumulator / f32(history_count);
-    let intensity = 1.0 - averaged_color.a;
+    let intensity = averaged_color.a;
 
     let coord = (tex_coord - vec2(0.5));// * lcd_uniforms.pixels_per_unit * lcd_uniforms.viewport_size);
     let texel = floor(coord * lcd_uniforms.lcd_resolution);
     let noise_for_texel = (rand2(texel) * 2.0 - 1.0) * 0.5; // range from -0.5 to 0.5
-    let noise_weight = 0.125 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
+    let noise_weight = 0.05 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
     let noisy_color = vec4<f32>(averaged_color.xyz + vec3<f32>(noise_for_texel * noise_weight), 1.0);
 
     let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(tex_coord.x, 0.0)).r;
@@ -180,14 +176,13 @@ fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
     let grid_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(1.0, 1.0));
     let grid = soft_grid(in.tex_coord, lcd_uniforms.camera_position, lcd_uniforms.viewport_size, lcd_uniforms.pixels_per_unit);
-
     lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, grid * lcd_uniforms.pixel_effect_alpha);
-    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, 0.5 * (1.0 - lcd_uniforms.pixel_effect_alpha));
+    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, 0.1 * (1.0 - smoothstep(0.0, 0.1, lcd_uniforms.pixel_effect_alpha)));
 
     // mix in lcd back reflector "sparkle" based on opacity of the lcd cell,
     // e.g., the darker the pixel, the less sparkle
     var sparkle = lcd_reflector_sparkle(in.tex_coord);
-    lcd_pixel_color += lcd_intensity * sparkle;
+    lcd_pixel_color = mix(lcd_pixel_color, lcd_pixel_color + sparkle, lcd_intensity * lcd_uniforms.lcd_reflector_sparkle_alpha);
 
     // bake in the inner shadow
     let received_light = 1.0 - inner_shadow(in.tex_coord);
