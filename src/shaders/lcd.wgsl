@@ -11,13 +11,13 @@ struct LcdUniforms {
     lcd_resolution: vec2<f32>,
     pixel_effect_alpha: f32,
     pixel_effect_hardness: f32,
-    shadow_effect_alpha: f32,
+    frame_shadow_effect_alpha: f32,
     lcd_reflector_sparkle_alpha: f32,
     color_attachment_size: vec2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
-    padding_: u32,
+    lcd_shadow_effect_alpha: f32,
 };
 
 @group(0) @binding(0)
@@ -103,7 +103,7 @@ fn inner_shadow(st: vec2<f32>) -> f32 {
     let total = min(left + right + bottom + top, 1.0);
     var lumpiness = 1.0 - (lumpiness_mix * fbm(st * lumpiness_frequency));
 
-    return lcd_uniforms.shadow_effect_alpha * total * lumpiness;
+    return lcd_uniforms.frame_shadow_effect_alpha * total * lumpiness;
 }
 
 // returns a value from [0,1]
@@ -114,7 +114,7 @@ fn lcd_reflector_sparkle(st: vec2<f32>) -> f32 {
 }
 
 // returns the palettized sampled lcd color in (rgb), and the raw intensity in (alpha)
-fn lcd(tex_coord: vec2<f32>) -> vec4<f32> {
+fn lcd(st: vec2<f32>) -> vec4<f32> {
     let history_count = i32(lcd_uniforms.color_attachment_history_count);
     let layer_count = i32(lcd_uniforms.color_attachment_layer_count);
     let first_layer = (i32(lcd_uniforms.color_attachment_layer_index) + layer_count - (history_count - 1)) % layer_count;
@@ -122,7 +122,7 @@ fn lcd(tex_coord: vec2<f32>) -> vec4<f32> {
     var accumulator = vec4<f32>(0.0);
     for (var i: i32 = 0; i < history_count; i++) {
         let layer = (first_layer + i) % layer_count;
-        let value = textureSample(color_attachment_texture, color_sampler, tex_coord, layer).r;
+        let value = textureSample(color_attachment_texture, color_sampler, st, layer).r;
 
         // apply tonemap (note: tonemap has 4 entries, so we offset halfway into the
         // map by adding 0.25 * 0.5 - this stabilizes the tonemap output)
@@ -134,16 +134,28 @@ fn lcd(tex_coord: vec2<f32>) -> vec4<f32> {
     let averaged_color = accumulator / f32(history_count);
     let intensity = averaged_color.a;
 
-    let coord = (tex_coord - vec2(0.5));// * lcd_uniforms.pixels_per_unit * lcd_uniforms.viewport_size);
+    let coord = (st - vec2(0.5));// * lcd_uniforms.pixels_per_unit * lcd_uniforms.viewport_size);
     let texel = floor(coord * lcd_uniforms.lcd_resolution);
     let noise_for_texel = (rand2(texel) * 2.0 - 1.0) * 0.5; // range from -0.5 to 0.5
     let noise_weight = 0.05 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
     let noisy_color = vec4<f32>(averaged_color.xyz + vec3<f32>(noise_for_texel * noise_weight), 1.0);
 
-    let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(tex_coord.x, 0.0)).r;
+    let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(st.x, 0.0)).r;
     let column_bleed = pow(column_weight, 0.125);
 
     return vec4<f32>(vec3<f32>(noisy_color.xyz * column_bleed), intensity);
+}
+
+// returns the amount of shadowing caused by the lcd itself
+fn lcd_shadow(st: vec2<f32>) -> f32 {
+    let current_layer = i32(lcd_uniforms.color_attachment_layer_index);
+    let coord = st;
+    let offset = vec2<f32>(0.375, 1.0) / lcd_uniforms.lcd_resolution;
+    let value0 = textureSample(color_attachment_texture, color_sampler, coord + vec2<f32>(-offset.x, -offset.y), current_layer).r;
+    let value1 = textureSample(color_attachment_texture, color_sampler, coord + vec2<f32>(offset.x, -offset.y), current_layer).r;
+    let value2 = textureSample(color_attachment_texture, color_sampler, coord + vec2<f32>(-offset.x, -offset.y * 0.5), current_layer).r;
+    let value3 = textureSample(color_attachment_texture, color_sampler, coord + vec2<f32>(offset.x, -offset.y * 0.5), current_layer).r;
+    return (1.0 - ((value0 + value1 + value2 + value3) * 0.25)) * lcd_uniforms.lcd_shadow_effect_alpha;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -184,9 +196,11 @@ fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
     var sparkle = lcd_reflector_sparkle(in.tex_coord);
     lcd_pixel_color = mix(lcd_pixel_color, lcd_pixel_color + sparkle, lcd_intensity * lcd_uniforms.lcd_reflector_sparkle_alpha);
 
-    // bake in the inner shadow
-    let received_light = 1.0 - inner_shadow(in.tex_coord);
-    lcd_pixel_color *= received_light;
+    // bake in the shadows
+    let inner_shadow_contribution = inner_shadow(in.tex_coord);
+    let lcd_shadow_contribution = lcd_shadow(in.tex_coord);
+    let total_shadow_contribution = (1.0 - inner_shadow_contribution) * (1.0 - lcd_shadow_contribution);
+    lcd_pixel_color *= total_shadow_contribution;
 
     return vec4<f32>(lcd_pixel_color, 1.0);
 }

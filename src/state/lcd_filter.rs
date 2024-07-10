@@ -24,13 +24,13 @@ pub struct LcdUniformData {
     lcd_resolution: Vector2<f32>,
     pixel_effect_alpha: f32,
     pixel_effect_hardness: f32,
-    shadow_effect_alpha: f32,
+    frame_shadow_effect_alpha: f32,
     lcd_reflector_sparkle_alpha: f32,
     color_attachment_size: Vector2<u32>,
     color_attachment_layer_index: u32,
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
-    padding1_: u32,
+    lcd_shadow_effect_alpha: f32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -46,13 +46,13 @@ impl Default for LcdUniformData {
             lcd_resolution: vec2(0.0, 0.0),
             pixel_effect_alpha: 1.0,
             pixel_effect_hardness: 3.0,
-            shadow_effect_alpha: 0.7,
+            frame_shadow_effect_alpha: 0.5,
             lcd_reflector_sparkle_alpha: 1.0,
             color_attachment_size: Vector2 { x: 0, y: 0 },
             color_attachment_layer_index: 0,
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
-            padding1_: 0,
+            lcd_shadow_effect_alpha: 0.375,
         }
     }
 }
@@ -78,8 +78,13 @@ impl LcdUniformData {
         self
     }
 
-    pub fn set_shadow_effect_alpha(&mut self, shadow_effect_alpha: f32) -> &mut Self {
-        self.shadow_effect_alpha = shadow_effect_alpha;
+    pub fn set_frame_shadow_effect_alpha(&mut self, alpha: f32) -> &mut Self {
+        self.frame_shadow_effect_alpha = alpha;
+        self
+    }
+
+    pub fn set_lcd_shadow_effect_alpha(&mut self, alpha: f32) -> &mut Self {
+        self.lcd_shadow_effect_alpha = alpha;
         self
     }
 
