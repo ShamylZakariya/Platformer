@@ -134,7 +134,7 @@ fn lcd(st: vec2<f32>) -> vec4<f32> {
     let averaged_color = accumulator / f32(history_count);
     let intensity = averaged_color.a;
 
-    let coord = (st - vec2(0.5));// * lcd_uniforms.pixels_per_unit * lcd_uniforms.viewport_size);
+    let coord = (st - vec2(0.5));
     let texel = floor(coord * lcd_uniforms.lcd_resolution);
     let noise_for_texel = (rand2(texel) * 2.0 - 1.0) * 0.5; // range from -0.5 to 0.5
     let noise_weight = 0.05 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
