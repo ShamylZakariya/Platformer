@@ -75,7 +75,7 @@ impl Entity for UiDigit {
             self.tracking
                 .expect("Expect UiDigit to have loaded 'tracking' target from metadata");
         } else {
-            println!("Could not find metadata for sprite");
+            log::error!("Could not find metadata for sprite");
         }
     }
 

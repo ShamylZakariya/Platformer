@@ -72,7 +72,7 @@ fn run(opt: Options) {
 
     let mut gilrs = Gilrs::new().unwrap();
     for (_id, gamepad) in gilrs.gamepads() {
-        println!("{} is {:?}", gamepad.name(), gamepad.power_info());
+        log::info!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
 
     let event_loop = EventLoop::new().unwrap();
@@ -131,7 +131,7 @@ fn run(opt: Options) {
                                 // The system is out of memory, we should probably quit
                                 Err(wgpu::SurfaceError::OutOfMemory) => control_flow.exit(),
                                 // All other errors (Outdated, Timeout) should be resolved by the next frame
-                                Err(e) => eprintln!("{:?}", e),
+                                Err(e) => log::error!("{:?}", e),
                             }
                         }
 

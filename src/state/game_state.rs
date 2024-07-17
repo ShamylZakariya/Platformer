@@ -801,7 +801,7 @@ impl GameState {
                             );
                         }
                         Err(e) => {
-                            println!("Unable to instantiate \"{}\", error: {:?}", class_name, e);
+                            log::error!("Unable to instantiate \"{}\", error: {:?}", class_name, e);
                             panic!("Failed to instantiate SpawnPoint entity");
                         }
                     }
@@ -1130,7 +1130,7 @@ impl GameState {
         _message_dispatcher: &mut event_dispatch::Dispatcher,
         arena_left_bounds: f32,
     ) {
-        println!("\n\nBOSS FIGHT!!\n\n");
+        log::info!("GameState::on_boss_arena_entered - BOSS FIGHT!!");
         self.boss_arena_entered_time = Some(self.time);
         self.boss_arena_left_bounds = Some(arena_left_bounds);
         self.viewport_left_when_boss_arena_entered =
@@ -1142,7 +1142,7 @@ impl GameState {
         audio: &mut audio::Audio,
         _message_dispatcher: &mut event_dispatch::Dispatcher,
     ) {
-        println!("\n\nBOSS DEFEATED!!\n\n");
+        log::info!("GameState::on_boss_was_defeated - BOSS DEFEATED!!");
 
         // Clear enemies and projectiles from stage
         let should_retain = |ec: &EntityComponents| -> bool {
@@ -1186,6 +1186,6 @@ impl GameState {
     }
 
     fn on_level_complete(&mut self) {
-        println!("GameState::on_level_complete");
+        log::info!("GameState::on_level_complete");
     }
 }

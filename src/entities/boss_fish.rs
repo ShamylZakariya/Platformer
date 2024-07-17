@@ -139,7 +139,10 @@ impl Entity for BossFish {
     ) -> bool {
         match (key, state) {
             (winit::keyboard::KeyCode::F12, winit::event::ElementState::Pressed) => {
-                println!("\n\nBOSSFISH SUICIDE\n\n");
+                log::info!(
+                    "BossFish[{}]::process_keyboard - BOSSFISH SUICIDE",
+                    self.entity_id()
+                );
                 self.hit_points = 0;
                 true
             }
@@ -328,7 +331,7 @@ impl Entity for BossFish {
                 self.sound_to_play = Some(audio::Sounds::BossInjured);
             }
             Event::BossFightMayStart => {
-                println!(
+                log::info!(
                     "BossFish[{}]::handle_message - BossFightMayStart",
                     self.entity_id()
                 );
@@ -459,10 +462,12 @@ impl BossFish {
     }
 
     fn set_attack_phase(&mut self, new_phase: AttackPhase) {
-        // println!(
-        //     "BossFish::set_attack_phase time: {} old_phase: {:?} -> new_phase {:?}",
-        //     self.time, self.attack_phase, new_phase
-        // );
+        log::debug!(
+            "BossFish::set_attack_phase time: {} old_phase: {:?} -> new_phase {:?}",
+            self.time,
+            self.attack_phase,
+            new_phase
+        );
         self.attack_phase = new_phase;
     }
 
