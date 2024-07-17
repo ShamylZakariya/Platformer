@@ -138,7 +138,6 @@ impl<'a> AppState<'a> {
         if delta_time > std::time::Duration::from_millis(32) {
             return;
         }
-        // let dt = delta_time.min(std::time::Duration::from_millis(32));
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.update(self.window, delta_time);

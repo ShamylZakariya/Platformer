@@ -138,7 +138,7 @@ impl Entity for BossFish {
         state: winit::event::ElementState,
     ) -> bool {
         match (key, state) {
-            (winit::keyboard::KeyCode::End, winit::event::ElementState::Pressed) => {
+            (winit::keyboard::KeyCode::F12, winit::event::ElementState::Pressed) => {
                 println!("\n\nBOSSFISH SUICIDE\n\n");
                 self.hit_points = 0;
                 true
