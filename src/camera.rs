@@ -1,6 +1,6 @@
 use cgmath::*;
 use std::time::Duration;
-use winit::dpi::PhysicalPosition;
+use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 use winit::event::*;
 
 use crate::{
@@ -189,7 +189,7 @@ impl CameraController {
         }
     }
 
-    pub fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
+    pub fn process_keyboard(&mut self, _key: KeyCode, _state: ElementState) -> bool {
         false
     }
 

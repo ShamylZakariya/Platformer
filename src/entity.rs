@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Debug, time::Duration};
 
 use cgmath::*;
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{event::ElementState, keyboard::KeyCode};
 
 use crate::{
     audio, collision,
@@ -91,7 +91,7 @@ pub trait Entity {
     fn init(&mut self, _entity_id: u32, _map: &map::Map, _collision_space: &mut collision::Space) {}
 
     /// Handle keyboard input, returning true iff said input was consumed.
-    fn process_keyboard(&mut self, _key: VirtualKeyCode, _state: ElementState) -> bool {
+    fn process_keyboard(&mut self, _key: KeyCode, _state: ElementState) -> bool {
         false
     }
 

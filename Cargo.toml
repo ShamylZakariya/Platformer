@@ -14,16 +14,22 @@ anyhow = "1.0"
 bytemuck = { version = "1.10", features = ["derive"] }
 pollster = "0.3"
 image = "0.24"
+rand = "0.8"
+structopt = "0.3"
+xml-rs = "0.8"
+gilrs = "0.10"
+rodio = "0.19"
+
+winit = { version = "0.29", features = ["rwh_05"] }
+env_logger = "0.10"
+log = "0.4"
+wgpu = "0.19.3"
+
+# imgui wgpu is usually pretty behind wgpu
 # imgui = "0.11"
 # imgui-wgpu = "0.24"
 # imgui-winit-support = "0.11"
-rand = "0.8"
-structopt = "0.3"
-winit = { version = "0.27" }
-wgpu = { version = "0.18" }
-xml-rs = "0.8"
-gilrs = "0.10"
-rodio = "0.17"
+
 
 [dependencies.cgmath]
 version = "0.18"

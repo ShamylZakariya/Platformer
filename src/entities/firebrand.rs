@@ -6,7 +6,7 @@ use std::{
 };
 
 use cgmath::*;
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::{event::ElementState, keyboard::KeyCode};
 
 use crate::{
     audio, collision,
@@ -147,17 +147,17 @@ impl Default for FirebrandInputState {
     fn default() -> Self {
         Self {
             input_state: InputState::for_keys(&[
-                VirtualKeyCode::W,
-                VirtualKeyCode::A,
-                VirtualKeyCode::D,
-                VirtualKeyCode::Space,
+                winit::keyboard::KeyCode::KeyW,
+                winit::keyboard::KeyCode::KeyA,
+                winit::keyboard::KeyCode::KeyD,
+                winit::keyboard::KeyCode::Space,
             ]),
         }
     }
 }
 
 impl FirebrandInputState {
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool {
         self.input_state.process_keyboard(key, state)
     }
 
@@ -166,26 +166,26 @@ impl FirebrandInputState {
         let input = match event.event {
             gilrs::EventType::ButtonPressed(button, ..) => match button {
                 gilrs::Button::South | gilrs::Button::North => {
-                    Some((VirtualKeyCode::Space, ElementState::Pressed))
+                    Some((KeyCode::Space, ElementState::Pressed))
                 }
                 gilrs::Button::East | gilrs::Button::West => {
-                    Some((VirtualKeyCode::W, ElementState::Pressed))
+                    Some((KeyCode::KeyW, ElementState::Pressed))
                 }
-                gilrs::Button::DPadUp => Some((VirtualKeyCode::W, ElementState::Pressed)),
-                gilrs::Button::DPadLeft => Some((VirtualKeyCode::A, ElementState::Pressed)),
-                gilrs::Button::DPadRight => Some((VirtualKeyCode::D, ElementState::Pressed)),
+                gilrs::Button::DPadUp => Some((KeyCode::KeyW, ElementState::Pressed)),
+                gilrs::Button::DPadLeft => Some((KeyCode::KeyA, ElementState::Pressed)),
+                gilrs::Button::DPadRight => Some((KeyCode::KeyD, ElementState::Pressed)),
                 _ => None,
             },
             gilrs::EventType::ButtonReleased(button, ..) => match button {
                 gilrs::Button::South | gilrs::Button::North => {
-                    Some((VirtualKeyCode::Space, ElementState::Released))
+                    Some((KeyCode::Space, ElementState::Released))
                 }
                 gilrs::Button::East | gilrs::Button::West => {
-                    Some((VirtualKeyCode::W, ElementState::Released))
+                    Some((KeyCode::KeyW, ElementState::Released))
                 }
-                gilrs::Button::DPadUp => Some((VirtualKeyCode::W, ElementState::Released)),
-                gilrs::Button::DPadLeft => Some((VirtualKeyCode::A, ElementState::Released)),
-                gilrs::Button::DPadRight => Some((VirtualKeyCode::D, ElementState::Released)),
+                gilrs::Button::DPadUp => Some((KeyCode::KeyW, ElementState::Released)),
+                gilrs::Button::DPadLeft => Some((KeyCode::KeyA, ElementState::Released)),
+                gilrs::Button::DPadRight => Some((KeyCode::KeyD, ElementState::Released)),
                 _ => None,
             },
             _ => None,
@@ -203,7 +203,7 @@ impl FirebrandInputState {
     fn override_user_input(&mut self, left: bool, right: bool, jump: bool, fire: bool) -> bool {
         let mut state = HashMap::new();
         state.insert(
-            VirtualKeyCode::W,
+            KeyCode::KeyW,
             if jump {
                 ButtonState::Down
             } else {
@@ -211,7 +211,7 @@ impl FirebrandInputState {
             },
         );
         state.insert(
-            VirtualKeyCode::A,
+            KeyCode::KeyA,
             if left {
                 ButtonState::Down
             } else {
@@ -219,7 +219,7 @@ impl FirebrandInputState {
             },
         );
         state.insert(
-            VirtualKeyCode::D,
+            KeyCode::KeyD,
             if right {
                 ButtonState::Down
             } else {
@@ -227,7 +227,7 @@ impl FirebrandInputState {
             },
         );
         state.insert(
-            VirtualKeyCode::Space,
+            KeyCode::Space,
             if fire {
                 ButtonState::Down
             } else {
@@ -240,25 +240,25 @@ impl FirebrandInputState {
 
     fn jump(&self) -> &ButtonState {
         self.input_state
-            .get_button_state(VirtualKeyCode::W)
+            .get_button_state(KeyCode::KeyW)
             .unwrap()
     }
 
     fn move_left(&self) -> &ButtonState {
         self.input_state
-            .get_button_state(VirtualKeyCode::A)
+            .get_button_state(KeyCode::KeyA)
             .unwrap()
     }
 
     fn move_right(&self) -> &ButtonState {
         self.input_state
-            .get_button_state(VirtualKeyCode::D)
+            .get_button_state(KeyCode::KeyD)
             .unwrap()
     }
 
     fn fire(&self) -> &ButtonState {
         self.input_state
-            .get_button_state(VirtualKeyCode::Space)
+            .get_button_state(KeyCode::Space)
             .unwrap()
     }
 }
@@ -411,7 +411,7 @@ impl Entity for Firebrand {
         );
     }
 
-    fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    fn process_keyboard(&mut self, key: KeyCode, state: ElementState) -> bool {
         if self.did_pass_through_exit_door {
             // after walking through the exit door, Firebrand keeps walking to right... forever
             self.input_state
@@ -422,7 +422,7 @@ impl Entity for Firebrand {
             true
         } else {
             match (key, state) {
-                (VirtualKeyCode::Delete, ElementState::Pressed) => {
+                (KeyCode::Delete, ElementState::Pressed) => {
                     self.receive_injury(self.character_state.hit_points);
                     true
                 }

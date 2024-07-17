@@ -6,7 +6,8 @@ use structopt::StructOpt;
 use winit::{
     dpi::LogicalSize,
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::EventLoop,
+    keyboard::{KeyCode, PhysicalKey},
     window::WindowBuilder,
 };
 
@@ -74,7 +75,7 @@ fn run(opt: Options) {
         println!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::new().unwrap();
     let window = builder.build(&event_loop).unwrap();
 
     let gpu = pollster::block_on(state::gpu_state::GpuState::new(&window));
@@ -82,75 +83,71 @@ fn run(opt: Options) {
     let mut last_render_time = std::time::Instant::now();
     let mut frame_index: u32 = 0;
 
-    event_loop.run(move |event, _, control_flow| {
-        control_flow.set_poll();
-
+    let _ = event_loop.run(move |event, control_flow| {
         while let Some(event) = gilrs.next_event() {
             app_state.gamepad_input(event);
         }
 
-        app_state.event(&window, &event);
+        app_state.event(&event);
 
         match event {
-            Event::RedrawRequested(window_id) if window_id == window.id() => {
-                let now = std::time::Instant::now();
-                let dt = now - last_render_time;
-                last_render_time = now;
-
-                app_state.update(&window, now, dt, frame_index);
-
-                match app_state.gpu.surface.get_current_texture() {
-                    Ok(output) => {
-                        let mut encoder = app_state.gpu.device.create_command_encoder(
-                            &wgpu::CommandEncoderDescriptor {
-                                label: Some("Render Encoder"),
-                            },
-                        );
-                        app_state.render(&window, &mut encoder, &output, frame_index as usize);
-                        app_state
-                            .gpu
-                            .queue
-                            .submit(std::iter::once(encoder.finish()));
-                        output.present();
-
-                        frame_index = frame_index.wrapping_add(1);
-                    }
-                    Err(wgpu::SurfaceError::Lost) => {
-                        let size = app_state.gpu.size();
-                        app_state.resize(&window, size);
-                    }
-                    // The system is out of memory, we should probably quit
-                    Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
-                    // All other errors (Outdated, Timeout) should be resolved by the next frame
-                    Err(e) => eprintln!("{:?}", e),
-                }
-            }
-            Event::MainEventsCleared => {
+            Event::AboutToWait => {
                 // we have to explicitly request a redraw
-                window.request_redraw();
+                app_state.window().request_redraw();
             }
             Event::WindowEvent {
-                window_id,
                 ref event,
-            } if window_id == window.id() => {
-                if !app_state.input(&window, event) {
+                window_id,
+            } if window_id == app_state.window().id() => {
+                if !app_state.input(event) {
                     match event {
-                        WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                        WindowEvent::RedrawRequested => {
+                            let now = std::time::Instant::now();
+                            let dt = now - last_render_time;
+                            last_render_time = now;
+
+                            app_state.update(now, dt, frame_index);
+
+                            match app_state.gpu.surface.get_current_texture() {
+                                Ok(output) => {
+                                    let mut encoder = app_state.gpu.device.create_command_encoder(
+                                        &wgpu::CommandEncoderDescriptor {
+                                            label: Some("Render Encoder"),
+                                        },
+                                    );
+                                    app_state.render(&mut encoder, &output, frame_index as usize);
+                                    app_state
+                                        .gpu
+                                        .queue
+                                        .submit(std::iter::once(encoder.finish()));
+                                    output.present();
+
+                                    frame_index = frame_index.wrapping_add(1);
+                                }
+                                Err(wgpu::SurfaceError::Lost) => {
+                                    let size = app_state.gpu.size();
+                                    app_state.resize(size);
+                                }
+                                // The system is out of memory, we should probably quit
+                                Err(wgpu::SurfaceError::OutOfMemory) => control_flow.exit(),
+                                // All other errors (Outdated, Timeout) should be resolved by the next frame
+                                Err(e) => eprintln!("{:?}", e),
+                            }
+                        }
+
+                        WindowEvent::CloseRequested => control_flow.exit(),
                         WindowEvent::KeyboardInput {
-                            input:
-                                KeyboardInput {
+                            event:
+                                KeyEvent {
                                     state: ElementState::Pressed,
-                                    virtual_keycode: Some(VirtualKeyCode::Escape),
+                                    physical_key: PhysicalKey::Code(KeyCode::Escape),
                                     ..
                                 },
                             ..
-                        } => *control_flow = ControlFlow::Exit,
+                        } => control_flow.exit(),
 
                         WindowEvent::Resized(physical_size) => {
-                            app_state.resize(&window, *physical_size);
-                        }
-                        WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                            app_state.resize(&window, **new_inner_size);
+                            app_state.resize(*physical_size);
                         }
                         _ => {}
                     }
@@ -162,6 +159,7 @@ fn run(opt: Options) {
 }
 
 fn main() {
+    env_logger::init();
     let opt = Options::from_args();
     run(opt);
 }

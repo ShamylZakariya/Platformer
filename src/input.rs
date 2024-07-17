@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use winit::event::{ElementState, VirtualKeyCode};
+use winit::event::ElementState;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ButtonState {
@@ -42,11 +42,11 @@ impl ButtonState {
 
 #[derive(Default, Debug)]
 pub struct InputState {
-    buttons: HashMap<VirtualKeyCode, ButtonState>,
+    buttons: HashMap<winit::keyboard::KeyCode, ButtonState>,
 }
 
 impl InputState {
-    pub fn for_keys(keys: &[VirtualKeyCode]) -> Self {
+    pub fn for_keys(keys: &[winit::keyboard::KeyCode]) -> Self {
         let mut buttons = HashMap::new();
         for key in keys {
             buttons.insert(*key, ButtonState::default());
@@ -55,15 +55,15 @@ impl InputState {
         Self { buttons }
     }
 
-    pub fn register(&mut self, key: VirtualKeyCode) {
+    pub fn register(&mut self, key: winit::keyboard::KeyCode) {
         self.buttons.insert(key, ButtonState::default());
     }
 
-    pub fn get_button_state(&self, key: VirtualKeyCode) -> Option<&ButtonState> {
+    pub fn get_button_state(&self, key: winit::keyboard::KeyCode) -> Option<&ButtonState> {
         self.buttons.get(&key)
     }
 
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) -> bool {
+    pub fn process_keyboard(&mut self, key: winit::keyboard::KeyCode, state: ElementState) -> bool {
         let pressed = state == ElementState::Pressed;
         if let Some(button_state) = self.buttons.get(&key) {
             let new_state = button_state.transition(pressed);
@@ -84,7 +84,7 @@ impl InputState {
 
     /// Reassign button state to the provided one - this is intended for
     /// situations where overriding user input is necessary.
-    pub fn set(&mut self, buttons: HashMap<VirtualKeyCode, ButtonState>) {
+    pub fn set(&mut self, buttons: HashMap<winit::keyboard::KeyCode, ButtonState>) {
         self.buttons = buttons;
     }
 }

@@ -11,9 +11,9 @@ use super::{
 // --------------------------------------------------------------------------------------------------------------------
 
 /// Holder for various AppState fields to pass in to GameController, GameUi, GameState update() methods
-pub struct AppContext<'a> {
+pub struct AppContext<'a, 'window> {
     pub window: &'a Window,
-    pub gpu: &'a mut GpuState,
+    pub gpu: &'a mut GpuState<'window>,
     pub audio: &'a mut Audio,
     pub message_dispatcher: &'a mut event_dispatch::Dispatcher,
     pub entity_id_vendor: &'a mut entity::IdVendor,
@@ -25,9 +25,9 @@ pub struct AppContext<'a> {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub struct AppState {
+pub struct AppState<'a> {
     options: Options,
-    pub gpu: GpuState,
+    pub gpu: GpuState<'a>,
     audio: Audio,
     game_controller: GameController,
     game_state: GameState,
@@ -37,10 +37,12 @@ pub struct AppState {
 
     entity_id_vendor: entity::IdVendor,
     message_dispatcher: event_dispatch::Dispatcher,
+
+    window: &'a winit::window::Window,
 }
 
-impl AppState {
-    pub fn new(window: &Window, mut gpu: GpuState, options: Options) -> Result<Self> {
+impl<'a> AppState<'a> {
+    pub fn new(window: &'a Window, mut gpu: GpuState<'a>, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
         let audio = Audio::new(&options);
@@ -85,31 +87,36 @@ impl AppState {
             lcd_filter,
             entity_id_vendor,
             message_dispatcher: event_dispatch::Dispatcher::default(),
+            window,
         })
     }
 
-    pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
+    pub fn window(&self) -> &Window {
+        &self.window
+    }
+
+    pub fn event(&mut self, event: &winit::event::Event<()>) {
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.event(window, event);
+            debug_overlay.event(self.window, event);
         }
     }
 
-    pub fn resize(&mut self, window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
-        self.gpu.resize(window, new_size);
-        self.game_state.resize(window, new_size, &self.gpu);
-        self.game_ui.resize(window, new_size, &self.gpu);
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        self.gpu.resize(new_size);
+        self.game_state.resize(self.window, new_size, &self.gpu);
+        self.game_ui.resize(self.window, new_size, &self.gpu);
         self.lcd_filter
-            .resize(window, new_size, &self.gpu, &self.game_state);
+            .resize(self.window, new_size, &self.gpu, &self.game_state);
     }
 
-    pub fn input(&mut self, window: &Window, event: &WindowEvent) -> bool {
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
         if self
             .game_state
-            .input(window, event, self.game_ui.is_paused())
+            .input(self.window, event, self.game_ui.is_paused())
         {
             true
         } else {
-            self.game_ui.input(window, event)
+            self.game_ui.input(self.window, event)
         }
     }
 
@@ -122,17 +129,19 @@ impl AppState {
 
     pub fn update(
         &mut self,
-        window: &Window,
         time: std::time::Instant,
         delta_time: std::time::Duration,
         frame_idx: u32,
     ) {
-        // Set a max timestep - this is crude, but prevents explosions when stopping
-        // execution in the debugger, and we get a HUGE timestep after resuming.
-        let dt = delta_time.min(std::time::Duration::from_millis(32));
+        // Skip update if delta time is huge - this can happen after
+        // resuming from a pause.
+        if delta_time > std::time::Duration::from_millis(32) {
+            return;
+        }
+        // let dt = delta_time.min(std::time::Duration::from_millis(32));
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.update(window, dt);
+            debug_overlay.update(self.window, delta_time);
         }
 
         let game_dt = if self.game_ui.is_paused() {
@@ -141,11 +150,11 @@ impl AppState {
             delta_time
         };
 
-        self.audio.update(dt);
+        self.audio.update(delta_time);
 
         {
             let mut ctx = AppContext {
-                window,
+                window: self.window,
                 gpu: &mut self.gpu,
                 audio: &mut self.audio,
                 message_dispatcher: &mut self.message_dispatcher,
@@ -171,7 +180,6 @@ impl AppState {
 
     pub fn render(
         &mut self,
-        window: &Window,
         encoder: &mut wgpu::CommandEncoder,
         output: &wgpu::SurfaceTexture,
         frame_index: usize,
@@ -181,17 +189,17 @@ impl AppState {
         //
 
         self.game_state
-            .render(window, &mut self.gpu, encoder, frame_index);
+            .render(self.window, &mut self.gpu, encoder, frame_index);
 
         self.game_ui
-            .render(window, &mut self.gpu, encoder, frame_index);
+            .render(self.window, &mut self.gpu, encoder, frame_index);
 
         self.lcd_filter
-            .render(window, &mut self.gpu, output, encoder, frame_index);
+            .render(self.window, &mut self.gpu, output, encoder, frame_index);
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.render(
-                window,
+                self.window,
                 &mut self.gpu,
                 output,
                 encoder,
@@ -202,7 +210,7 @@ impl AppState {
     }
 }
 
-impl event_dispatch::MessageHandler for AppState {
+impl<'a> event_dispatch::MessageHandler for AppState<'a> {
     fn handle_message(&mut self, message: &event_dispatch::Message) {
         self.game_controller.handle_message(
             message,

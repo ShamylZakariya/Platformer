@@ -1,8 +1,8 @@
 use crate::texture;
 use winit::window::Window;
 
-pub struct GpuState {
-    pub surface: wgpu::Surface,
+pub struct GpuState<'window> {
+    pub surface: wgpu::Surface<'window>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
@@ -10,10 +10,10 @@ pub struct GpuState {
     pub color_attachment: texture::Texture,
 }
 
-impl GpuState {
+impl<'window> GpuState<'window> {
     pub const COLOR_ATTACHMENT_LAYER_COUNT: u32 = 64;
 
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(window: &'window Window) -> GpuState<'window> {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -21,7 +21,8 @@ impl GpuState {
             ..Default::default()
         });
 
-        let surface = unsafe { instance.create_surface(window) }
+        let surface = instance
+            .create_surface(window)
             .expect("Expected wgpu instance to create surface.");
 
         let adapter = instance
@@ -36,9 +37,9 @@ impl GpuState {
         let (device, queue) = adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
-                    features: wgpu::Features::empty(),
-                    limits: wgpu::Limits::default(),
                     label: None,
+                    required_features: wgpu::Features::empty(),
+                    required_limits: wgpu::Limits::default(),
                 },
                 None,
             )
@@ -62,6 +63,7 @@ impl GpuState {
             present_mode: wgpu::PresentMode::Fifo,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
             view_formats: vec![],
+            desired_maximum_frame_latency: 2,
         };
         surface.configure(&device, &config);
 
@@ -86,7 +88,7 @@ impl GpuState {
         }
     }
 
-    pub fn resize(&mut self, _window: &Window, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         if new_size.width > 0 && new_size.height > 0 {
             self.config.width = new_size.width.max(1);
             self.config.height = new_size.height.max(1);

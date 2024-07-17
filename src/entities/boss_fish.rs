@@ -134,11 +134,11 @@ impl Entity for BossFish {
 
     fn process_keyboard(
         &mut self,
-        key: winit::event::VirtualKeyCode,
+        key: winit::keyboard::KeyCode,
         state: winit::event::ElementState,
     ) -> bool {
         match (key, state) {
-            (winit::event::VirtualKeyCode::End, winit::event::ElementState::Pressed) => {
+            (winit::keyboard::KeyCode::End, winit::event::ElementState::Pressed) => {
                 println!("\n\nBOSSFISH SUICIDE\n\n");
                 self.hit_points = 0;
                 true

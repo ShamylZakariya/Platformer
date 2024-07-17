@@ -2,8 +2,7 @@ use cgmath::*;
 use std::{collections::HashMap, path::Path, rc::Rc, time::Duration};
 
 use winit::{
-    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
-    window::Window,
+    event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}, window::Window
 };
 
 use crate::{audio, camera, sprite::rendering, state::gpu_state};
@@ -237,15 +236,15 @@ impl GameUi {
     pub fn input(&mut self, _window: &Window, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        virtual_keycode: Some(key),
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key_code),
                         state,
                         ..
                     },
                 ..
-            } => match (key, state) {
-                (VirtualKeyCode::F1, ElementState::Pressed) => {
+            } => match (key_code, state) {
+                (KeyCode::F1, ElementState::Pressed) => {
                     self.toggle_drawer_needed = true;
                     true
                 }

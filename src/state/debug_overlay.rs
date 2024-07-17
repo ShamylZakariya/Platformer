@@ -2,7 +2,7 @@ use cgmath::*;
 use winit::window::Window;
 
 use super::{
-    constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
+    // constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
     game_state::GameState,
     gpu_state::GpuState,
     lcd_filter::LcdFilter,
@@ -43,7 +43,7 @@ pub struct DebugOverlay {
 }
 
 impl DebugOverlay {
-    pub fn new(window: &Window, gpu: &GpuState) -> Self {
+    pub fn new(_window: &Window, _gpu: &GpuState) -> Self {
         //
         // ImGUI-wgpu only supports up to wgpu 0.17, and as such, we're out of luck.
         //
@@ -88,23 +88,23 @@ impl DebugOverlay {
         Self {}
     }
 
-    pub fn event(&mut self, window: &Window, event: &winit::event::Event<()>) {
+    pub fn event(&mut self, _window: &Window, _event: &winit::event::Event<()>) {
         // self.winit_platform
         //     .handle_event(self.imgui.io_mut(), window, event);
     }
 
-    pub fn update(&mut self, _window: &Window, dt: std::time::Duration) {
+    pub fn update(&mut self, _window: &Window, _dt: std::time::Duration) {
         // self.imgui.io_mut().update_delta_time(dt);
     }
 
     pub fn render(
         &mut self,
-        window: &Window,
-        gpu: &mut GpuState,
-        output: &wgpu::SurfaceTexture,
-        encoder: &mut wgpu::CommandEncoder,
-        game_state: &mut GameState,
-        lcd_filter: &mut LcdFilter,
+        _window: &Window,
+        _gpu: &mut GpuState,
+        _output: &wgpu::SurfaceTexture,
+        _encoder: &mut wgpu::CommandEncoder,
+        _game_state: &mut GameState,
+        _lcd_filter: &mut LcdFilter,
     ) {
         // self.winit_platform
         //     .prepare_frame(self.imgui.io_mut(), window)

@@ -7,7 +7,8 @@ use std::{
 };
 use winit::{
     dpi::PhysicalPosition,
-    event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
+    event::{ElementState, KeyEvent, MouseButton, WindowEvent},
+    keyboard::PhysicalKey,
     window::Window,
 };
 
@@ -425,9 +426,9 @@ impl GameState {
     pub fn input(&mut self, _window: &Window, event: &WindowEvent, is_paused: bool) -> bool {
         match event {
             WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        virtual_keycode: Some(key),
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key_code),
                         state,
                         ..
                     },
@@ -436,13 +437,13 @@ impl GameState {
                 let mut consumed = false;
                 if !is_paused {
                     for e in self.entities.values_mut() {
-                        if e.entity.process_keyboard(*key, *state) {
+                        if e.entity.process_keyboard(*key_code, *state) {
                             consumed = true;
                             break;
                         }
                     }
                 }
-                consumed || self.camera_controller.process_keyboard(*key, *state)
+                consumed || self.camera_controller.process_keyboard(*key_code, *state)
             }
             WindowEvent::MouseWheel { delta, .. } => {
                 self.camera_controller.process_scroll(delta);
