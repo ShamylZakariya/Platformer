@@ -18,6 +18,10 @@ struct LcdUniforms {
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
     lcd_shadow_effect_alpha: f32,
+    lcd_column_bleed_effect_power: f32,
+    lcd_column_bleed_effect_alpha: f32,
+    _padding0: u32,
+    _padding1: u32,
 };
 
 @group(0) @binding(0)
@@ -141,7 +145,7 @@ fn lcd(st: vec2<f32>) -> vec4<f32> {
     let noisy_color = vec4<f32>(averaged_color.xyz + vec3<f32>(noise_for_texel * noise_weight), 1.0);
 
     let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(st.x, 0.0)).r;
-    let column_bleed = pow(column_weight, 0.125);
+    let column_bleed = mix(1.0, pow(column_weight, lcd_uniforms.lcd_column_bleed_effect_power), lcd_uniforms.lcd_column_bleed_effect_alpha);
 
     return vec4<f32>(vec3<f32>(noisy_color.xyz * column_bleed), intensity);
 }

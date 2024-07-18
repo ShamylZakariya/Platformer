@@ -31,6 +31,12 @@ pub struct LcdUniformData {
     color_attachment_layer_count: u32,
     color_attachment_history_count: u32,
     lcd_shadow_effect_alpha: f32,
+    // "strength" of the lcd column bleed (0, N]. The higher the value, the more pronounced the effect
+    lcd_column_bleed_effect_power: f32,
+    // alpha of the lcd column bleed, [0,1]
+    lcd_column_bleed_effect_alpha: f32,
+    _padding0: u32,
+    _padding1: u32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -53,6 +59,10 @@ impl Default for LcdUniformData {
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
             lcd_shadow_effect_alpha: 0.375,
+            lcd_column_bleed_effect_power: 0.0625,
+            lcd_column_bleed_effect_alpha: 0.25,
+            _padding0: 0,
+            _padding1: 0,
         }
     }
 }
@@ -85,6 +95,16 @@ impl LcdUniformData {
 
     pub fn set_lcd_shadow_effect_alpha(&mut self, alpha: f32) -> &mut Self {
         self.lcd_shadow_effect_alpha = alpha;
+        self
+    }
+
+    pub fn set_lcd_column_bleed_effect_power(&mut self, power: f32) -> &mut Self {
+        self.lcd_column_bleed_effect_power = power;
+        self
+    }
+
+    pub fn set_lcd_column_bleed_effect_alpha(&mut self, alpha: f32) -> &mut Self {
+        self.lcd_column_bleed_effect_alpha = alpha;
         self
     }
 
