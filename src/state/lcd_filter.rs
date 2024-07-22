@@ -25,6 +25,7 @@ pub struct LcdUniformData {
     pixel_effect_alpha: f32,
     pixel_effect_hardness: f32,
     frame_shadow_effect_alpha: f32,
+    // amount of "sparkle" reflected off the lcd backplane
     lcd_reflector_sparkle_alpha: f32,
     color_attachment_size: Vector2<u32>,
     color_attachment_layer_index: u32,
@@ -35,8 +36,11 @@ pub struct LcdUniformData {
     lcd_column_bleed_effect_power: f32,
     // alpha of the lcd column bleed, [0,1]
     lcd_column_bleed_effect_alpha: f32,
-    _padding0: u32,
-    _padding1: u32,
+    // general noisiness of the pixel value assigment. 0 means none, 1 means trash, pure white noise
+    lcd_noisiness: f32,
+    // amount of light that passes through an unactivated lcd pixel. Value of 1 means perfect transmissivity
+    // and a value of 0 means no light makes it through to reflect off the backplane (results in a black output)
+    lcd_clarity: f32,
 }
 
 unsafe impl bytemuck::Pod for LcdUniformData {}
@@ -61,8 +65,8 @@ impl Default for LcdUniformData {
             lcd_shadow_effect_alpha: 0.375,
             lcd_column_bleed_effect_power: 0.0625,
             lcd_column_bleed_effect_alpha: 0.25,
-            _padding0: 0,
-            _padding1: 0,
+            lcd_noisiness: 0.0125,
+            lcd_clarity: 0.75,
         }
     }
 }
@@ -146,6 +150,16 @@ impl LcdUniformData {
     pub fn set_lcd_resolution(&mut self, width: f32, height: f32) -> &mut Self {
         self.lcd_resolution.x = width;
         self.lcd_resolution.y = height;
+        self
+    }
+
+    pub fn set_lcd_noisiness(&mut self, noisiness: f32) -> &mut Self {
+        self.lcd_noisiness = noisiness;
+        self
+    }
+
+    pub fn set_lcd_clarity(&mut self, clarity: f32) -> &mut Self {
+        self.lcd_clarity = clarity;
         self
     }
 }

@@ -20,8 +20,8 @@ struct LcdUniforms {
     lcd_shadow_effect_alpha: f32,
     lcd_column_bleed_effect_power: f32,
     lcd_column_bleed_effect_alpha: f32,
-    _padding0: u32,
-    _padding1: u32,
+    lcd_noisiness: f32,
+    lcd_clarity: f32,
 };
 
 @group(0) @binding(0)
@@ -81,6 +81,7 @@ fn soft_grid(st: vec2<f32>, camera_position: vec2<f32>, viewport_size: vec2<f32>
     let coord = ((st - vec2(0.5)) * pixels_per_unit * viewport_size);
     var dist = abs(fract(coord) - 0.5) * 2.0;
     dist = pow(dist, vec2(lcd_uniforms.pixel_effect_hardness));
+    // dist = smoothstep(vec2(0.25), vec2(0.75), dist);
 
     let i = min(dist.r + dist.g, 1.0);
     return i;
@@ -141,13 +142,13 @@ fn lcd(st: vec2<f32>) -> vec4<f32> {
     let coord = (st - vec2(0.5));
     let texel = floor(coord * lcd_uniforms.lcd_resolution);
     let noise_for_texel = (rand2(texel) * 2.0 - 1.0) * 0.5; // range from -0.5 to 0.5
-    let noise_weight = 0.05 * (1.0 - averaged_color.x); // apply noise more as lcd pixel goes darker
+    let noise_weight = lcd_uniforms.lcd_noisiness * (1.0 - intensity); // apply noise more as lcd pixel goes darker
     let noisy_color = vec4<f32>(averaged_color.xyz + vec3<f32>(noise_for_texel * noise_weight), 1.0);
 
     let column_weight = textureSample(column_average_weights_texture, color_sampler, vec2<f32>(st.x, 0.0)).r;
     let column_bleed = mix(1.0, pow(column_weight, lcd_uniforms.lcd_column_bleed_effect_power), lcd_uniforms.lcd_column_bleed_effect_alpha);
 
-    return vec4<f32>(vec3<f32>(noisy_color.xyz * column_bleed), intensity);
+    return vec4<f32>(vec3<f32>(noisy_color.xyz * column_bleed) * lcd_uniforms.lcd_clarity, intensity);
 }
 
 // returns the amount of shadowing caused by the lcd itself
@@ -192,7 +193,8 @@ fn lcd_fs_main(in: FragmentInput) -> @location(0) vec4<f32> {
 
     let grid_color = textureSample(tonemap_texture, color_sampler, vec2<f32>(1.0, 1.0));
     let grid = soft_grid(in.tex_coord, lcd_uniforms.camera_position, lcd_uniforms.viewport_size, lcd_uniforms.pixels_per_unit);
-    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, grid * lcd_uniforms.pixel_effect_alpha);
+    let grid_intensity = grid * lcd_uniforms.pixel_effect_alpha * smoothstep(0.0, 0.5, lcd_intensity);
+    lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, grid_intensity);
     lcd_pixel_color = mix(lcd_pixel_color, grid_color.xyz, 0.1 * (1.0 - smoothstep(0.0, 0.1, lcd_uniforms.pixel_effect_alpha)));
 
     // mix in lcd back reflector "sparkle" based on opacity of the lcd cell,
