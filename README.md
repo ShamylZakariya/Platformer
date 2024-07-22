@@ -1,7 +1,7 @@
 # Platformer
 A remake of the first level of the delightful 1990 Gamebody platformer [Gargoyle's Quest](https://en.wikipedia.org/wiki/Gargoyle%27s_Quest).
 
-![Screeenshot](README_assets/ggq.gif)
+https://github.com/user-attachments/assets/6b2ec470-99ec-4767-b534-59aec8785461
 
 ## Dependencies
 
