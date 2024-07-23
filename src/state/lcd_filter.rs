@@ -530,6 +530,7 @@ impl LcdFilter {
                     module: &lcd_shader,
                     entry_point: "lcd_vs_main",
                     buffers: &[],
+                    compilation_options: Default::default(),
                 },
 
                 fragment: Some(wgpu::FragmentState {
@@ -543,6 +544,7 @@ impl LcdFilter {
                         }),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
+                    compilation_options: Default::default(),
                 }),
 
                 primitive: wgpu::PrimitiveState {
@@ -564,6 +566,7 @@ impl LcdFilter {
                 },
 
                 multiview: None,
+                cache: None,
             });
 
         (pipeline, textures_bind_group_layout, textures_bind_group)
@@ -679,6 +682,7 @@ impl LcdFilter {
                     module: &lcd_shader,
                     entry_point: "vs_main",
                     buffers: &[],
+                    compilation_options: Default::default(),
                 },
 
                 fragment: Some(wgpu::FragmentState {
@@ -692,6 +696,7 @@ impl LcdFilter {
                         }),
                         write_mask: wgpu::ColorWrites::ALL,
                     })],
+                    compilation_options: Default::default(),
                 }),
 
                 primitive: wgpu::PrimitiveState {
@@ -713,6 +718,7 @@ impl LcdFilter {
                 },
 
                 multiview: None,
+                cache: None,
             });
 
         (pipeline, textures_bind_group_layout, textures_bind_group)

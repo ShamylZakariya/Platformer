@@ -20,10 +20,10 @@ xml-rs = "0.8"
 gilrs = "0.10"
 rodio = "0.19"
 
-winit = { version = "0.29", features = ["rwh_05"] }
+winit = { version = "0.30" }
 env_logger = "0.10"
 log = "0.4"
-wgpu = "0.19.3"
+wgpu = "22"
 
 # imgui wgpu is usually pretty behind wgpu
 # imgui = "0.11"

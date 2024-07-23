@@ -8,7 +8,7 @@ use winit::{
     event::*,
     event_loop::EventLoop,
     keyboard::{KeyCode, PhysicalKey},
-    window::WindowBuilder,
+    window::WindowAttributes,
 };
 
 mod audio;
@@ -61,22 +61,22 @@ pub struct Options {
 // ---------------------------------------------------------------------------------------------------------------------
 
 fn run(opt: Options) {
-    let mut builder = WindowBuilder::new()
-        .with_title("Gargoyle's Quest")
-        .with_decorations(true);
-
-    if opt.gameboy {
-        let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
-        builder = builder.with_inner_size(size);
-    }
-
     let mut gilrs = Gilrs::new().unwrap();
     for (_id, gamepad) in gilrs.gamepads() {
         log::info!("{} is {:?}", gamepad.name(), gamepad.power_info());
     }
 
     let event_loop = EventLoop::new().unwrap();
-    let window = builder.build(&event_loop).unwrap();
+    let mut window_attrs = WindowAttributes::default()
+        .with_title("Gargoyle's Quest")
+        .with_decorations(true);
+
+    if opt.gameboy {
+        let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
+        window_attrs = window_attrs.with_inner_size(size);
+    }
+
+    let window = event_loop.create_window(window_attrs).unwrap();
 
     let gpu = pollster::block_on(state::gpu_state::GpuState::new(&window));
     let mut app_state = state::app_state::AppState::new(&window, gpu, opt).unwrap();

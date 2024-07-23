@@ -30,6 +30,7 @@ pub fn create_render_pipeline(
             module: &sprite_shader_module,
             entry_point: "sprite_vs_main",
             buffers: vertex_descs,
+            compilation_options: Default::default(),
         },
 
         fragment: Some(wgpu::FragmentState {
@@ -40,6 +41,7 @@ pub fn create_render_pipeline(
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
+            compilation_options: Default::default(),
         }),
 
         primitive: wgpu::PrimitiveState {
@@ -68,6 +70,7 @@ pub fn create_render_pipeline(
         },
 
         multiview: None,
+        cache: None,
     })
 }
 
