@@ -4,8 +4,12 @@ use winit::{event::WindowEvent, window::Window};
 use crate::{audio::Audio, entity, event_dispatch, texture, Options};
 
 use super::{
-    debug_overlay::DebugOverlay, game_controller::GameController, game_state::GameState,
-    game_ui::GameUi, gpu_state::GpuState, lcd_filter::LcdFilter,
+    debug_overlay::DebugOverlay,
+    game_controller::GameController,
+    game_state::GameState,
+    game_ui::GameUi,
+    gpu_state::{self, GpuState},
+    lcd_filter::LcdFilter,
 };
 
 // --------------------------------------------------------------------------------------------------------------------
@@ -25,9 +29,9 @@ pub struct AppContext<'a, 'window> {
 
 // --------------------------------------------------------------------------------------------------------------------
 
-pub struct AppState<'a> {
+pub struct AppState<'window> {
     options: Options,
-    pub gpu: GpuState<'a>,
+    pub gpu: GpuState<'window>,
     audio: Audio,
     game_controller: GameController,
     game_state: GameState,
@@ -38,17 +42,20 @@ pub struct AppState<'a> {
     entity_id_vendor: entity::IdVendor,
     message_dispatcher: event_dispatch::Dispatcher,
 
-    window: &'a winit::window::Window,
+    window: &'window winit::window::Window,
 }
 
-impl<'a> AppState<'a> {
-    pub fn new(window: &'a Window, mut gpu: GpuState<'a>, options: Options) -> Result<Self> {
+impl<'window> AppState<'window> {
+    pub fn new(window: &'window Window, options: Options) -> Result<Self> {
         let mut entity_id_vendor = entity::IdVendor::default();
 
         let audio = Audio::new(&options);
 
         let game_controller =
             GameController::new(options.lives, options.checkpoint.unwrap_or(0_u32));
+
+        let mut gpu = pollster::block_on(gpu_state::GpuState::new(&window));
+
         let mut game_state = GameState::new(
             &mut gpu,
             &options,
@@ -58,7 +65,7 @@ impl<'a> AppState<'a> {
         );
         let mut game_ui = GameUi::new(&mut gpu, &options, &mut entity_id_vendor);
         let debug_overlay = if options.debug_overlay {
-            Some(DebugOverlay::new(window, &gpu))
+            Some(DebugOverlay::new(&window, &gpu))
         } else {
             None
         };
@@ -97,26 +104,26 @@ impl<'a> AppState<'a> {
 
     pub fn event(&mut self, event: &winit::event::Event<()>) {
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.event(self.window, event);
+            debug_overlay.event(&self.window, event);
         }
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.gpu.resize(new_size);
-        self.game_state.resize(self.window, new_size, &self.gpu);
-        self.game_ui.resize(self.window, new_size, &self.gpu);
+        self.game_state.resize(&self.window, new_size, &self.gpu);
+        self.game_ui.resize(&self.window, new_size, &self.gpu);
         self.lcd_filter
-            .resize(self.window, new_size, &self.gpu, &self.game_state);
+            .resize(&self.window, new_size, &self.gpu, &self.game_state);
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
         if self
             .game_state
-            .input(self.window, event, self.game_ui.is_paused())
+            .input(&self.window, event, self.game_ui.is_paused())
         {
             true
         } else {
-            self.game_ui.input(self.window, event)
+            self.game_ui.input(&self.window, event)
         }
     }
 
@@ -140,7 +147,7 @@ impl<'a> AppState<'a> {
         }
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
-            debug_overlay.update(self.window, delta_time);
+            debug_overlay.update(&self.window, delta_time);
         }
 
         let game_dt = if self.game_ui.is_paused() {
@@ -153,7 +160,7 @@ impl<'a> AppState<'a> {
 
         {
             let mut ctx = AppContext {
-                window: self.window,
+                window: &self.window,
                 gpu: &mut self.gpu,
                 audio: &mut self.audio,
                 message_dispatcher: &mut self.message_dispatcher,
@@ -188,17 +195,17 @@ impl<'a> AppState<'a> {
         //
 
         self.game_state
-            .render(self.window, &mut self.gpu, encoder, frame_index);
+            .render(&self.window, &mut self.gpu, encoder, frame_index);
 
         self.game_ui
-            .render(self.window, &mut self.gpu, encoder, frame_index);
+            .render(&self.window, &mut self.gpu, encoder, frame_index);
 
         self.lcd_filter
-            .render(self.window, &mut self.gpu, output, encoder, frame_index);
+            .render(&self.window, &mut self.gpu, output, encoder, frame_index);
 
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.render(
-                self.window,
+                &self.window,
                 &mut self.gpu,
                 output,
                 encoder,
