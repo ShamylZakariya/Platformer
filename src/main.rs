@@ -5,12 +5,11 @@ use state::constants::{ORIGINAL_WINDOW_HEIGHT, ORIGINAL_WINDOW_WIDTH};
 
 use structopt::StructOpt;
 use winit::{
-    application::ApplicationHandler,
     dpi::LogicalSize,
     event::*,
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
-    keyboard::{Key, KeyCode, NamedKey, PhysicalKey},
-    window::{Icon, Window, WindowId},
+    event_loop::EventLoop,
+    keyboard::{KeyCode, PhysicalKey},
+    window::Window,
 };
 
 mod audio;
@@ -158,126 +157,9 @@ fn run_deprecated(opt: Options) {
     });
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-
-struct Application<'window> {
-    options: Options,
-    close_requested: bool,
-    last_render_time: std::time::Instant,
-    frame_idx: u64,
-    icon: Icon,
-    app_state: Option<state::app_state::AppState<'window>>,
-    window: Option<Window>,
-}
-
-impl<'window> Application<'window> {
-    fn new(options: Options) -> Self {
-        Self {
-            options,
-            close_requested: false,
-            last_render_time: std::time::Instant::now(),
-            frame_idx: 0,
-            icon: Self::load_icon(include_bytes!("../res/icon.png")),
-            app_state: None,
-            window: None,
-        }
-    }
-
-    fn load_icon(bytes: &[u8]) -> winit::window::Icon {
-        let (icon_rgba, icon_width, icon_height) = {
-            let image = image::load_from_memory(bytes).unwrap().into_rgba8();
-            let (width, height) = image.dimensions();
-            let rgba = image.into_raw();
-            (rgba, width, height)
-        };
-        Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
-    }
-}
-
-impl<'window> ApplicationHandler for Application<'window> {
-    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
-        log::info!("new_events: {cause:?}");
-    }
-
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let window_attributes = Window::default_attributes()
-            .with_title("Gargoyle's Quest")
-            .with_window_icon(Some(self.icon.clone()));
-
-        self.window = Some(event_loop.create_window(window_attributes).unwrap());
-
-        let app_state =
-            state::app_state::AppState::new(self.window.as_ref().unwrap(), self.options.clone())
-                .unwrap();
-
-        // FIXME: This doesn't work, as it causes Application to be self-referential
-        // self.app_state.replace(app_state);
-    }
-
-    fn window_event(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        window_id: WindowId,
-        event: WindowEvent,
-    ) {
-        log::info!("{event:?}");
-
-        if let Some(window) = self.window.as_ref() {
-            if window_id != window.id() {
-                return;
-            }
-        } else {
-            return;
-        }
-
-        match event {
-            WindowEvent::CloseRequested => {
-                self.close_requested = true;
-            }
-            WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        logical_key: key,
-                        state: ElementState::Pressed,
-                        ..
-                    },
-                ..
-            } => match key.as_ref() {
-                Key::Named(NamedKey::Escape) => {
-                    self.close_requested = true;
-                }
-                _ => (),
-            },
-            WindowEvent::RedrawRequested => {
-                let window = self.window.as_ref().unwrap();
-                window.pre_present_notify();
-            }
-            _ => (),
-        }
-    }
-
-    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
-        // event_loop.set_control_flow(ControlFlow::Poll);
-
-        if self.close_requested {
-            event_loop.exit();
-        } else {
-            // This SHOULD be enough to keep drawing...
-            self.window.as_ref().unwrap().request_redraw();
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-
 fn main() {
     env_logger::init();
     let opt = Options::from_args();
 
-    if true {
-        run_deprecated(opt);
-    } else {
-        let event_loop = EventLoop::new().unwrap();
-        let _ = event_loop.run_app(&mut Application::new(opt));
-    }
+    run_deprecated(opt);
 }
