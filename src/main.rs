@@ -78,7 +78,7 @@ fn run_deprecated(opt: Options) {
     }
 
     let window = event_loop.create_window(window_attrs).unwrap();
-    let mut app_state = state::app_state::AppState::new(&window, opt).unwrap();
+    let mut app_state = state::app_state::AppState::new(window, opt).unwrap();
     let mut last_render_time = std::time::Instant::now();
     let mut frame_index: u32 = 0;
 

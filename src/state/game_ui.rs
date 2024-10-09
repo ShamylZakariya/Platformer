@@ -2,7 +2,9 @@ use cgmath::*;
 use std::{collections::HashMap, path::Path, rc::Rc, time::Duration};
 
 use winit::{
-    event::{ElementState, KeyEvent, WindowEvent}, keyboard::{KeyCode, PhysicalKey}, window::Window
+    event::{ElementState, KeyEvent, WindowEvent},
+    keyboard::{KeyCode, PhysicalKey},
+    window::Window,
 };
 
 use crate::{audio, camera, sprite::rendering, state::gpu_state};
@@ -359,7 +361,6 @@ impl GameUi {
 
     pub fn render(
         &mut self,
-        _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
         frame_index: usize,

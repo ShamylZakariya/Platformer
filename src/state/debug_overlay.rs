@@ -99,7 +99,6 @@ impl DebugOverlay {
 
     pub fn render(
         &mut self,
-        _window: &Window,
         _gpu: &mut GpuState,
         _output: &wgpu::SurfaceTexture,
         _encoder: &mut wgpu::CommandEncoder,

@@ -1,19 +1,23 @@
+use std::sync::Arc;
+
 use crate::texture;
 use winit::window::Window;
 
-pub struct GpuState<'window> {
-    pub surface: wgpu::Surface<'window>,
+pub struct GpuState {
+    pub surface: wgpu::Surface<'static>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub config: wgpu::SurfaceConfiguration,
     pub depth_attachment: texture::Texture,
     pub color_attachment: texture::Texture,
+    pub window: Arc<winit::window::Window>,
 }
 
-impl<'window> GpuState<'window> {
+impl GpuState {
     pub const COLOR_ATTACHMENT_LAYER_COUNT: u32 = 64;
 
-    pub async fn new(window: &'window Window) -> GpuState<'window> {
+    pub async fn new(window: Window) -> GpuState {
+        let window = Arc::new(window);
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
@@ -22,7 +26,7 @@ impl<'window> GpuState<'window> {
         });
 
         let surface = instance
-            .create_surface(window)
+            .create_surface(window.clone())
             .expect("Expected wgpu instance to create surface.");
 
         let adapter = instance
@@ -86,6 +90,7 @@ impl<'window> GpuState<'window> {
             config,
             depth_attachment,
             color_attachment,
+            window,
         }
     }
 
@@ -119,5 +124,9 @@ impl<'window> GpuState<'window> {
 
     pub fn size(&self) -> winit::dpi::PhysicalSize<u32> {
         winit::dpi::PhysicalSize::new(self.config.width, self.config.height)
+    }
+
+    pub fn window(&self) -> &winit::window::Window {
+        &self.window
     }
 }

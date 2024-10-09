@@ -351,7 +351,6 @@ impl LcdFilter {
 
     pub fn render(
         &mut self,
-        _window: &Window,
         gpu: &mut gpu_state::GpuState,
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,

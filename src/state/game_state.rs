@@ -613,7 +613,6 @@ impl GameState {
 
     pub fn render(
         &mut self,
-        _window: &Window,
         gpu: &mut gpu_state::GpuState,
         encoder: &mut wgpu::CommandEncoder,
         frame_index: usize,
