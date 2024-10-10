@@ -202,7 +202,7 @@ impl LcdFilter {
 
         let noise_texture = "res/white_noise.png";
         let noise = texture::Texture::load(&gpu.device, &gpu.queue, noise_texture)
-            .expect(&format!("Expected to load noise texture {}", noise_texture));
+            .unwrap_or_else(|_| panic!("Expected to load noise texture {}", noise_texture));
 
         let display_pass = Self::create_display_pass(
             gpu,

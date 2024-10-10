@@ -239,27 +239,19 @@ impl FirebrandInputState {
     }
 
     fn jump(&self) -> &ButtonState {
-        self.input_state
-            .get_button_state(KeyCode::KeyW)
-            .unwrap()
+        self.input_state.get_button_state(KeyCode::KeyW).unwrap()
     }
 
     fn move_left(&self) -> &ButtonState {
-        self.input_state
-            .get_button_state(KeyCode::KeyA)
-            .unwrap()
+        self.input_state.get_button_state(KeyCode::KeyA).unwrap()
     }
 
     fn move_right(&self) -> &ButtonState {
-        self.input_state
-            .get_button_state(KeyCode::KeyD)
-            .unwrap()
+        self.input_state.get_button_state(KeyCode::KeyD).unwrap()
     }
 
     fn fire(&self) -> &ButtonState {
-        self.input_state
-            .get_button_state(KeyCode::Space)
-            .unwrap()
+        self.input_state.get_button_state(KeyCode::Space).unwrap()
     }
 }
 
@@ -954,7 +946,8 @@ impl Entity for Firebrand {
             Event::FirebrandPassedThroughExitDoor => {
                 self.did_pass_through_exit_door = true;
             }
-            Event::FirebrandCreated { checkpoint, .. } if checkpoint == 0 => {
+            Event::FirebrandCreated { checkpoint: 0, .. } => {
+                // when firebrand is created at checkpoint 0, freeze him and play walk on
                 self.frozen = true;
                 self.walk_on_distance_remaining = Some(LEVEL_ENTRY_WALK_ON_DISTANCE);
             }

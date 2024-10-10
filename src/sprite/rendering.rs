@@ -317,10 +317,10 @@ pub struct Mesh {
 
 impl Mesh {
     pub fn new(sprites: &[Sprite], material: usize, device: &wgpu::Device, name: &str) -> Self {
-        let mut left = std::f32::MAX;
-        let mut bottom = std::f32::MAX;
-        let mut right = std::f32::MIN;
-        let mut top = std::f32::MIN;
+        let mut left = f32::MAX;
+        let mut bottom = f32::MAX;
+        let mut right = f32::MIN;
+        let mut top = f32::MIN;
 
         let mut vertices = vec![];
         let mut indices = vec![];
@@ -574,7 +574,7 @@ impl EntityDrawable {
             let cycle = tile.get_property("cycle").unwrap();
             tiles_by_cycle
                 .entry(cycle)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(tile);
 
             if tile.get_property("role") == Some("root") {
@@ -609,7 +609,7 @@ impl EntityDrawable {
 
                 sprites_by_cycle
                     .entry(cycle.to_string())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(sprite);
             }
         }

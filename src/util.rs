@@ -18,7 +18,7 @@ pub fn lerp(t: f32, a: f32, b: f32) -> f32 {
 }
 
 pub fn hermite(t: f32) -> f32 {
-    let t = t.min(1.0).max(0.0);
+    let t = t.clamp(0.0, 1.0);
     t * t * (3.0 - 2.0 * t)
 }
 

@@ -40,7 +40,7 @@ impl Tile {
     }
 
     pub fn has_property(&self, name: &str) -> bool {
-        self.properties.get(name).is_some()
+        self.properties.contains_key(name)
     }
 
     pub fn boolean_property(&self, name: &str) -> bool {

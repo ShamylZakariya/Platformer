@@ -1,7 +1,7 @@
 use cgmath::*;
 use std::time::Duration;
-use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 use winit::event::*;
+use winit::{dpi::PhysicalPosition, keyboard::KeyCode};
 
 use crate::{
     state::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
@@ -211,7 +211,7 @@ impl CameraController {
             }
         };
         let new_scale = self.projection.scale + delta_scale * self.projection.scale;
-        let new_scale = new_scale.min(MAX_CAMERA_SCALE).max(MIN_CAMERA_SCALE);
+        let new_scale = new_scale.clamp(MIN_CAMERA_SCALE, MAX_CAMERA_SCALE);
         self.projection.set_scale(new_scale);
     }
 

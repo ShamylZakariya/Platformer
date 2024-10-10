@@ -2,18 +2,13 @@ use std::collections::HashMap;
 
 use winit::event::ElementState;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ButtonState {
     Pressed,
     Down,
     Released,
+    #[default]
     Up,
-}
-
-impl Default for ButtonState {
-    fn default() -> Self {
-        ButtonState::Up
-    }
 }
 
 impl ButtonState {

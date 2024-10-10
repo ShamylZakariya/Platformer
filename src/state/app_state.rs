@@ -272,7 +272,7 @@ impl AppState {
     }
 }
 
-impl<'a> event_dispatch::MessageHandler for AppState {
+impl event_dispatch::MessageHandler for AppState {
     fn handle_message(&mut self, message: &event_dispatch::Message) {
         self.game_controller.handle_message(
             message,
