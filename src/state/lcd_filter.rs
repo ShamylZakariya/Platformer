@@ -215,7 +215,7 @@ impl LcdFilter {
 
         let column_avg_pass = Self::create_column_averaging_pass(gpu, &uniforms, gpu.config.format);
 
-        let lcd_hysteresis = (!options.no_hysteresis).then_some(Self::DEFAULT_HYSTERESIS);
+        let lcd_hysteresis = (!options.no_sludgy).then_some(Self::DEFAULT_HYSTERESIS);
 
         Self {
             display_pass_pipeline: display_pass.0,

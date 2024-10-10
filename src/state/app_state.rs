@@ -1,3 +1,5 @@
+use std::time;
+
 use anyhow::*;
 use winit::{event::WindowEvent, window::Window};
 
@@ -30,7 +32,6 @@ pub struct AppContext<'a> {
 
 pub struct AppState {
     options: Options,
-    pub gpu: GpuState,
     audio: Audio,
     game_controller: GameController,
     game_state: GameState,
@@ -40,6 +41,12 @@ pub struct AppState {
 
     entity_id_vendor: entity::IdVendor,
     message_dispatcher: event_dispatch::Dispatcher,
+
+    last_render_time: std::time::Instant,
+    frame_index: u32,
+
+    // gpu is last; which means it's last to be destructed. This prevents a crash during shutdown (sigh)
+    pub gpu: GpuState,
 }
 
 impl AppState {
@@ -82,7 +89,6 @@ impl AppState {
 
         Ok(Self {
             options,
-            gpu,
             audio,
             game_controller,
             game_state,
@@ -91,6 +97,9 @@ impl AppState {
             lcd_filter,
             entity_id_vendor,
             message_dispatcher: event_dispatch::Dispatcher::default(),
+            last_render_time: time::Instant::now(),
+            frame_index: 0,
+            gpu,
         })
     }
 
@@ -98,9 +107,63 @@ impl AppState {
         self.gpu.window()
     }
 
-    pub fn event(&mut self, event: &WindowEvent) {
+    pub fn event(&mut self, event: &WindowEvent, event_loop: &winit::event_loop::ActiveEventLoop) {
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.event(self.gpu.window(), event);
+        }
+
+        if !self.input(event) {
+            match event {
+                WindowEvent::RedrawRequested => {
+                    let now = std::time::Instant::now();
+                    let dt = now - self.last_render_time;
+                    self.last_render_time = now;
+
+                    self.update(now, dt, self.frame_index);
+
+                    match self.gpu.surface.get_current_texture() {
+                        Result::Ok(output) => {
+                            let mut encoder = self.gpu.device.create_command_encoder(
+                                &wgpu::CommandEncoderDescriptor {
+                                    label: Some("Render Encoder"),
+                                },
+                            );
+                            self.render(&mut encoder, &output, self.frame_index as usize);
+                            self.gpu.queue.submit(std::iter::once(encoder.finish()));
+                            output.present();
+
+                            self.frame_index = self.frame_index.wrapping_add(1);
+                        }
+                        Err(wgpu::SurfaceError::Lost) => {
+                            let size = self.gpu.size();
+                            self.resize(size);
+                        }
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => {
+                            panic!("wgpu::SurfaceError::OutOfMemory - bailing")
+                        }
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => log::error!("{:?}", e),
+                    }
+                }
+
+                WindowEvent::CloseRequested => event_loop.exit(),
+                WindowEvent::KeyboardInput {
+                    event:
+                        winit::event::KeyEvent {
+                            state: winit::event::ElementState::Pressed,
+                            physical_key:
+                                winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => event_loop.exit(),
+
+                WindowEvent::Resized(physical_size) => {
+                    self.resize(*physical_size);
+                }
+                _ => {}
+            }
         }
     }
 
