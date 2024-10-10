@@ -88,7 +88,7 @@ impl DebugOverlay {
         Self {}
     }
 
-    pub fn event(&mut self, _window: &Window, _event: &winit::event::Event<()>) {
+    pub fn event(&mut self, _window: &Window, _event: &winit::event::WindowEvent) {
         // self.winit_platform
         //     .handle_event(self.imgui.io_mut(), window, event);
     }

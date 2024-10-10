@@ -98,7 +98,7 @@ impl AppState {
         self.gpu.window()
     }
 
-    pub fn event(&mut self, event: &winit::event::Event<()>) {
+    pub fn event(&mut self, event: &WindowEvent) {
         if let Some(ref mut debug_overlay) = self.debug_overlay {
             debug_overlay.event(self.gpu.window(), event);
         }

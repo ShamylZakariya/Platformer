@@ -61,105 +61,130 @@ pub struct Options {
 
 // ---------------------------------------------------------------------------------------------------------------------
 
-fn run_deprecated(opt: Options) {
-    let mut gilrs = Gilrs::new().unwrap();
-    for (_id, gamepad) in gilrs.gamepads() {
-        log::info!("{} is {:?}", gamepad.name(), gamepad.power_info());
+struct WinitApp {
+    options: Options,
+    app: Option<state::app_state::AppState>,
+    gil: Option<Gilrs>,
+    last_render_time: std::time::Instant,
+    frame_index: u32,
+}
+
+impl WinitApp {
+    fn new(options: Options) -> Self {
+        Self {
+            options,
+            app: None,
+            gil: None,
+            last_render_time: std::time::Instant::now(),
+            frame_index: 0,
+        }
     }
+}
 
-    let event_loop = EventLoop::new().unwrap();
-    let mut window_attrs = Window::default_attributes()
-        .with_title("Gargoyle's Quest")
-        .with_decorations(true);
-
-    if opt.gameboy {
-        let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
-        window_attrs = window_attrs.with_inner_size(size);
-    }
-
-    let window = event_loop.create_window(window_attrs).unwrap();
-    let mut app_state = state::app_state::AppState::new(window, opt).unwrap();
-    let mut last_render_time = std::time::Instant::now();
-    let mut frame_index: u32 = 0;
-
-    let _ = event_loop.run(move |event, control_flow| {
-        while let Some(event) = gilrs.next_event() {
-            app_state.gamepad_input(event);
+impl winit::application::ApplicationHandler for WinitApp {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
+        let mut window_attrs = Window::default_attributes().with_title("Gargoyle's Quest");
+        if self.options.gameboy {
+            let size = LogicalSize::new(ORIGINAL_WINDOW_WIDTH * 4, ORIGINAL_WINDOW_HEIGHT * 4);
+            window_attrs = window_attrs.with_inner_size(size);
         }
 
-        app_state.event(&event);
+        let window = event_loop.create_window(window_attrs).unwrap();
 
-        match event {
-            Event::AboutToWait => {
-                // we have to explicitly request a redraw
-                app_state.window().request_redraw();
-            }
-            Event::WindowEvent {
-                ref event,
-                window_id,
-            } if window_id == app_state.window().id() => {
-                if !app_state.input(event) {
-                    match event {
-                        WindowEvent::RedrawRequested => {
-                            let now = std::time::Instant::now();
-                            let dt = now - last_render_time;
-                            last_render_time = now;
+        self.app = Some(state::app_state::AppState::new(window, self.options.clone()).unwrap());
 
-                            app_state.update(now, dt, frame_index);
+        let gilrs = Gilrs::new().unwrap();
+        for (_id, gamepad) in gilrs.gamepads() {
+            log::info!("{} is {:?}", gamepad.name(), gamepad.power_info());
+        }
+        self.gil = Some(gilrs);
+    }
 
-                            match app_state.gpu.surface.get_current_texture() {
-                                Ok(output) => {
-                                    let mut encoder = app_state.gpu.device.create_command_encoder(
-                                        &wgpu::CommandEncoderDescriptor {
-                                            label: Some("Render Encoder"),
-                                        },
-                                    );
-                                    app_state.render(&mut encoder, &output, frame_index as usize);
-                                    app_state
-                                        .gpu
-                                        .queue
-                                        .submit(std::iter::once(encoder.finish()));
-                                    output.present();
+    fn window_event(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_id: winit::window::WindowId,
+        event: WindowEvent,
+    ) {
+        let app = self.app.as_mut().unwrap();
+        let window = app.window();
 
-                                    frame_index = frame_index.wrapping_add(1);
-                                }
-                                Err(wgpu::SurfaceError::Lost) => {
-                                    let size = app_state.gpu.size();
-                                    app_state.resize(size);
-                                }
-                                // The system is out of memory, we should probably quit
-                                Err(wgpu::SurfaceError::OutOfMemory) => control_flow.exit(),
-                                // All other errors (Outdated, Timeout) should be resolved by the next frame
-                                Err(e) => log::error!("{:?}", e),
-                            }
-                        }
+        if window.id() != window_id {
+            return;
+        }
 
-                        WindowEvent::CloseRequested => control_flow.exit(),
-                        WindowEvent::KeyboardInput {
-                            event:
-                                KeyEvent {
-                                    state: ElementState::Pressed,
-                                    physical_key: PhysicalKey::Code(KeyCode::Escape),
-                                    ..
+        while let Some(event) = self.gil.as_mut().unwrap().next_event() {
+            app.gamepad_input(event);
+        }
+
+        app.event(&event);
+
+        if !app.input(&event) {
+            match event {
+                WindowEvent::RedrawRequested => {
+                    let now = std::time::Instant::now();
+                    let dt = now - self.last_render_time;
+                    self.last_render_time = now;
+
+                    app.update(now, dt, self.frame_index);
+
+                    match app.gpu.surface.get_current_texture() {
+                        Ok(output) => {
+                            let mut encoder = app.gpu.device.create_command_encoder(
+                                &wgpu::CommandEncoderDescriptor {
+                                    label: Some("Render Encoder"),
                                 },
-                            ..
-                        } => control_flow.exit(),
+                            );
+                            app.render(&mut encoder, &output, self.frame_index as usize);
+                            app.gpu.queue.submit(std::iter::once(encoder.finish()));
+                            output.present();
 
-                        WindowEvent::Resized(physical_size) => {
-                            app_state.resize(*physical_size);
+                            self.frame_index = self.frame_index.wrapping_add(1);
                         }
-                        _ => {}
+                        Err(wgpu::SurfaceError::Lost) => {
+                            let size = app.gpu.size();
+                            app.resize(size);
+                        }
+                        // The system is out of memory, we should probably quit
+                        Err(wgpu::SurfaceError::OutOfMemory) => event_loop.exit(),
+                        // All other errors (Outdated, Timeout) should be resolved by the next frame
+                        Err(e) => log::error!("{:?}", e),
                     }
                 }
+
+                WindowEvent::CloseRequested => event_loop.exit(),
+                WindowEvent::KeyboardInput {
+                    event:
+                        KeyEvent {
+                            state: ElementState::Pressed,
+                            physical_key: PhysicalKey::Code(KeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => event_loop.exit(),
+
+                WindowEvent::Resized(physical_size) => {
+                    app.resize(physical_size);
+                }
+                _ => {}
             }
-            _ => {}
         }
-    });
+    }
+
+    fn about_to_wait(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop) {
+        let window = self.app.as_ref().unwrap().window();
+        window.request_redraw();
+    }
+}
+
+async fn run(options: Options) {
+    let event_loop = EventLoop::new().unwrap();
+    let mut app = WinitApp::new(options);
+    let _ = event_loop.run_app(&mut app);
 }
 
 fn main() {
     env_logger::init();
-    let opt = Options::from_args();
-
-    run_deprecated(opt);
+    let options = Options::from_args();
+    pollster::block_on(run(options));
 }
