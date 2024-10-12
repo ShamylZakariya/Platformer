@@ -1,12 +1,135 @@
 use cgmath::*;
 use winit::window::Window;
 
+use egui::Context;
+use egui_wgpu::wgpu::{CommandEncoder, Device, Queue, StoreOp, TextureFormat, TextureView};
+use egui_wgpu::{wgpu, Renderer, ScreenDescriptor};
+use egui_winit::State;
+use winit::event::WindowEvent;
+
 use super::{
     // constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
     game_state::GameState,
     gpu_state::GpuState,
     lcd_filter::LcdFilter,
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// From https://github.com/kaphula/winit-egui-wgpu-template
+
+pub struct EguiRenderer {
+    state: State,
+    renderer: Renderer,
+    frame_started: bool,
+}
+
+impl EguiRenderer {
+    pub fn context(&self) -> &Context {
+        self.state.egui_ctx()
+    }
+
+    pub fn new(
+        device: &Device,
+        output_color_format: TextureFormat,
+        output_depth_format: Option<TextureFormat>,
+        msaa_samples: u32,
+        window: &Window,
+    ) -> EguiRenderer {
+        let egui_context = Context::default();
+
+        let egui_state = egui_winit::State::new(
+            egui_context,
+            egui::viewport::ViewportId::ROOT,
+            &window,
+            Some(window.scale_factor() as f32),
+            None,
+            Some(2 * 1024), // default dimension is 2048
+        );
+        let egui_renderer = Renderer::new(
+            device,
+            output_color_format,
+            output_depth_format,
+            msaa_samples,
+            true,
+        );
+
+        EguiRenderer {
+            state: egui_state,
+            renderer: egui_renderer,
+            frame_started: false,
+        }
+    }
+
+    pub fn handle_input(&mut self, window: &Window, event: &WindowEvent) {
+        let _ = self.state.on_window_event(window, event);
+    }
+
+    pub fn ppp(&mut self, v: f32) {
+        self.context().set_pixels_per_point(v);
+    }
+
+    pub fn begin_frame(&mut self, window: &Window) {
+        let raw_input = self.state.take_egui_input(window);
+        self.state.egui_ctx().begin_pass(raw_input);
+        self.frame_started = true;
+    }
+
+    pub fn end_frame_and_draw(
+        &mut self,
+        device: &Device,
+        queue: &Queue,
+        encoder: &mut CommandEncoder,
+        window: &Window,
+        window_surface_view: &TextureView,
+        screen_descriptor: ScreenDescriptor,
+    ) {
+        if !self.frame_started {
+            panic!("begin_frame must be called before end_frame_and_draw can be called!");
+        }
+
+        self.ppp(screen_descriptor.pixels_per_point);
+
+        let full_output = self.state.egui_ctx().end_pass();
+
+        self.state
+            .handle_platform_output(window, full_output.platform_output);
+
+        let tris = self
+            .state
+            .egui_ctx()
+            .tessellate(full_output.shapes, self.state.egui_ctx().pixels_per_point());
+        for (id, image_delta) in &full_output.textures_delta.set {
+            self.renderer
+                .update_texture(device, queue, *id, image_delta);
+        }
+        self.renderer
+            .update_buffers(device, queue, encoder, &tris, &screen_descriptor);
+        let rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: window_surface_view,
+                resolve_target: None,
+                ops: egui_wgpu::wgpu::Operations {
+                    load: egui_wgpu::wgpu::LoadOp::Load,
+                    store: StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            label: Some("egui main render pass"),
+            occlusion_query_set: None,
+        });
+
+        self.renderer
+            .render(&mut rpass.forget_lifetime(), &tris, &screen_descriptor);
+        for x in &full_output.textures_delta.free {
+            self.renderer.free_texture(x)
+        }
+
+        self.frame_started = false;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 /// UiStateInput is the input data which will be used to render an ImGUI UI
 /// The method OverlayUi::create_ui_state_input is responsible for vending an
@@ -37,60 +160,23 @@ struct UiInteractionOutput {
 }
 
 pub struct DebugOverlay {
-    // winit_platform: imgui_winit_support::WinitPlatform,
-    // imgui: imgui::Context,
-    // imgui_renderer: imgui_wgpu::Renderer,
+    pub egui_renderer: EguiRenderer,
+    pub scale_factor: f64,
 }
 
 impl DebugOverlay {
-    pub fn new(_window: &Window, _gpu: &GpuState) -> Self {
-        //
-        // ImGUI-wgpu only supports up to wgpu 0.17, and as such, we're out of luck.
-        //
+    pub fn new(window: &Window, gpu: &GpuState) -> Self {
+        let egui_renderer = EguiRenderer::new(&gpu.device, gpu.config.format, None, 1, window);
+        let scale_factor = window.scale_factor();
 
-        // let mut imgui = imgui::Context::create();
-        // let mut winit_platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
-        // winit_platform.attach_window(
-        //     imgui.io_mut(),
-        //     window,
-        //     imgui_winit_support::HiDpiMode::Default,
-        // );
-        // imgui.set_ini_filename(None);
-
-        // let hidpi_factor = window.scale_factor();
-        // let font_size = (13.0 * hidpi_factor) as f32;
-        // imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-
-        // imgui
-        //     .fonts()
-        //     .add_font(&[imgui::FontSource::DefaultFontData {
-        //         config: Some(imgui::FontConfig {
-        //             oversample_h: 1,
-        //             pixel_snap_h: true,
-        //             size_pixels: font_size,
-        //             ..Default::default()
-        //         }),
-        //     }]);
-
-        // let renderer_config = imgui_wgpu::RendererConfig {
-        //     texture_format: gpu.config.format,
-        //     ..Default::default()
-        // };
-
-        // let imgui_renderer =
-        //     imgui_wgpu::Renderer::new(&mut imgui, &gpu.device, &gpu.queue, renderer_config);
-
-        // Self {
-        //     winit_platform,
-        //     imgui,
-        //     imgui_renderer,
-        // }
-        Self {}
+        Self {
+            egui_renderer,
+            scale_factor,
+        }
     }
 
-    pub fn event(&mut self, _window: &Window, _event: &winit::event::WindowEvent) {
-        // self.winit_platform
-        //     .handle_event(self.imgui.io_mut(), window, event);
+    pub fn event(&mut self, window: &Window, event: &winit::event::WindowEvent) {
+        self.egui_renderer.handle_input(window, event);
     }
 
     pub fn update(&mut self, _window: &Window, _dt: std::time::Duration) {
@@ -99,12 +185,49 @@ impl DebugOverlay {
 
     pub fn render(
         &mut self,
-        _gpu: &mut GpuState,
-        _output: &wgpu::SurfaceTexture,
-        _encoder: &mut wgpu::CommandEncoder,
+        gpu: &mut GpuState,
+        output: &wgpu::SurfaceTexture,
+        encoder: &mut wgpu::CommandEncoder,
         _game_state: &mut GameState,
         _lcd_filter: &mut LcdFilter,
     ) {
+        let screen_descriptor = ScreenDescriptor {
+            size_in_pixels: [gpu.config.width, gpu.config.height],
+            pixels_per_point: gpu.window.scale_factor() as f32 * 1.0,
+        };
+
+        let output_view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
+        self.egui_renderer.begin_frame(&gpu.window);
+
+        // ---
+        // draw commands go here
+
+        egui::Window::new("winit + egui + wgpu says hello!")
+            .resizable(true)
+            .vscroll(true)
+            .default_open(false)
+            .show(self.egui_renderer.context(), |ui| {
+                ui.label("Label!");
+
+                if ui.button("Button!").clicked() {
+                    println!("boom!")
+                }
+            });
+
+        // ---
+
+        self.egui_renderer.end_frame_and_draw(
+            &gpu.device,
+            &gpu.queue,
+            encoder,
+            &gpu.window,
+            &output_view,
+            screen_descriptor,
+        );
+
         // self.winit_platform
         //     .prepare_frame(self.imgui.io_mut(), window)
         //     .expect("Failed to prepare frame");

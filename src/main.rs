@@ -125,7 +125,8 @@ async fn run(options: Options) {
 
 fn main() {
     env_logger::init();
-    let options = Options::from_args();
+    let mut options = Options::from_args();
+    options.debug_overlay = true;
 
     pollster::block_on(run(options));
 }

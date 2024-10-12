@@ -25,11 +25,9 @@ env_logger = "0.10"
 log = "0.4"
 wgpu = "22"
 
-# imgui wgpu is usually pretty behind wgpu
-# imgui = "0.11"
-# imgui-wgpu = "0.24"
-# imgui-winit-support = "0.11"
-
+egui = "0.29"
+egui-wgpu = "0.29"
+egui-winit = "0.29"
 
 [dependencies.cgmath]
 version = "0.18"
