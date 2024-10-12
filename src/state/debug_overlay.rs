@@ -179,17 +179,15 @@ impl DebugOverlay {
         self.egui_renderer.handle_input(window, event);
     }
 
-    pub fn update(&mut self, _window: &Window, _dt: std::time::Duration) {
-        // self.imgui.io_mut().update_delta_time(dt);
-    }
+    pub fn update(&mut self, _window: &Window, _dt: std::time::Duration) {}
 
     pub fn render(
         &mut self,
         gpu: &mut GpuState,
         output: &wgpu::SurfaceTexture,
         encoder: &mut wgpu::CommandEncoder,
-        _game_state: &mut GameState,
-        _lcd_filter: &mut LcdFilter,
+        game_state: &mut GameState,
+        lcd_filter: &mut LcdFilter,
     ) {
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: [gpu.config.width, gpu.config.height],
@@ -205,12 +203,21 @@ impl DebugOverlay {
         // ---
         // draw commands go here
 
+        let display_state = self.create_ui_state_input(game_state, lcd_filter);
+        let mut ui_input_state = UiInteractionOutput::default();
+
         egui::Window::new("winit + egui + wgpu says hello!")
             .resizable(true)
             .vscroll(true)
             .default_open(false)
             .show(self.egui_renderer.context(), |ui| {
-                ui.label("Label!");
+                let mut camera_tracks_character = display_state.camera_tracks_character;
+                if ui
+                    .checkbox(&mut camera_tracks_character, "Camera Follows")
+                    .clicked()
+                {
+                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
+                }
 
                 if ui.button("Button!").clicked() {
                     println!("boom!")
@@ -227,6 +234,9 @@ impl DebugOverlay {
             &output_view,
             screen_descriptor,
         );
+
+        // Process user input
+        self.handle_ui_interaction_output(&ui_input_state, game_state, lcd_filter);
 
         // self.winit_platform
         //     .prepare_frame(self.imgui.io_mut(), window)
