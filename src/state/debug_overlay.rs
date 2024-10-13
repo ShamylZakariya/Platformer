@@ -7,6 +7,7 @@ use egui_wgpu::{wgpu, Renderer, ScreenDescriptor};
 use egui_winit::State;
 use winit::event::WindowEvent;
 
+use super::constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE};
 use super::{
     // constants::{MAX_CAMERA_SCALE, MIN_CAMERA_SCALE},
     game_state::GameState,
@@ -131,10 +132,11 @@ impl EguiRenderer {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-/// UiStateInput is the input data which will be used to render an ImGUI UI
-/// The method OverlayUi::create_ui_state_input is responsible for vending an
-/// instance that represents the data needed to populate the ImGUI UI.
+/// UiStateInput is the input data which will be used to render the UI.
+/// The method DebugOverlay::create_ui_state_input is responsible for vending an
+/// instance that represents the data needed to populate the UI.
 /// User interaction with the UI will be used to populate UiInteractionOutput.
+/// UiInteractionOutput will be used to modify game state, accordingly.
 #[derive(Clone, Debug)]
 struct UiStateInput {
     camera_tracks_character: bool,
@@ -146,10 +148,10 @@ struct UiStateInput {
     lcd_hysteresis: Option<std::time::Duration>,
 }
 
-/// UiInteractionOutput represents the values from UiSTateInput which changed
+/// UiInteractionOutput represents the values from UiStateInput which changed
 /// due to user interaction, which then need to be promoted to the game state.
 /// Any non-None value is a value that changed, and must be handled in
-/// OverlayUi::handle_ui_interaction_output
+/// DebugOverlay::handle_ui_interaction_output
 #[derive(Default)]
 struct UiInteractionOutput {
     camera_tracks_character: Option<bool>,
@@ -200,31 +202,13 @@ impl DebugOverlay {
 
         self.egui_renderer.begin_frame(&gpu.window);
 
-        // ---
-        // draw commands go here
+        // Render the UI, handling user interaction
 
-        let display_state = self.create_ui_state_input(game_state, lcd_filter);
-        let mut ui_input_state = UiInteractionOutput::default();
+        let current_state = self.create_ui_state_input(game_state, lcd_filter);
+        let result = self.render_gui(current_state);
+        self.handle_ui_interaction_output(&result, game_state, lcd_filter);
 
-        egui::Window::new("winit + egui + wgpu says hello!")
-            .resizable(true)
-            .vscroll(true)
-            .default_open(false)
-            .show(self.egui_renderer.context(), |ui| {
-                let mut camera_tracks_character = display_state.camera_tracks_character;
-                if ui
-                    .checkbox(&mut camera_tracks_character, "Camera Follows")
-                    .clicked()
-                {
-                    ui_input_state.camera_tracks_character = Some(camera_tracks_character);
-                }
-
-                if ui.button("Button!").clicked() {
-                    println!("boom!")
-                }
-            });
-
-        // ---
+        // Present the frame
 
         self.egui_renderer.end_frame_and_draw(
             &gpu.device,
@@ -234,110 +218,79 @@ impl DebugOverlay {
             &output_view,
             screen_descriptor,
         );
+    }
 
-        // Process user input
-        self.handle_ui_interaction_output(&ui_input_state, game_state, lcd_filter);
+    fn render_gui(&mut self, input: UiStateInput) -> UiInteractionOutput {
+        let mut output = UiInteractionOutput::default();
 
-        // self.winit_platform
-        //     .prepare_frame(self.imgui.io_mut(), window)
-        //     .expect("Failed to prepare frame");
+        egui::Window::new("Knobs!")
+            .resizable(true)
+            .vscroll(true)
+            .default_open(false)
+            .auto_sized()
+            .show(self.egui_renderer.context(), |ui| {
+                ui.label(format!(
+                    "camera: ({:.2},{:.2}) zoom: {:.2}",
+                    input.camera_position.x, input.camera_position.y, input.camera_position.z
+                ));
+                ui.label(format!(
+                    "character: ({:.2},{:.2})",
+                    input.character_position.x, input.character_position.y
+                ));
+                ui.end_row();
 
-        // let display_state = self.create_ui_state_input(game_state, lcd_filter);
-        // let ui = self.imgui.frame();
-        // let mut ui_input_state = UiInteractionOutput::default();
+                let mut camera_tracks_character = input.camera_tracks_character;
+                if ui
+                    .checkbox(&mut camera_tracks_character, "Camera Follows")
+                    .clicked()
+                {
+                    output.camera_tracks_character = Some(camera_tracks_character);
+                }
+                ui.end_row();
 
-        // //
-        // // Build the UI, mutating ui_input_state to indicate user interaction.
-        // //
+                let mut zoom = input.zoom;
+                ui.add(egui::Slider::new(
+                    &mut zoom,
+                    MIN_CAMERA_SCALE..=MAX_CAMERA_SCALE,
+                ));
+                if (zoom - input.zoom).abs() > 1e-5 {
+                    output.zoom = Some(zoom);
+                }
+                ui.end_row();
 
-        // ui.window("Debug")
-        //     .size([280.0, 156.0], imgui::Condition::FirstUseEver)
-        //     .build(|| {
-        //         let mut camera_tracks_character = display_state.camera_tracks_character;
-        //         if ui.checkbox("Camera Tracks Character", &mut camera_tracks_character) {
-        //             ui_input_state.camera_tracks_character = Some(camera_tracks_character);
-        //         }
-        //         ui.text(format!(
-        //             "camera: ({:.2},{:.2}) zoom: {:.2}",
-        //             display_state.camera_position.x,
-        //             display_state.camera_position.y,
-        //             display_state.zoom,
-        //         ));
+                let mut draw_collision_info = input.draw_stage_collision_info;
+                if ui
+                    .checkbox(&mut draw_collision_info, "Draw Colliders")
+                    .clicked()
+                {
+                    output.draw_stage_collision_info = Some(draw_collision_info);
+                }
+                ui.end_row();
 
-        //         ui.text(format!(
-        //             "character: ({:.2},{:.2}) cycle: {}",
-        //             display_state.character_position.x,
-        //             display_state.character_position.y,
-        //             display_state.character_cycle,
-        //         ));
+                let min_hysteresis_seconds: f32 = 0.0;
+                let max_hysteresis_seconds: f32 = 0.5;
+                let current_hysteresis_seconds = input
+                    .lcd_hysteresis
+                    .map_or_else(|| 0.0, |h| h.as_secs_f32());
+                let mut new_hysteresis_seconds = current_hysteresis_seconds;
 
-        //         let mut zoom = display_state.zoom;
-        //         if ui.slider("Zoom", MIN_CAMERA_SCALE, MAX_CAMERA_SCALE, &mut zoom) {
-        //             ui_input_state.zoom = Some(zoom);
-        //         }
-
-        //         let mut draw_stage_collision_info = display_state.draw_stage_collision_info;
-        //         if ui.checkbox("Stage Collision Visible", &mut draw_stage_collision_info) {
-        //             ui_input_state.draw_stage_collision_info = Some(draw_stage_collision_info);
-        //         }
-
-        //         let min_hysteresis_seconds: f32 = 0.0;
-        //         let max_hysteresis_seconds: f32 = 0.5;
-        //         let mut current_hysteresis_seconds = lcd_filter
-        //             .lcd_hysteresis()
-        //             .map_or_else(|| 0.0, |h| h.as_secs_f32());
-
-        //         if ui.slider(
-        //             "LCD Hysteresis",
-        //             min_hysteresis_seconds,
-        //             max_hysteresis_seconds,
-        //             &mut current_hysteresis_seconds,
-        //         ) {
-        //             ui_input_state.lcd_hysteresis = if current_hysteresis_seconds > 0.0 {
-        //                 Some(Some(std::time::Duration::from_secs_f32(
-        //                     current_hysteresis_seconds,
-        //                 )))
-        //             } else {
-        //                 Some(None)
-        //             };
-        //         }
-        //     });
-
-        // //
-        // // Create and submit the render pass
-        // //
-
-        // self.winit_platform.prepare_render(ui, window);
-
-        // let output_view = output
-        //     .texture
-        //     .create_view(&wgpu::TextureViewDescriptor::default());
-
-        // {
-        //     let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        //         label: Some("Debug Overlay Render Pass"),
-        //         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-        //             view: &output_view,
-        //             resolve_target: None,
-        //             ops: wgpu::Operations {
-        //                 load: wgpu::LoadOp::Load, // Do not clear
-        //                 store: true,
-        //             },
-        //         })],
-        //         depth_stencil_attachment: None,
-        //     });
-
-        //     self.imgui_renderer
-        //         .render(
-        //             self.imgui.render(),
-        //             &gpu.queue,
-        //             &gpu.device,
-        //             &mut render_pass,
-        //         )
-        //         .expect("Imgui render failed");
-        // }
-
-        // self.handle_ui_interaction_output(&ui_input_state, game_state, lcd_filter);
+                ui.label("LCD Sludge");
+                ui.add(egui::Slider::new(
+                    &mut new_hysteresis_seconds,
+                    min_hysteresis_seconds..=max_hysteresis_seconds,
+                ));
+                if (current_hysteresis_seconds - new_hysteresis_seconds).abs() > 1e-5 {
+                    output.lcd_hysteresis = if new_hysteresis_seconds > 0.0 {
+                        Some(Some(std::time::Duration::from_secs_f32(
+                            new_hysteresis_seconds,
+                        )))
+                    } else {
+                        Some(None)
+                    };
+                }
+                ui.end_row();
+            });
+        output
     }
 
     fn create_ui_state_input(
