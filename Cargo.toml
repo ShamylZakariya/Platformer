@@ -23,11 +23,11 @@ rodio = "0.19"
 winit = { version = "0.30" }
 env_logger = "0.11"
 log = "0.4"
-wgpu = "22"
+wgpu = "25"
 
-egui = "0.29"
-egui-wgpu = "0.29"
-egui-winit = "0.29"
+egui = "0.32"
+egui-wgpu = "0.32"
+egui-winit = "0.32"
 
 [dependencies.cgmath]
 version = "0.18"

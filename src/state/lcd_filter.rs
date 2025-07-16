@@ -527,14 +527,14 @@ impl LcdFilter {
 
                 vertex: wgpu::VertexState {
                     module: &lcd_shader,
-                    entry_point: "lcd_vs_main",
+                    entry_point: Some("lcd_vs_main"),
                     buffers: &[],
                     compilation_options: Default::default(),
                 },
 
                 fragment: Some(wgpu::FragmentState {
                     module: &lcd_shader,
-                    entry_point: "lcd_fs_main",
+                    entry_point: Some("lcd_fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: color_format,
                         blend: Some(wgpu::BlendState {
@@ -679,14 +679,14 @@ impl LcdFilter {
 
                 vertex: wgpu::VertexState {
                     module: &lcd_shader,
-                    entry_point: "vs_main",
+                    entry_point: Some("vs_main"),
                     buffers: &[],
                     compilation_options: Default::default(),
                 },
 
                 fragment: Some(wgpu::FragmentState {
                     module: &lcd_shader,
-                    entry_point: "fs_main",
+                    entry_point: Some("fs_main"),
                     targets: &[Some(wgpu::ColorTargetState {
                         format: color_format,
                         blend: Some(wgpu::BlendState {

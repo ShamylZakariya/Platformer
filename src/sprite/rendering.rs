@@ -28,14 +28,14 @@ pub fn create_render_pipeline(
 
         vertex: wgpu::VertexState {
             module: &sprite_shader_module,
-            entry_point: "sprite_vs_main",
+            entry_point: Some("sprite_vs_main"),
             buffers: vertex_descs,
             compilation_options: Default::default(),
         },
 
         fragment: Some(wgpu::FragmentState {
             module: &sprite_shader_module,
-            entry_point: "sprite_fs_main",
+            entry_point: Some("sprite_fs_main"),
             targets: &[Some(wgpu::ColorTargetState {
                 format: color_format,
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
@@ -572,10 +572,7 @@ impl EntityDrawable {
         let mut root_tiles_by_cycle: HashMap<&str, &tileset::Tile> = HashMap::new();
         for tile in tiles {
             let cycle = tile.get_property("cycle").unwrap();
-            tiles_by_cycle
-                .entry(cycle)
-                .or_default()
-                .push(tile);
+            tiles_by_cycle.entry(cycle).or_default().push(tile);
 
             if tile.get_property("role") == Some("root") {
                 root_tiles_by_cycle.insert(cycle, tile);
