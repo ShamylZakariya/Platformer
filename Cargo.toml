@@ -11,9 +11,9 @@ default = []
 
 [dependencies]
 anyhow = "1.0"
-bytemuck = { version = "1.10", features = ["derive"] }
-pollster = "0.3"
-image = "0.24"
+bytemuck = { version = "1.14", features = ["derive"] }
+pollster = "0.4"
+image = "0.25"
 rand = "0.8"
 structopt = "0.3"
 xml-rs = "0.8"
@@ -21,7 +21,7 @@ gilrs = "0.10"
 rodio = "0.19"
 
 winit = { version = "0.30" }
-env_logger = "0.10"
+env_logger = "0.11"
 log = "0.4"
 wgpu = "22"
 
