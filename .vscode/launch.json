@@ -1,102 +1,84 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug 'Gargoyle's Quest",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=platformer",
-                    "--package=platformer"
-                ],
-                "filter": {
-                    "name": "platformer",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "--no-music",
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "RUST_LOG": "info"
-            }
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug 'Gargoyle's Quest",
+      "cargo": {
+        "args": ["build", "--bin=platformer", "--package=platformer"],
+        "filter": {
+          "name": "platformer",
+          "kind": "bin",
         },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug 'Gargoyle's Quest (Checkpoint)",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=platformer",
-                    "--package=platformer"
-                ],
-                "filter": {
-                    "name": "platformer",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "-c",
-                "1",
-                "-n"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "RUST_LOG": "info"
-            }
+      },
+      "args": ["--no-music"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info",
+      },
+      "program": "${workspaceFolder}/target/debug/platformer",
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug 'Gargoyle's Quest (Checkpoint)",
+      "cargo": {
+        "args": ["build", "--bin=platformer", "--package=platformer"],
+        "filter": {
+          "name": "platformer",
+          "kind": "bin",
         },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug 'Gargoyle's Quest (w/ Overlay)",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=platformer",
-                    "--package=platformer"
-                ],
-                "filter": {
-                    "name": "platformer",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "--no-music",
-                "--debug-overlay"
-            ],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "RUST_LOG": "info"
-            }
+      },
+      "args": ["-c", "1", "-n"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info",
+      },
+      "program": "${workspaceFolder}/target/debug/platformer",
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug 'Gargoyle's Quest (w/ Overlay)",
+      "cargo": {
+        "args": ["build", "--bin=platformer", "--package=platformer"],
+        "filter": {
+          "name": "platformer",
+          "kind": "bin",
         },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'platformer'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=platformer",
-                    "--package=platformer"
-                ],
-                "filter": {
-                    "name": "platformer",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "RUST_LOG": "info"
-            }
-        }
-    ]
+      },
+      "args": ["--no-music", "--debug-overlay"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info",
+      },
+      "program": "${workspaceFolder}/target/debug/platformer",
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug unit tests in executable 'platformer'",
+      "cargo": {
+        "args": [
+          "test",
+          "--no-run",
+          "--bin=platformer",
+          "--package=platformer",
+        ],
+        "filter": {
+          "name": "platformer",
+          "kind": "bin",
+        },
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "RUST_LOG": "info",
+      },
+    },
+  ],
 }
