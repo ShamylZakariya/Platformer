@@ -63,7 +63,7 @@ impl Default for LcdUniformData {
             color_attachment_layer_count: 1,
             color_attachment_history_count: 0,
             lcd_shadow_effect_alpha: 0.375,
-            lcd_column_bleed_effect_power: 0.0625,
+            lcd_column_bleed_effect_power: 0.125,
             lcd_column_bleed_effect_alpha: 0.25,
             lcd_noisiness: 0.0125,
             lcd_clarity: 0.75,
